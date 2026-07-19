@@ -1,0 +1,78 @@
+Table filo {
+  id id [pk]
+  nome varchar
+  sigla varchar(1)
+}
+
+Table familia {
+  id id [pk]
+  id_filo int [ref: > filo.id]
+  nome varchar
+}
+
+Table genero {
+  id id [pk]
+  id_familia int [ref: > familia.id]
+  nome varchar
+}
+
+Table especie {
+  id id [pk]
+  id_genero int [ref: > genero.id]
+  nome varchar
+}
+
+Table autor {
+  id id [pk]
+  nome varchar
+}
+
+Table identificacao {
+  id id [pk]
+  descricao varchar
+}
+
+Table forma_vida {
+  id id [pk]
+  tipo varchar
+}
+
+Table parcela {
+  id id [pk]
+  coordenada varchar
+}
+
+Table briofita_observacao {
+  id id [pk]
+  id_briofita int [ref: > coleta.id]
+  id_observacao int [ref: > observacao.id]
+}
+
+
+Table observacao {
+  id id [pk]
+  descricao varchar
+  abreviacao varchar
+}
+
+Table briofita_substrato {
+  id id [pk]
+  id_briofita int [ref: > coleta.id]
+  id_substrato int [ref: > substrato.id]
+}
+
+Table substrato {
+  id id [pk]
+  nome varchar
+  sigla varchar(3)
+}
+
+Table coleta {
+  id id [pk]
+  id_especie int [ref: > especie.id] 
+  id_forma int [ref: > forma_vida.id]
+  id_identificacao int [ref: > identificacao.id]
+  id_parcela int [ref: > parcela.id]
+  id_autor int [ref: > autor.id]
+  amostra int
+}
