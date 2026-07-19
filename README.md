@@ -1,2 +1,2 @@
 # Normalizacao
-Repositorio para deixar registrado os codigos e avanços das normalizações feitas para o JabotUR
+Repositorio para registro dos avanços nas normalizações feitas para a base de dados a ser disponibilizada através do JabotUR.
