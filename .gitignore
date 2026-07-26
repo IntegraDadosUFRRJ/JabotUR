@@ -1,0 +1,9 @@
+# Ambiente virtual Python
+.venv/
+
+# Bancos locais DuckDB
+*.duckdb
+
+# Cache Python
+__pycache__/
+*.pyc
