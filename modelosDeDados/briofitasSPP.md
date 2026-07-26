@@ -19,6 +19,7 @@ Table genero {
 Table especie {
   id id [pk]
   id_genero int [ref: > genero.id]
+  id_autor int [ref: > autor.id]
   nome varchar
 }
 
@@ -43,11 +44,13 @@ Table parcela {
 }
 
 Table briofita_observacao {
-  id id [pk]
   id_briofita int [ref: > coleta.id]
   id_observacao int [ref: > observacao.id]
-}
 
+  indexes {
+    (id_briofita, id_observacao) [pk]
+  }
+}
 
 Table observacao {
   id id [pk]
@@ -56,9 +59,12 @@ Table observacao {
 }
 
 Table briofita_substrato {
-  id id [pk]
   id_briofita int [ref: > coleta.id]
   id_substrato int [ref: > substrato.id]
+
+  indexes {
+    (id_briofita, id_substrato) [pk]
+  }
 }
 
 Table substrato {
@@ -73,6 +79,5 @@ Table coleta {
   id_forma int [ref: > forma_vida.id]
   id_identificacao int [ref: > identificacao.id]
   id_parcela int [ref: > parcela.id]
-  id_autor int [ref: > autor.id]
   amostra int
 }
