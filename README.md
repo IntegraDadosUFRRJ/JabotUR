@@ -1,2 +1,76 @@
-# Normalizacao
-Repositorio para registro dos avanços nas normalizações feitas para a base de dados a ser disponibilizada através do JabotUR.
+# JabotUR
+
+## Sobre
+
+### O que o projeto faz
+
+O JabotUR integra diferentes fontes de dados de pesquisa do Jardim Botânico da UFRRJ (JB-UFRRJ), como acervo de espécies, registros de campo e metadados de suporte, em um único fluxo ETL que produz tabelas normalizadas no PostgreSQL.
+
+### Por que o projeto é útil
+
+O JB-UFRRJ possui informações distribuídas em planilhas, sistemas e inventários fragmentados. Este projeto reduz retrabalho, melhora a qualidade dos dados e prepara a base para análises e aplicações futuras de catalogação, mapeamento e pesquisa científica.
+
+## How to
+
+### Como começar
+
+1. Clone o repositório:
+
+```bash
+git clone <url-do-repositorio>
+cd jabotur
+```
+
+2. Crie um ambiente virtual e ative-o:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate      # Linux/macOS
+# .venv\Scripts\activate     # Windows
+```
+
+3. Instale as dependências:
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Crie o banco PostgreSQL:
+
+```bash
+python scripts/init_postgres.py
+```
+
+5. Execute o pipeline completo:
+
+```bash
+python3 scripts/run_pipeline.py
+```
+
+### O que o pipeline gera
+
+- `stg_spp_briofitas`: dados de staging carregados do Excel
+- `cln_spp_briofitas`: dados limpos e normalizados
+- tabelas finais normalizadas no PostgreSQL: `filo`, `familia`, `genero`, `autor`, `epiteto_especifico`, `forma_vida`, `parcela`, `substrato`, `identificacao`, `coleta`, `coleta_substrato`, `coleta_observacao`
+
+## Requisitos para executar
+
+- Python 3.10 ou superior
+- PostgreSQL 14+ rodando localmente
+- Git
+- Dependências do projeto listadas em `requirements.txt`
+
+## Help
+
+- Abra uma issue neste repositório descrevendo o problema ou dúvida.
+- Use os comentários do GitHub para discutir a implementação.
+
+### Quem mantém e contribui
+
+- **Coordenadora**: Liliane Kunstmann
+- **Bolsista**: Davidson Wasserman
+- **Voluntários**: Cássio Lima, Julia Prearo
+
+---
+
+*Projeto de Iniciação Científica do Jardim Botânico da UFRRJ.*
