@@ -1,4 +1,5 @@
 <!--Este template deve ser aplicado a todos os PRs, caso a seção não se aplique, por favor escreva N/A na seção, não a remova ou deixe em branco. -->
+<!-- Para o título do commit, por favor utilize a nomenclatura do Conventional Commit para sua mensagem https://www.conventionalcommits.org/en/v1.0.0/ -->
 
 ## Descrição
 <!-- Inclua um resumo das alterações e qual problema foi resolvido. -->
