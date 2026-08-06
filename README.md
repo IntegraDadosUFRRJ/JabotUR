@@ -2,17 +2,15 @@
 
 ## Sobre
 
-### O que o projeto faz
+O JB-UFRRJ possui informações distribuídas em planilhas, sistemas e inventários fragmentados. Este repositorio contém o JabotUR que integra diferentes fontes de dados de pesquisa do Jardim Botânico da UFRRJ (JB-UFRRJ), como acervo de espécies, registros de campo e metadados de suporte, em um único fluxo ETL que produz tabelas normalizadas no PostgreSQL. Com isso ele busca reduzir retrabalho, melhorar a qualidade dos dados e preparar a base para análises e aplicações futuras de catalogação, mapeamento e pesquisa científica.
 
-O JabotUR integra diferentes fontes de dados de pesquisa do Jardim Botânico da UFRRJ (JB-UFRRJ), como acervo de espécies, registros de campo e metadados de suporte, em um único fluxo ETL que produz tabelas normalizadas no PostgreSQL.
 
-### Por que o projeto é útil
+## Requisitos para executar
 
-O JB-UFRRJ possui informações distribuídas em planilhas, sistemas e inventários fragmentados. Este projeto reduz retrabalho, melhora a qualidade dos dados e prepara a base para análises e aplicações futuras de catalogação, mapeamento e pesquisa científica.
+- Python 3.10 ou superior
+- PostgreSQL 14 ou superior
 
-## How to
-
-### Como começar
+## Como começar
 
 1. Clone o repositório:
 
@@ -53,23 +51,17 @@ python3 scripts/run_pipeline.py
 - `cln_spp_briofitas`: dados limpos e normalizados
 - tabelas finais normalizadas no PostgreSQL: `filo`, `familia`, `genero`, `autor`, `epiteto_especifico`, `forma_vida`, `parcela`, `substrato`, `identificacao`, `coleta`, `coleta_substrato`, `coleta_observacao`
 
-## Requisitos para executar
-
-- Python 3.10 ou superior
-- PostgreSQL 14+ rodando localmente
-- Git
-- Dependências do projeto listadas em `requirements.txt`
-
 ## Help
 
-- Abra uma issue neste repositório descrevendo o problema ou dúvida.
-- Use os comentários do GitHub para discutir a implementação.
+- Entre em contato em davidson_wasserman@ufrrj.com | cassiolima@ufrrj.br | juliaprearo@ufrrj.br
 
-### Quem mantém e contribui
+### Membros
 
-- **Coordenadora**: Liliane Kunstmann
-- **Bolsista**: Davidson Wasserman
-- **Voluntários**: Cássio Lima, Julia Prearo
+- Cássio Lima 
+- Davidson Wasserman
+- Julia Prearo
+- Liliane Kunstmann
+
 
 ---
 

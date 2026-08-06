@@ -34,14 +34,14 @@ def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
 
 
 def _sql_literal(value: str) -> str:
-    return "'" + value.replace("\\", "\\\\").replace("'", "''") + "'"
+    return "'" + value.replace("'", "''") + "'"
 
 
 def _build_observation_expression() -> str:
     expression = "trim(coalesce(observacao, ''))"
     for pattern, replacement in config.OBSERVACAO_REGEX_FIXES:
         expression = (
-            f"regexp_replace({expression}, {_sql_literal(pattern)}, {_sql_literal(replacement)})"
+            f"regexp_replace({expression}, {_sql_literal(pattern)}, {_sql_literal(replacement)}, 'gi')"
         )
     return (
         f"CASE WHEN trim(coalesce(observacao, '')) = '' THEN {_sql_literal(config.OBSERVACAO_NULL_PLACEHOLDER)} "
