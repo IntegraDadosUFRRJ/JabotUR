@@ -61,6 +61,8 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
     ), filled AS (
         SELECT
             rn,
+            _source_file,
+            _source_row,
             last_value(
                 CASE
                     WHEN trim(coalesce(parcela, '')) = '' THEN NULL
@@ -113,6 +115,8 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
         FROM numbered
     )
     SELECT
+        _source_file,
+        _source_row,
         parcela,
         amostra,
         substrato,
@@ -141,7 +145,7 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_clean(df: pd.DataFrame) -> None:
-    write_dataframe_to_postgres(df, config.CLN_SPP_TABLE)
+    write_dataframe_to_postgres(df, config.CLN_SPP_TABLE, mode="replace")
     loaded_df = read_dataframe_from_postgres(config.CLN_SPP_TABLE)
     count = len(loaded_df)
     print(f"[clean_spp] {config.CLN_SPP_TABLE}: {count} linhas carregadas.")

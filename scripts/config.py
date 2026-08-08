@@ -13,7 +13,7 @@ from pathlib import Path
 # === Caminhos ===
 
 # Planilha de origem 
-XLSX_PATH = Path("./data/briófitas JB_UFRRJ - Oliveira_Santos.xlsx")
+XLSX_PATH = Path("../data/briófitas JB_UFRRJ - Oliveira_Santos.xlsx")
 
 # Configuração de conexão com o PostgreSQL
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")

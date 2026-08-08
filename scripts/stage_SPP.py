@@ -49,7 +49,7 @@ def extract_spp() -> pd.DataFrame:
 
 
 def load_staging(df: pd.DataFrame) -> None:
-    write_dataframe_to_postgres(df, config.STG_SPP_TABLE)
+    write_dataframe_to_postgres(df, config.STG_SPP_TABLE, mode="replace")
     loaded_df = read_dataframe_from_postgres(config.STG_SPP_TABLE)
     count = len(loaded_df)
     print(f"[stage_spp] {config.STG_SPP_TABLE}: {count} linhas carregadas.")

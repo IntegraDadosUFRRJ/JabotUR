@@ -21,6 +21,12 @@ def split_multivalued(series: pd.Series) -> pd.Series:
         text = str(value).strip()
         if text == "" or text == placeholder:
             return []
-        return [t.strip() for t in text.split(";") if t.strip()]
+        parts = [t.strip() for t in text.split(";") if t.strip()]
+        seen = []
+        for part in parts:
+            if part not in seen:
+                seen.append(part)
+        return seen
+
 
     return series.map(_split)

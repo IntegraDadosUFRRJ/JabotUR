@@ -39,6 +39,7 @@ Table forma_vida {
 
 Table parcela {
   id id [pk]
+  codigo varchar
   coordenada varchar
 }
 
@@ -77,5 +78,7 @@ Table coleta {
   id_forma int [ref: > forma_vida.id]
   id_identificacao int [ref: > identificacao.id]
   id_parcela int [ref: > parcela.id]
+  origin_file varchar
+  origin_row varchar
   amostra int
 }
