@@ -11,11 +11,12 @@ import pandas as pd
 import duckdb
 
 try:
-    from . import config
-    from .db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-except ImportError:  
-    import config
-    from db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+    from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+    import scripts.config as config
+except ImportError:
+    from ..db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+    from .. import config
+
 
 
 def load_staging_df() -> pd.DataFrame:

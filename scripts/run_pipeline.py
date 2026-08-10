@@ -1,11 +1,14 @@
 """Executa o pipeline ETL completo"""
 
+from .clean import clean_SPP
+from .staging import stage_SPP
+
 try:
-    from . import clean_SPP, stage_SPP, load_SPP
+    from .load import load_SPP
 except ImportError:  
-    import clean_SPP
-    import stage_SPP
-    import load_SPP
+    import scripts.clean.clean_SPP as clean_SPP
+    import scripts.staging.stage_SPP as stage_SPP
+    import scripts.load.load_SPP as load_SPP
 
 
 def main() -> None:

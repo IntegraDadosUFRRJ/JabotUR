@@ -10,15 +10,15 @@ briofitasSPP.md no PostgreSQL:
 import pandas as pd
 
 try:
-    from . import config
-    from .db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    from .transforms import epiteto_especifico as epiteto_t
-    from .transforms import filo as filo_t
-    from .transforms import observacoes as observacoes_t
-    from .transforms import substrato as substrato_t
+    from .. import config
+    from ..db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+    from ..transforms import epiteto_especifico as epiteto_t
+    from ..transforms import filo as filo_t
+    from ..transforms import observacoes as observacoes_t
+    from ..transforms import substrato as substrato_t
 except ImportError:
     import config
-    from db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+    from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
     from transforms import epiteto_especifico as epiteto_t
     from transforms import filo as filo_t
     from transforms import observacoes as observacoes_t
@@ -274,14 +274,64 @@ def build_coleta(df: pd.DataFrame, epiteto_ids: dict, forma_ids: dict, identific
         )
     return pd.DataFrame(rows)
 
+def build_occurrence(df: pd.DataFrame, epiteto_ids: dict, forma_ids: dict, identificacao_ids: dict, parcela_ids: dict):
+    existing = _load_existing(config.TB_OCCURRENCE)
+    existing_keys_to_id = {}
+    if not existing.empty and "origin_file" in existing.columns:
+        for _, row in existing.iterrows():
+            existing_keys_to_id[(row["origin_file"], row["origin_row"])] = row["id"]
+    next_id = (max(existing_keys_to_id.values()) + 1) if existing_keys_to_id else 1
+ 
+    occurrence_rows = []
+    satellite_rows = []
+    for row in df.itertuples(index=True):
+        chave_especie = (row.genero, row.epiteto_limpo, row.autor)
+        id_especie = epiteto_ids.get(chave_especie)
+        if id_especie is None:
+            print(
+                f"[load_SPP] linha {row.Index} ({row.source_file}#{row.source_row}): "
+                f"não encontrei epíteto para {chave_especie!r}, pulando occurrence"
+            )
+            continue
+ 
+        natural_key = (row.source_file, row.source_row)
+        if natural_key in existing_keys_to_id:
+            occurrence_id = existing_keys_to_id[natural_key]
+        else:
+            occurrence_id = next_id
+            existing_keys_to_id[natural_key] = occurrence_id
+            next_id += 1
+ 
+        codigo_status = row.status_identificacao
+        id_identificacao = identificacao_ids.get(int(codigo_status)) if pd.notna(codigo_status) else None
+ 
+        occurrence_rows.append(
+            {
+                "id": occurrence_id,
+                "origin_file": row.source_file,
+                "origin_row": row.source_row,
+                "id_especie": id_especie,
+            }
+        )
+        satellite_rows.append(
+            {
+                "id": occurrence_id,
+                "id_forma": forma_ids.get(row.forma_vida) if pd.notna(row.forma_vida) else None,
+                "id_identificacao": id_identificacao,
+                "id_parcela": parcela_ids.get(row.parcela) if pd.notna(row.parcela) else None,
+                "amostra": int(row.amostra) if pd.notna(row.amostra) else None,
+            }
+        )
+    return pd.DataFrame(occurrence_rows), pd.DataFrame(satellite_rows)
+ 
 
 
-def build_bridges(df: pd.DataFrame, coleta_df: pd.DataFrame, substrato_ids: dict, observacao_ids: dict):
-    coleta_id_by_key = dict(zip(zip(coleta_df["origin_file"], coleta_df["origin_row"]), coleta_df["id"]))
+def build_bridges(df: pd.DataFrame, occurrence_df: pd.DataFrame, substrato_ids: dict, observacao_ids: dict):
+    occurrence_id_by_key = dict(zip(zip(occurrence_df["origin_file"], occurrence_df["origin_row"]), occurrence_df["id"]))
  
     subs_rows = []
     for key_tuple, lista in zip(zip(df["source_file"], df["source_row"]), df["substrato_lista"]):
-        id_briofita = coleta_id_by_key.get(key_tuple)
+        id_briofita = occurrence_id_by_key.get(key_tuple)
         if id_briofita is None:
             continue
         for nome in lista:
@@ -289,7 +339,7 @@ def build_bridges(df: pd.DataFrame, coleta_df: pd.DataFrame, substrato_ids: dict
  
     obs_rows = []
     for key_tuple, lista in zip(zip(df["source_file"], df["source_row"]), df["observacoes_lista"]):
-        id_briofita = coleta_id_by_key.get(key_tuple)
+        id_briofita = occurrence_id_by_key.get(key_tuple)
         if id_briofita is None:
             continue
         for comentario in lista:
@@ -315,9 +365,9 @@ def run() -> None:
     substrato_dim, substrato_ids = build_substrato(df)
     observacao_dim, observacao_ids = build_observacao(df)
  
-    coleta_df = build_coleta(df, epiteto_ids, forma_ids, identificacao_ids, parcela_ids)
-    coleta_substrato_df, coleta_observacao_df = build_bridges(df, coleta_df, substrato_ids, observacao_ids)
-
+    occurrence_df, occurrence_bryophyte_df = build_occurrence(df, epiteto_ids, forma_ids, identificacao_ids, parcela_ids)
+    coleta_substrato_df, coleta_observacao_df = build_bridges(df, occurrence_df, substrato_ids, observacao_ids)
+ 
     tabelas_upsert = {
         config.TB_FILO: filo_dim,
         config.TB_FAMILIA: familia_dim,
@@ -329,7 +379,8 @@ def run() -> None:
         config.TB_IDENTIFICACAO: identificacao_dim,
         config.TB_SUBSTRATO: substrato_dim,
         config.TB_OBSERVACAO: observacao_dim,
-        config.TB_COLETA: coleta_df,
+        config.TB_OCCURRENCE: occurrence_df,
+        config.TB_OCCURRENCE_BRYOPHYTE: occurrence_bryophyte_df,
     }
     for nome_tabela, tabela_df in tabelas_upsert.items():
         write_dataframe_to_postgres(tabela_df, nome_tabela, mode="upsert")
