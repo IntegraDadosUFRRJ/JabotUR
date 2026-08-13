@@ -32,6 +32,10 @@ def _extract_one_sheet(sheet_name: str) -> pd.DataFrame:
     data_cols = list(config.ARBORETO_CITATION_COLUMN_MAP.keys())
     df = df[df[data_cols].notna().any(axis=1)].copy()
 
+    # Remove a última linha após a limpeza das vazias(remove o total)
+    if not df.empty:
+        df = df.iloc[:-1]
+
     df = df.rename(columns=config.ARBORETO_CITATION_COLUMN_MAP)
 
     df["_source_file"] = str(config.ARBORETO_XLSX_PATH.name)
