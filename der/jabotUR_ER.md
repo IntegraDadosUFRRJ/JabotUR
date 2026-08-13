@@ -190,4 +190,8 @@ Table bibliographic_citation {
   id_species int [ref: > epiteto_especifico.id]
   source varchar   
   quantity int
+  identification_qualifier varchar
+  origin_file varchar
+  origin_sheet varchar
+  origin_row varchar
 }
