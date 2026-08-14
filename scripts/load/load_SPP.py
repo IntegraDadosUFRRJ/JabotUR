@@ -1,11 +1,5 @@
-"""
-Lê `cln_spp_briofitas` e povoa as tabelas normalizadas finais do schema
-briofitasSPP.md no PostgreSQL:
+# Lê `cln_spp_briofitas` e povoa as tabelas normalizadas finais do schema no PostgreSQL
 
-    filo, familia, genero, autor, epiteto_especifico, forma_vida, parcela,
-    substrato, identificacao, coleta, coleta_substrato, coleta_observacao,
-    observacao
-"""
 
 import pandas as pd
 
@@ -16,6 +10,7 @@ try:
     from ..transforms import filo as filo_t
     from ..transforms import observacoes as observacoes_t
     from ..transforms import substrato as substrato_t
+    from . import taxonomy
 except ImportError:
     import config
     from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
@@ -23,6 +18,7 @@ except ImportError:
     from transforms import filo as filo_t
     from transforms import observacoes as observacoes_t
     from transforms import substrato as substrato_t
+    from scripts.load import taxonomy
 
 
 def _expand_filo(values: pd.Series) -> pd.Series:
@@ -45,21 +41,8 @@ def load_clean_df() -> pd.DataFrame:
     return read_dataframe_from_postgres(config.CLN_SPP_TABLE)
 
 
-def _load_existing(table_name: str) -> pd.DataFrame:
-    try:
-        return read_dataframe_from_postgres(table_name)
-    except Exception:
-        return pd.DataFrame()
-
-
-def _merge_ids(existing_keys_to_id: dict, new_keys) -> dict:
-    ids = dict(existing_keys_to_id)
-    next_id = (max(ids.values()) + 1) if ids else 1
-    for key in new_keys:
-        if key not in ids:
-            ids[key] = next_id
-            next_id += 1
-    return ids
+_load_existing = taxonomy._load_existing
+_merge_ids = taxonomy._merge_ids
 
 
 def _resolve_epiteto_column(df: pd.DataFrame) -> str:
@@ -79,91 +62,12 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
     out["observacoes_lista"] = _split_multivalued_observacoes(out["observacoes"])
     out["source_file"] = out["_source_file"]
     out["source_row"] = out["_source_row"]
+
+    # taxonomy.py espera a coluna "epiteto";
+    # SPP nunca tem infraespecífico;
+    out["epiteto"] = out["epiteto_limpo"]
+    out["infraespecifico"] = None
     return out
-
-
-def build_filo(df: pd.DataFrame):
-    existing = _load_existing(config.TB_FILO)
-    existing_ids = dict(zip(existing["nome"], existing["id"])) if not existing.empty else {}
-    nomes = df["filo_nome"].dropna().unique().tolist()
-    ids = _merge_ids(existing_ids, nomes)
-    dim = pd.DataFrame({"id": list(ids.values()), "nome": list(ids.keys())})
-    return dim, ids
-
-
-def build_familia(df: pd.DataFrame, filo_ids: dict, filo_dim: pd.DataFrame):
-    filo_id_to_nome = dict(zip(filo_dim["id"], filo_dim["nome"]))
-    existing = _load_existing(config.TB_FAMILIA)
-    existing_keys = {}
-    if not existing.empty:
-        for _, row in existing.iterrows():
-            key = (filo_id_to_nome.get(row["id_filo"]), row["nome"])
-            existing_keys[key] = row["id"]
-
-    pares = list(df.dropna(subset=["familia"])[["filo_nome", "familia"]].itertuples(index=False, name=None))
-    ids = _merge_ids(existing_keys, pares)
-    rows = [{"id": i, "id_filo": filo_ids.get(filo_nome), "nome": nome} for (filo_nome, nome), i in ids.items()]
-    dim = pd.DataFrame(rows)
-    familia_by_nome = {nome: i for (filo_nome, nome), i in ids.items()}
-    return dim, familia_by_nome
-
-
-def build_genero(df: pd.DataFrame, familia_by_nome: dict, familia_dim: pd.DataFrame):
-    familia_id_to_nome = dict(zip(familia_dim["id"], familia_dim["nome"]))
-    existing = _load_existing(config.TB_GENERO)
-    existing_keys = {}
-    if not existing.empty:
-        for _, row in existing.iterrows():
-            key = (familia_id_to_nome.get(row["id_familia"]), row["nome"])
-            existing_keys[key] = row["id"]
-
-    pares = list(df.dropna(subset=["genero"])[["familia", "genero"]].itertuples(index=False, name=None))
-    ids = _merge_ids(existing_keys, pares)
-    rows = [{"id": i, "id_familia": familia_by_nome.get(familia_nome), "nome": nome} for (familia_nome, nome), i in ids.items()]
-    dim = pd.DataFrame(rows)
-    genero_by_nome = {nome: i for (familia_nome, nome), i in ids.items()}
-    return dim, genero_by_nome
-
-
-def build_autor(df: pd.DataFrame):
-    existing = _load_existing(config.TB_AUTOR)
-    existing_ids = dict(zip(existing["nome"], existing["id"])) if not existing.empty else {}
-    nomes = df["autor"].dropna().unique().tolist()
-    ids = _merge_ids(existing_ids, nomes)
-    dim = pd.DataFrame({"id": list(ids.values()), "nome": list(ids.keys())})
-    return dim, ids
-
-
-def build_epiteto_especifico(df: pd.DataFrame, genero_by_nome: dict, autor_ids: dict, genero_dim: pd.DataFrame):
-    genero_id_to_nome = dict(zip(genero_dim["id"], genero_dim["nome"]))
-    autor_id_to_nome = {v: k for k, v in autor_ids.items()}
-    existing = _load_existing(config.TB_EPITETO_ESPECIFICO)
-    existing_keys = {}
-    if not existing.empty:
-        for _, row in existing.iterrows():
-            key = (
-                genero_id_to_nome.get(row["id_genero"]),
-                row["nome"],
-                autor_id_to_nome.get(row["id_autor"]),
-            )
-            existing_keys[key] = row["id"]
- 
-    chave = list(
-        df.dropna(subset=["epiteto_limpo"])[["genero", "epiteto_limpo", "autor"]]
-        .itertuples(index=False, name=None)
-    )
-    ids = _merge_ids(existing_keys, chave)
-    rows = [
-        {
-            "id": i,
-            "id_genero": genero_by_nome.get(genero_nome),
-            "id_autor": autor_ids.get(autor_nome),
-            "nome": epiteto_nome,
-        }
-        for (genero_nome, epiteto_nome, autor_nome), i in ids.items()
-    ]
-    dim = pd.DataFrame(rows)
-    return dim, ids
 
 
 def build_forma_vida(df: pd.DataFrame):
@@ -230,50 +134,6 @@ def build_observacao(df: pd.DataFrame):
     return dim, ids
 
 
-def build_coleta(df: pd.DataFrame, epiteto_ids: dict, forma_ids: dict, identificacao_ids: dict, parcela_ids: dict):
-    existing = _load_existing(config.TB_COLETA)
-    existing_keys_to_id = {}
-    if not existing.empty and "origin_file" in existing.columns:
-        for _, row in existing.iterrows():
-            existing_keys_to_id[(row["origin_file"], row["origin_row"])] = row["id"]
-    next_id = (max(existing_keys_to_id.values()) + 1) if existing_keys_to_id else 1
- 
-    rows = []
-    for row in df.itertuples(index=True):
-        chave_especie = (row.genero, row.epiteto_limpo, row.autor)
-        id_especie = epiteto_ids.get(chave_especie)
-        if id_especie is None:
-            print(
-                f"[load_SPP] linha {row.Index} ({row.source_file}#{row.source_row}): "
-                f"não encontrei epíteto para {chave_especie!r}, pulando coleta"
-            )
-            continue
- 
-        natural_key = (row.source_file, row.source_row)
-        if natural_key in existing_keys_to_id:
-            coleta_id = existing_keys_to_id[natural_key]
-        else:
-            coleta_id = next_id
-            existing_keys_to_id[natural_key] = coleta_id
-            next_id += 1
- 
-        codigo_status = row.status_identificacao
-        id_identificacao = identificacao_ids.get(int(codigo_status)) if pd.notna(codigo_status) else None
- 
-        rows.append(
-            {
-                "id": coleta_id,
-                "origin_file": row.source_file,
-                "origin_row": row.source_row,
-                "id_especie": id_especie,
-                "id_forma": forma_ids.get(row.forma_vida) if pd.notna(row.forma_vida) else None,
-                "id_identificacao": id_identificacao,
-                "id_parcela": parcela_ids.get(row.parcela) if pd.notna(row.parcela) else None,
-                "amostra": int(row.amostra) if pd.notna(row.amostra) else None,
-            }
-        )
-    return pd.DataFrame(rows)
-
 def build_occurrence(df: pd.DataFrame, epiteto_ids: dict, forma_ids: dict, identificacao_ids: dict, parcela_ids: dict):
     existing = _load_existing(config.TB_OCCURRENCE)
     existing_keys_to_id = {}
@@ -285,7 +145,8 @@ def build_occurrence(df: pd.DataFrame, epiteto_ids: dict, forma_ids: dict, ident
     occurrence_rows = []
     satellite_rows = []
     for row in df.itertuples(index=True):
-        chave_especie = (row.genero, row.epiteto_limpo, row.autor)
+        # SPP sempre passa infraespecifico=None 
+        chave_especie = (row.genero, row.epiteto, row.infraespecifico, row.autor)
         id_especie = epiteto_ids.get(chave_especie)
         if id_especie is None:
             print(
@@ -354,11 +215,11 @@ def build_bridges(df: pd.DataFrame, occurrence_df: pd.DataFrame, substrato_ids: 
 def run() -> None:
     df = prepare(load_clean_df())
  
-    filo_dim, filo_ids = build_filo(df)
-    familia_dim, familia_by_nome = build_familia(df, filo_ids, filo_dim)
-    genero_dim, genero_by_nome = build_genero(df, familia_by_nome, familia_dim)
-    autor_dim, autor_ids = build_autor(df)
-    epiteto_dim, epiteto_ids = build_epiteto_especifico(df, genero_by_nome, autor_ids, genero_dim)
+    filo_dim, filo_ids = taxonomy.build_filo(df)
+    familia_dim, familia_by_nome = taxonomy.build_familia(df, filo_ids, filo_dim)
+    genero_dim, genero_by_nome = taxonomy.build_genero(df, familia_by_nome, familia_dim)
+    autor_dim, autor_ids = taxonomy.build_autor(df)
+    epiteto_dim, epiteto_ids = taxonomy.build_epiteto_especifico(df, genero_by_nome, autor_ids, genero_dim)
     forma_dim, forma_ids = build_forma_vida(df)
     parcela_dim, parcela_ids = build_parcela(df)
     identificacao_dim, identificacao_ids = build_identificacao()

@@ -13,7 +13,7 @@ from pathlib import Path
 # === Caminhos ===
 
 # Planilha de origem — SPP (briófitas)
-SPP_XLSX_PATH = Path("../data/briófitas JB_UFRRJ - Oliveira_Santos.xlsx")
+SPP_XLSX_PATH = Path("data/briófitas JB_UFRRJ - Oliveira_Santos.xlsx")
 
 # Planilha de origem — arboreto
 ARBORETO_XLSX_PATH = Path("data/Diversidade florística do arboreto do JB.xlsx")
@@ -82,6 +82,7 @@ TB_OCCURRENCE_BRYOPHYTE = "occurrence_bryophyte"
 TB_COLETA_SUBSTRATO = "coleta_substrato"
 TB_COLETA_OBSERVACAO = "coleta_observacao"
 TB_OBSERVACAO = "observacao"
+TB_BIBLIOGRAPHIC_CITATION = "bibliographic_citation"
 
 # === Constantes de negócio usadas na etapa clean ===
 

@@ -20,7 +20,7 @@ except ImportError:
 
 def extract_spp() -> pd.DataFrame:
     df = pd.read_excel(
-        config.XLSX_PATH,
+        config.SPP_XLSX_PATH,
         sheet_name=config.SPP_SHEET_NAME,
         header=0,
         dtype=str,
@@ -36,7 +36,7 @@ def extract_spp() -> pd.DataFrame:
 
     df = df.rename(columns=config.SPP_COLUMN_MAP)
 
-    df["_source_file"] = str(config.XLSX_PATH.name)
+    df["_source_file"] = str(config.SPP_XLSX_PATH.name)
     df["_source_sheet"] = config.SPP_SHEET_NAME
     df["_loaded_at"] = datetime.now(timezone.utc)
 
