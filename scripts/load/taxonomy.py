@@ -21,6 +21,17 @@ except ImportError:
     import scripts.config as config
 
 
+def _none_if_nan(value):
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return value
+
+
 def _load_existing(table_name: str) -> pd.DataFrame:
     try:
         return read_dataframe_from_postgres(table_name)
@@ -53,10 +64,16 @@ def build_familia(df: pd.DataFrame, filo_ids: dict, filo_dim: pd.DataFrame):
     existing_keys = {}
     if not existing.empty:
         for _, row in existing.iterrows():
-            key = (filo_id_to_nome.get(row["id_filo"]), row["nome"])
+            key = (
+                _none_if_nan(filo_id_to_nome.get(row["id_filo"])),
+                _none_if_nan(row["nome"]),
+            )
             existing_keys[key] = row["id"]
 
-    pares = list(df.dropna(subset=["familia"])[["filo_nome", "familia"]].itertuples(index=False, name=None))
+    pares = [
+        (_none_if_nan(filo_nome), _none_if_nan(nome))
+        for filo_nome, nome in df.dropna(subset=["familia"])[["filo_nome", "familia"]].itertuples(index=False, name=None)
+    ]
     ids = _merge_ids(existing_keys, pares)
     rows = [{"id": i, "id_filo": filo_ids.get(filo_nome), "nome": nome} for (filo_nome, nome), i in ids.items()]
     dim = pd.DataFrame(rows)
@@ -70,10 +87,16 @@ def build_genero(df: pd.DataFrame, familia_by_nome: dict, familia_dim: pd.DataFr
     existing_keys = {}
     if not existing.empty:
         for _, row in existing.iterrows():
-            key = (familia_id_to_nome.get(row["id_familia"]), row["nome"])
+            key = (
+                _none_if_nan(familia_id_to_nome.get(row["id_familia"])),
+                _none_if_nan(row["nome"]),
+            )
             existing_keys[key] = row["id"]
 
-    pares = list(df.dropna(subset=["genero"])[["familia", "genero"]].itertuples(index=False, name=None))
+    pares = [
+        (_none_if_nan(familia_nome), _none_if_nan(nome))
+        for familia_nome, nome in df.dropna(subset=["genero"])[["familia", "genero"]].itertuples(index=False, name=None)
+    ]
     ids = _merge_ids(existing_keys, pares)
     rows = [{"id": i, "id_familia": familia_by_nome.get(familia_nome), "nome": nome} for (familia_nome, nome), i in ids.items()]
     dim = pd.DataFrame(rows)
@@ -90,31 +113,24 @@ def build_autor(df: pd.DataFrame):
     return dim, ids
 
 
-def _normalize_key_value(value):
-    return None if pd.isna(value) else value
-
-
 def build_epiteto_especifico(df: pd.DataFrame, genero_by_nome: dict, autor_ids: dict, genero_dim: pd.DataFrame):
     genero_id_to_nome = dict(zip(genero_dim["id"], genero_dim["nome"]))
     autor_id_to_nome = {v: k for k, v in autor_ids.items()}
 
     existing = _load_existing(config.TB_EPITETO_ESPECIFICO)
     existing_keys = {}
-
     if not existing.empty:
         has_infra_col = "infraespecifico" in existing.columns
-
         for _, row in existing.iterrows():
             key = (
-                _normalize_key_value(genero_id_to_nome.get(row["id_genero"])),
-                _normalize_key_value(row["nome"]),
-                _normalize_key_value(row["infraespecifico"]) if has_infra_col else None,
-                _normalize_key_value(autor_id_to_nome.get(row["id_autor"])),
+                _none_if_nan(genero_id_to_nome.get(row["id_genero"])),
+                _none_if_nan(row["nome"]),
+                _none_if_nan(row["infraespecifico"]) if has_infra_col else None,
+                _none_if_nan(autor_id_to_nome.get(row["id_autor"])),
             )
             existing_keys[key] = row["id"]
 
     work = df.copy()
-
     if "infraespecifico" not in work.columns:
         work["infraespecifico"] = None
 
@@ -122,14 +138,11 @@ def build_epiteto_especifico(df: pd.DataFrame, genero_by_nome: dict, autor_ids: 
     work = work.dropna(subset=["genero", "epiteto"], how="all")
 
     chave = [
-        tuple(_normalize_key_value(value) for value in row)
-        for row in work[
-            ["genero", "epiteto", "infraespecifico", "autor"]
-        ].itertuples(index=False, name=None)
+        (_none_if_nan(g), _none_if_nan(e), _none_if_nan(i), _none_if_nan(a))
+        for g, e, i, a in work[["genero", "epiteto", "infraespecifico", "autor"]]
+        .itertuples(index=False, name=None)
     ]
-
     ids = _merge_ids(existing_keys, chave)
-
     rows = [
         {
             "id": i,
@@ -140,6 +153,5 @@ def build_epiteto_especifico(df: pd.DataFrame, genero_by_nome: dict, autor_ids: 
         }
         for (genero_nome, epiteto_nome, infra_val, autor_nome), i in ids.items()
     ]
-
     dim = pd.DataFrame(rows)
     return dim, ids
