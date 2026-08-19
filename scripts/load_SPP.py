@@ -223,7 +223,7 @@ def build_bridges(df: pd.DataFrame, coleta_df: pd.DataFrame, substrato_ids: dict
     return pd.DataFrame(subs_rows), pd.DataFrame(obs_rows)
 
 
-def run() -> None:
+def populate_normalized_tables() -> None:
     df = prepare(load_clean_df())
 
     filo_dim, filo_ids = build_filo(df)
@@ -262,4 +262,4 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    populate_normalized_tables()

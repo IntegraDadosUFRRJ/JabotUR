@@ -24,6 +24,9 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 
 DUCKDB_PATH = Path("./jabotur_test.duckdb")
 
+# Nome da tabela registrada no DuckDB durante o transform()
+DUCKDB_STAGING_ALIAS = "df_input"
+
 
 SPP_SHEET_NAME = "SPP - JB"
 SPP_USECOLS = "A:K"  # colunas com dados reais 
@@ -42,6 +45,12 @@ SPP_COLUMN_MAP = {
     "Substrato": "substrato",
     "Observações": "observacao",
 }
+
+# === Colunas usadas na camada clean (derivadas de SPP_COLUMN_MAP) ===
+COL_IDENTIFICACAO = SPP_COLUMN_MAP["StatusIdentificacao*"]
+COL_OBSERVACAO = SPP_COLUMN_MAP["Observações"]
+COL_OBSERVACOES = "observacoes"
+COL_STATUS_IDENTIFICACAO = "status_identificacao"
 
 STG_SPP_TABLE = "stg_spp_briofitas"
 CLN_SPP_TABLE = "cln_spp_briofitas"

@@ -53,7 +53,7 @@ python3 scripts/run_pipeline.py
 
 ## Help
 
-- Entre em contato em davidson_wasserman@ufrrj.com | cassiolima@ufrrj.br | juliaprearo@ufrrj.br
+- Entre em contato em davidson_wasserman@ufrrj.com | juliaprearo@ufrrj.br
 
 ### Membros
 

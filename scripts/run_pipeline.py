@@ -16,7 +16,7 @@ def main() -> None:
     clean_SPP.load_clean(clean_SPP.transform(clean_SPP.load_staging_df()))
 
     print("\n== LOAD ==")
-    load_SPP.run()
+    load_SPP.populate_normalized_tables()
 
 
 if __name__ == "__main__":
