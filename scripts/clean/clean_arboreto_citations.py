@@ -32,6 +32,11 @@ def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
 
 
 def _fill_down_and_trim(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
+    # Numera as linhas de staging para preservar a ordem original e aplica
+    # fill-down de familia com last_value() IGNORE NULLS
+    # (linhas sem familia recebem o último valor, não-nulo, anterior)
+    # Normaliza familia com trim + regex e prepara especie/quantidade como
+    # campos *_raw, aplicando trim e substituindo valores nulos por strings vazias
     sql = """
     CREATE OR REPLACE TEMP TABLE filled AS
     WITH numbered AS (
