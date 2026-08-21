@@ -16,10 +16,23 @@ except ImportError:
     from .. import config
 
 try:
-    from scripts.transforms.nome_cientifico import parse_nome_cientifico_series
+    from scripts.transforms.nome_cientifico import (
+        PARSE_STATUS_GENUS_ONLY,
+        PARSE_STATUS_MORPHOSPECIES,
+        PARSE_STATUS_OK,
+        PARSE_STATUS_UNPARSEABLE,
+        parse_nome_cientifico_series,
+    )
 except ImportError:
-    from ..transforms.nome_cientifico import parse_nome_cientifico_series
+    from ..transforms.nome_cientifico import (
+        PARSE_STATUS_GENUS_ONLY,
+        PARSE_STATUS_MORPHOSPECIES,
+        PARSE_STATUS_OK,
+        PARSE_STATUS_UNPARSEABLE,
+        parse_nome_cientifico_series,
+    )
 
+UNPARSEABLE_QUANTIDADE = "unparseable_quantidade"
 
 def load_staging_df() -> pd.DataFrame:
     return read_dataframe_from_postgres(config.STG_ARBORETO_CITATIONS_TABLE)
@@ -32,6 +45,11 @@ def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
 
 
 def _fill_down_and_trim(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
+    # Numera as linhas de staging para preservar a ordem original e aplica
+    # fill-down de familia com last_value() IGNORE NULLS
+    # (linhas sem familia recebem o último valor, não-nulo, anterior)
+    # Normaliza familia com trim + regex e prepara especie/quantidade como
+    # campos *_raw, aplicando trim e substituindo valores nulos por strings vazias
     sql = """
     CREATE OR REPLACE TEMP TABLE filled AS
     WITH numbered AS (
@@ -66,10 +84,10 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
 
     out["quantidade"] = pd.to_numeric(out["quantidade_raw"], errors="coerce")
     bad_quantidade = out["quantidade"].isna()
-    out.loc[bad_quantidade, "parse_status"] = "unparseable_quantidade"
+    out.loc[bad_quantidade, "parse_status"] = UNPARSEABLE_QUANTIDADE
 
     # usa "morfo-espécie" como epiteto_especifico e não possui gênero associado
-    is_morphospecies = out["parse_status"] == "morphospecies"
+    is_morphospecies = out["parse_status"] == PARSE_STATUS_MORPHOSPECIES
     out.loc[is_morphospecies, "epiteto_especifico"] = out.loc[is_morphospecies, "nome_normalizado"]
     out.loc[is_morphospecies, "genero"] = None
 
@@ -78,7 +96,13 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
     out["reconcile_across_sources"] = ~is_morphospecies
 
     # sinaliza "erros" a serem alterados
-    out["needs_review"] = ~out["parse_status"].isin(["ok", "genus_only", "morphospecies"])
+    out["needs_review"] = ~out["parse_status"].isin(
+        [
+            PARSE_STATUS_OK,
+            PARSE_STATUS_GENUS_ONLY,
+            PARSE_STATUS_MORPHOSPECIES,
+        ]
+    )
 
     out["_cleaned_at"] = pd.Timestamp.now(tz="UTC")
 
