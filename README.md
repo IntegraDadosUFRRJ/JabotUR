@@ -47,6 +47,24 @@ python3 -m scripts.run_pipeline
 
 > `-m`: os módulos usam import relativo entre si, então rodar como script direto (`python3 scripts/run_pipeline.py`) falha com `ImportError`.
 
+## Migrações do banco de dados
+
+O diretório `migrations/` contém scripts SQL utilizados para atualizar
+bancos PostgreSQL criados a partir de versões anteriores do projeto.
+
+As migrações são necessárias quando um banco existente precisa ser
+atualizado para acompanhar uma alteração no schema. Elas não fazem parte
+da execução normal do pipeline em um banco criado do zero pela versão
+atual do projeto.
+
+### Banco novo
+
+Para uma instalação nova, basta executar:
+
+```bash
+python3 -m scripts.init_postgres
+python3 -m scripts.run_pipeline
+
 ### O que o pipeline gera
 
 O pipeline processa cada fonte em camadas próprias de staging e clean, que convergem pro mesmo núcleo taxonômico na carga final:
