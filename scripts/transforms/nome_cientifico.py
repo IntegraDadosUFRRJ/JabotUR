@@ -7,6 +7,11 @@ Parser para o campo "Espécie" das planilhas do arboreto, que vem como uma
 import re
 import pandas as pd
 
+PARSE_STATUS_OK = "ok"
+PARSE_STATUS_GENUS_ONLY = "genus_only"
+PARSE_STATUS_MORPHOSPECIES = "morphospecies"
+PARSE_STATUS_UNPARSEABLE = "unparseable"
+
 _QUALIFIER = r"(?:cf\.?|aff\.?)"
 
 _MORPHOSPECIES_RE = re.compile(r"^Morfo-Esp[ée]cie\s+\d+$", re.IGNORECASE)
@@ -58,24 +63,39 @@ def _result(nome_raw, nome_normalizado, status, genero=None, epiteto=None,
 
 
 def parse_nome_cientifico(nome_raw):
-    """Faz o parsing de uma string de espécie do arboreto
-       parse_status indica o que fazer com a linha a seguir:
+    """Faz o parsing de uma string de espécie do arboreto.
 
-      "ok"            -> pronto pro load;
-      "morphospecies" -> não é nome científico;
-      "genus_only"    -> registro incompleto na planilha de origem;
-      "unparseable"   -> não bateu com o padrão esperado; (revisão manual)
+    Retorna um dicionário com os componentes taxonômicos extraídos e
+    um ``parse_status`` indicando o resultado do parsing:
+
+    - ``PARSE_STATUS_OK``: nome processado com sucesso;
+    - ``PARSE_STATUS_MORPHOSPECIES``: registro de morfo-espécie;
+    - ``PARSE_STATUS_GENUS_ONLY``: registro contendo apenas o gênero;
+    - ``PARSE_STATUS_UNPARSEABLE``: não corresponde ao padrão esperado.
     """
     nome_norm = _normalize_raw(nome_raw)
 
     if not nome_norm:
-        return _result(nome_raw, nome_norm, status="unparseable")
+        return _result(
+            nome_raw,
+            nome_norm,
+            status=PARSE_STATUS_UNPARSEABLE,
+        )
 
     if _MORPHOSPECIES_RE.match(nome_norm):
-        return _result(nome_raw, nome_norm, status="morphospecies")
+        return _result(
+            nome_raw,
+            nome_norm,
+            status=PARSE_STATUS_MORPHOSPECIES,
+        )
 
     if _GENUS_ONLY_RE.match(nome_norm):
-        return _result(nome_raw, nome_norm, status="genus_only", genero=nome_norm)
+        return _result(
+            nome_raw,
+            nome_norm,
+            status=PARSE_STATUS_GENUS_ONLY,
+            genero=nome_norm,
+        )
 
     m = _GENUS_EPITHET_RE.match(nome_norm)
     if not m:
@@ -102,8 +122,15 @@ def parse_nome_cientifico(nome_raw):
         return _result(nome_raw, nome_norm, status="ok", genero=genus,
                         epiteto=epithet, infra=infra, autor=autor)
 
-    return _result(nome_raw, nome_norm, status="ok", genero=genus,
-                    epiteto=epithet, infra=None, autor=rest or None)
+    return _result(
+        nome_raw,
+        nome_norm,
+        status=PARSE_STATUS_OK,
+        genero=genus,
+        epiteto=epithet,
+        infra=None,
+        autor=None,
+    )
 
 
 def parse_nome_cientifico_series(serie: pd.Series) -> pd.DataFrame:
