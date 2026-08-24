@@ -27,11 +27,25 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 
 DUCKDB_PATH = Path("./jabotur_test.duckdb")
 
-
+# === Briofitas (SPP) ===
 SPP_SHEET_NAME = "SPP - JB"
 SPP_USECOLS = "A:K"  # colunas com dados reais 
 
-# Nome na planilha original -> nome da coluna normalizado
+# === Arboreto (Especimes) ===
+ARBORETO_SPECIMENS_SHEET_NAME = "Espécimes"
+ARBORETO_SPECIMENS_USECOLS = "A:D,F:G" # colunas com dados reais 
+
+# === Arboreto (Monografia Gabriel, Livro Pesquisas, JABOT) ===
+ARBORETO_CITATION_SHEETS = [
+    "Monografia Gabriel",
+    "Livro Pesquisas no JB",
+    "JABOT",
+]
+ARBORETO_CITATION_USECOLS = "A:C" # colunas com dados reais 
+
+
+# === COLUMN MAPS: Nome na planilha original -> nome da coluna normalizado ===
+
 SPP_COLUMN_MAP = {
     "Parcela": "parcela",
     "Amostra": "amostra",
@@ -46,26 +60,27 @@ SPP_COLUMN_MAP = {
     "Observações": "observacao",
 }
 
-STG_SPP_TABLE = "stg_spp_briofitas"
-CLN_SPP_TABLE = "cln_spp_briofitas"
-
-# Arboreto (Monografia Gabriel, Livro Pesquisas, JABOT) 
-ARBORETO_CITATION_SHEETS = [
-    "Monografia Gabriel",
-    "Livro Pesquisas no JB",
-    "JABOT",
-]
-ARBORETO_CITATION_USECOLS = "A:C"
-
-# Nome na planilha original -> nome da coluna normalizado
 ARBORETO_CITATION_COLUMN_MAP = {
     "Família": "familia",
     "Espécie": "especie",
     "Quant": "quantidade",
 }
 
+ARBORETO_SPECIMENS_COLUMN_MAP = {
+    "Família": "familia",
+    "Espécie": "especie",
+    "N° de registro": "numero_registro",
+    "Setor": "setor",
+    "Descrição da localização": "descricao_localizacao",
+    "Estado reprodutivo": "estado_reprodutivo",
+}
+
+STG_SPP_TABLE = "stg_spp_briofitas"
+CLN_SPP_TABLE = "cln_spp_briofitas"
 STG_ARBORETO_CITATIONS_TABLE = "stg_arboreto_citations"
 CLN_ARBORETO_CITATIONS_TABLE = "cln_arboreto_citations"
+STG_ARBORETO_SPECIMENS_TABLE = "stg_arboreto_specimens"
+CLN_ARBORETO_SPECIMENS_TABLE = "cln_arboreto_specimens"
 
 # === Nomes das tabelas finais normalizadas ===
 TB_FILO = "filo"
@@ -83,6 +98,9 @@ TB_COLETA_SUBSTRATO = "coleta_substrato"
 TB_COLETA_OBSERVACAO = "coleta_observacao"
 TB_OBSERVACAO = "observacao"
 TB_BIBLIOGRAPHIC_CITATION = "bibliographic_citation"
+TB_SECTOR = "sector"
+TB_REPRODUCTIVE_STATUS = "reproductive_status"
+TB_OCCURRENCE_ARBORETUM = "occurrence_arboretum"
 
 # === Constantes de negócio usadas na etapa clean ===
 
@@ -137,4 +155,6 @@ PARCELA_COORDENADAS = {
     "4": "22° 45' 54.9\"S 43° 41' 34.5\"O",   
     "5": "22° 45' 59.3\"S 43° 41' 37.5\"O",   
 }
- 
+
+# São as árvores vivas do arboreto, não material herborizado como o SPP
+ARBORETO_SPECIMENS_BASIS_OF_RECORD = "LivingSpecimen"
