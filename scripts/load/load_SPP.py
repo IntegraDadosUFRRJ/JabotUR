@@ -169,9 +169,10 @@ def build_occurrence(df: pd.DataFrame, epiteto_ids: dict, forma_ids: dict, ident
         occurrence_rows.append(
             {
                 "id": occurrence_id,
+                "id_species": id_especie,
+                "basis_of_record": "PreservedSpecimen",
                 "origin_file": row.source_file,
                 "origin_row": row.source_row,
-                "id_especie": id_especie,
             }
         )
         satellite_rows.append(
