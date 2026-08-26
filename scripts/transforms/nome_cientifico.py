@@ -116,11 +116,11 @@ def parse_nome_cientifico(nome_raw):
         rank, infra_epithet = infra_match.group(1), infra_match.group(2)
         author_before = rest[: infra_match.start()].strip()
         author_after = rest[infra_match.end():].strip()
-        # autor do táxon infraespecífico tem prioridade sobre o da espécie quando os dois existem 
+        # autor do táxon infraespecífico tem prioridade sobre o da espécie quando os dois existem
         autor = author_after or author_before or None
         infra = f"{rank} {infra_epithet}"
-        return _result(nome_raw, nome_norm, status="ok", genero=genus,
-                        epiteto=epithet, infra=infra, autor=autor)
+        return _result(nome_raw, nome_norm, status=PARSE_STATUS_OK, genero=genus,
+                        epiteto=epithet, infra=infra, autor=autor, qualifier=qualifier)
 
     return _result(
         nome_raw,
@@ -129,7 +129,8 @@ def parse_nome_cientifico(nome_raw):
         genero=genus,
         epiteto=epithet,
         infra=None,
-        autor=None,
+        autor=rest or None,
+        qualifier=qualifier,
     )
 
 
