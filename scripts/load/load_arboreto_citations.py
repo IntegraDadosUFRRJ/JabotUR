@@ -56,16 +56,12 @@ def build_bibliographic_citation(df: pd.DataFrame, epiteto_ids: dict) -> pd.Data
     rows = []
 
     for row in df.itertuples(index=True):
-        chave_especie = tuple(
-            _normalize_key_value(value)
-            for value in (
-                row.genero,
-                row.epiteto,
-                row.infraespecifico,
-                row.autor,
-            )
+        chave_especie = (
+            taxonomy._none_if_nan(row.genero),
+            taxonomy._none_if_nan(row.epiteto),
+            taxonomy._none_if_nan(row.infraespecifico),
+            taxonomy._none_if_nan(row.autor),
         )
-
         id_especie = epiteto_ids.get(chave_especie)
 
         if id_especie is None:

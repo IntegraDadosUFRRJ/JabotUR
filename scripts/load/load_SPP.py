@@ -146,7 +146,12 @@ def build_occurrence(df: pd.DataFrame, epiteto_ids: dict, forma_ids: dict, ident
     satellite_rows = []
     for row in df.itertuples(index=True):
         # SPP sempre passa infraespecifico=None 
-        chave_especie = (row.genero, row.epiteto, row.infraespecifico, row.autor)
+        chave_especie = (
+            taxonomy._none_if_nan(row.genero),
+            taxonomy._none_if_nan(row.epiteto),
+            taxonomy._none_if_nan(row.infraespecifico),
+            taxonomy._none_if_nan(row.autor),
+        )
         id_especie = epiteto_ids.get(chave_especie)
         if id_especie is None:
             print(
@@ -213,7 +218,7 @@ def build_bridges(df: pd.DataFrame, occurrence_df: pd.DataFrame, substrato_ids: 
 
 
 
-def run() -> None:
+def populate_normalized_tables() -> None:
     df = prepare(load_clean_df())
  
     filo_dim, filo_ids = taxonomy.build_filo(df)
@@ -262,4 +267,4 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    populate_normalized_tables()
