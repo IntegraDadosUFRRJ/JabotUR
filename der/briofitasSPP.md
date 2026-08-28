@@ -1,7 +1,6 @@
 Table filo {
   id id [pk]
   nome varchar
-  sigla varchar(1)
 }
 
 Table familia {
@@ -16,7 +15,7 @@ Table genero {
   nome varchar
 }
 
-Table especie {
+Table epiteto_especifico {
   id id [pk]
   id_genero int [ref: > genero.id]
   id_autor int [ref: > autor.id]
@@ -43,7 +42,7 @@ Table parcela {
   coordenada varchar
 }
 
-Table briofita_observacao {
+Table coleta_observacao {
   id_briofita int [ref: > coleta.id]
   id_observacao int [ref: > observacao.id]
 
@@ -54,11 +53,10 @@ Table briofita_observacao {
 
 Table observacao {
   id id [pk]
-  descricao varchar
-  abreviacao varchar
+  comentario varchar
 }
 
-Table briofita_substrato {
+Table coleta_substrato {
   id_briofita int [ref: > coleta.id]
   id_substrato int [ref: > substrato.id]
 
@@ -75,7 +73,7 @@ Table substrato {
 
 Table coleta {
   id id [pk]
-  id_especie int [ref: > especie.id] 
+  id_especie int [ref: > epiteto_especifico.id] 
   id_forma int [ref: > forma_vida.id]
   id_identificacao int [ref: > identificacao.id]
   id_parcela int [ref: > parcela.id]
