@@ -22,7 +22,7 @@ def main() -> None:
     clean_SPP.load_clean(clean_SPP.transform(clean_SPP.load_staging_df()))
 
     print("\n== LOAD (SPP) ==")
-    load_SPP.populate_normalized_tables()
+    load_SPP.run()
 
     print("\n== STAGING (arboreto - citações) ==")
     stage_arboreto_citations.load_staging(stage_arboreto_citations.extract_citations())
