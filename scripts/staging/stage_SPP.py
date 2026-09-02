@@ -11,16 +11,16 @@ from datetime import datetime, timezone
 import pandas as pd
 
 try:
-    from . import config
-    from .db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-except ImportError:  
-    import config
-    from db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+    from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+    import scripts.config as config
+except ImportError:
+    from ..db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+    from .. import config
 
 
 def extract_spp() -> pd.DataFrame:
     df = pd.read_excel(
-        config.XLSX_PATH,
+        config.SPP_XLSX_PATH,
         sheet_name=config.SPP_SHEET_NAME,
         header=0,
         dtype=str,
@@ -36,7 +36,7 @@ def extract_spp() -> pd.DataFrame:
 
     df = df.rename(columns=config.SPP_COLUMN_MAP)
 
-    df["_source_file"] = str(config.XLSX_PATH.name)
+    df["_source_file"] = str(config.SPP_XLSX_PATH.name)
     df["_source_sheet"] = config.SPP_SHEET_NAME
     df["_loaded_at"] = datetime.now(timezone.utc)
 
@@ -49,7 +49,7 @@ def extract_spp() -> pd.DataFrame:
 
 
 def load_staging(df: pd.DataFrame) -> None:
-    write_dataframe_to_postgres(df, config.STG_SPP_TABLE)
+    write_dataframe_to_postgres(df, config.STG_SPP_TABLE, mode="replace")
     loaded_df = read_dataframe_from_postgres(config.STG_SPP_TABLE)
     count = len(loaded_df)
     print(f"[stage_spp] {config.STG_SPP_TABLE}: {count} linhas carregadas.")
