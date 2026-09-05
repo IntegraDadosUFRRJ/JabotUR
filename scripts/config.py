@@ -12,8 +12,11 @@ from pathlib import Path
 
 # === Caminhos ===
 
-# Planilha de origem 
-XLSX_PATH = Path("./data/briófitas JB_UFRRJ - Oliveira_Santos.xlsx")
+# Planilha de origem — SPP (briófitas)
+SPP_XLSX_PATH = Path("data/briófitas JB_UFRRJ - Oliveira_Santos.xlsx")
+
+# Planilha de origem — arboreto
+ARBORETO_XLSX_PATH = Path("data/Diversidade florística do arboreto do JB.xlsx")
 
 # Configuração de conexão com o PostgreSQL
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
@@ -55,6 +58,24 @@ COL_STATUS_IDENTIFICACAO = "status_identificacao"
 STG_SPP_TABLE = "stg_spp_briofitas"
 CLN_SPP_TABLE = "cln_spp_briofitas"
 
+# Arboreto (Monografia Gabriel, Livro Pesquisas, JABOT) 
+ARBORETO_CITATION_SHEETS = [
+    "Monografia Gabriel",
+    "Livro Pesquisas no JB",
+    "JABOT",
+]
+ARBORETO_CITATION_USECOLS = "A:C"
+
+# Nome na planilha original -> nome da coluna normalizado
+ARBORETO_CITATION_COLUMN_MAP = {
+    "Família": "familia",
+    "Espécie": "especie",
+    "Quant": "quantidade",
+}
+
+STG_ARBORETO_CITATIONS_TABLE = "stg_arboreto_citations"
+CLN_ARBORETO_CITATIONS_TABLE = "cln_arboreto_citations"
+
 # === Nomes das tabelas finais normalizadas ===
 TB_FILO = "filo"
 TB_FAMILIA = "familia"
@@ -65,10 +86,12 @@ TB_FORMA_VIDA = "forma_vida"
 TB_PARCELA = "parcela"
 TB_SUBSTRATO = "substrato"
 TB_IDENTIFICACAO = "identificacao"
-TB_COLETA = "coleta"
+TB_OCCURRENCE = "occurrence"
+TB_OCCURRENCE_BRYOPHYTE = "occurrence_bryophyte"
 TB_COLETA_SUBSTRATO = "coleta_substrato"
 TB_COLETA_OBSERVACAO = "coleta_observacao"
 TB_OBSERVACAO = "observacao"
+TB_BIBLIOGRAPHIC_CITATION = "bibliographic_citation"
 
 # === Constantes de negócio usadas na etapa clean ===
 
