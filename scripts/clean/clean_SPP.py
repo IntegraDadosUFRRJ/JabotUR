@@ -25,12 +25,12 @@ def load_staging_df() -> pd.DataFrame:
 
 def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
     working = df.copy()
-    if "observacao" not in working.columns and "observacoes" in working.columns:
-        working = working.rename(columns={"observacoes": "observacao"})
-    if "identificacao" not in working.columns and "status_identificacao" in working.columns:
-        working = working.rename(columns={"status_identificacao": "identificacao"})
+    if config.COL_OBSERVACAO not in working.columns and config.COL_OBSERVACOES in working.columns:
+        working = working.rename(columns={config.COL_OBSERVACOES: config.COL_OBSERVACAO})
+    if config.COL_IDENTIFICACAO not in working.columns and config.COL_STATUS_IDENTIFICACAO in working.columns:
+        working = working.rename(columns={config.COL_STATUS_IDENTIFICACAO: config.COL_IDENTIFICACAO})
     con = duckdb.connect()
-    con.register("df_input", working)
+    con.register(config.DUCKDB_STAGING_ALIAS, working)
     return con
 
 
@@ -55,6 +55,11 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
 
     observation_expr = _build_observation_expression()
 
+    # Numera as linhas de staging e aplica fill-down com
+    # last_value() IGNORE NULLS em parcela/amostra/substrato/forma_vida 
+    # (linhas em branco recebem o último valor, não-nulo, anterior)
+    # Normaliza (trim + regex) os campos taxonômicos/metadados, converte
+    # status_identificacao pra INT e monta a coluna de observações 
     sql = f"""
     CREATE OR REPLACE TEMP TABLE cleaned AS
     WITH numbered AS (

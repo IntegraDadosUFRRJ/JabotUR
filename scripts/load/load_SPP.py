@@ -212,7 +212,7 @@ def build_bridges(df: pd.DataFrame, occurrence_df: pd.DataFrame, substrato_ids: 
 
 
 
-def run() -> None:
+def populate_normalized_tables() -> None:
     df = prepare(load_clean_df())
  
     filo_dim, filo_ids = taxonomy.build_filo(df)
@@ -261,4 +261,4 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    populate_normalized_tables()

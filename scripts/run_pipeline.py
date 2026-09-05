@@ -19,17 +19,23 @@ def main() -> None:
     stage_SPP.load_staging(stage_SPP.extract_spp())
 
     print("\n== CLEAN (SPP) ==")
-    clean_SPP.load_clean(clean_SPP.transform(clean_SPP.load_staging_df()))
+    clean_SPP.load_clean(
+        clean_SPP.transform(clean_SPP.load_staging_df())
+    )
 
     print("\n== LOAD (SPP) ==")
     load_SPP.populate_normalized_tables()
 
     print("\n== STAGING (arboreto - citações) ==")
-    stage_arboreto_citations.load_staging(stage_arboreto_citations.extract_citations())
+    stage_arboreto_citations.load_staging(
+        stage_arboreto_citations.extract_citations()
+    )
 
     print("\n== CLEAN (arboreto - citações) ==")
     clean_arboreto_citations.load_clean(
-        clean_arboreto_citations.transform(clean_arboreto_citations.load_staging_df())
+        clean_arboreto_citations.transform(
+            clean_arboreto_citations.load_staging_df()
+        )
     )
 
     print("\n== LOAD (arboreto - citações) ==")
