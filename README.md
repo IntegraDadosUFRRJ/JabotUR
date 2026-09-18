@@ -3,7 +3,7 @@
 ## Sobre
 
 O JB-UFRRJ possui informações distribuídas em planilhas, sistemas e inventários fragmentados. Este repositorio contém o JabotUR que integra diferentes fontes de dados de pesquisa do Jardim Botânico da UFRRJ (JB-UFRRJ), como acervo de espécies, registros de campo e metadados de suporte, em um único fluxo ETL que produz tabelas normalizadas no PostgreSQL. Com isso ele busca reduzir retrabalho, melhorar a qualidade dos dados e preparar a base para análises e aplicações futuras de catalogação, mapeamento e pesquisa científica.
-No momento o pipeline realiza a integração de duas bases, sendo elas o levantamento de briófitas (SPP) e a diversidade florística do arboreto (por enquanto contendo somente a parte de registros do arboreto: Monografia Gabriel, Livro Pesquisas no JB e JABOT). 
+No momento o pipeline realiza a integração de duas bases, sendo elas o levantamento de briófitas (SPP) e a diversidade florística do arboreto (contendo a parte de registros de citações bibliográficas e espécimes do arboreto).
 
 ## Requisitos para executar
 
@@ -52,13 +52,13 @@ python3 -m scripts.run_pipeline
 O pipeline processa cada fonte em camadas próprias de staging e clean, que convergem pro mesmo núcleo taxonômico na carga final:
 
 - **Staging**:
-  `stg_spp_briofitas`, `stg_arboreto_citations`
+  `stg_spp_briofitas`, `stg_arboreto_citations`, `stg_arboreto_specimens`
 - **Clean** (normalizado, nada é descartado aqui, problemas de qualidade viram colunas como `parse_status`/`needs_review`):
-  `cln_spp_briofitas`, `cln_arboreto_citations`
+  `cln_spp_briofitas`, `cln_arboreto_citations`, `cln_arboreto_specimens`
 - **Tabelas finais normalizadas no PostgreSQL**:
   - núcleo taxonômico compartilhado entre fontes: `filo`, `familia`, `genero`, `autor`, `epiteto_especifico`
   - específicas de briófitas: `forma_vida`, `parcela`, `substrato`, `identificacao`, `observacao`, `occurrence`, `occurrence_bryophyte`, `coleta_substrato`, `coleta_observacao`
-  - específicas do arboreto: `bibliographic_citation`
+  - específicas do arboreto: `bibliographic_citation`, `occurrence_arboretum`, `sector`, `reproductive_status`
 
 Schema completo esta documentado em `JabotUR_DER.md`.
 
