@@ -83,6 +83,7 @@ base PostgreSQL normalizada e única. Requisitos centrais:
 | `identification_qualifier` no registro, não na espécie | ADR-0006 |
 | Chave de idempotência de `bibliographic_citation` | ADR-0007 |
 | NULL verdadeiro, nunca placeholder "N/A" | ADR-0008 |
+| Regra de prevalência do lacre azul | ADR-0009 |
 
 Convenções que não chegam a ser decisão de schema (ficam aqui mesmo):
 

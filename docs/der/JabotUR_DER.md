@@ -350,7 +350,7 @@ Table cln_arboreto_canteiro_c {
 
 Dep: stg_spp_briofitas -> cln_spp_briofitas [note: 'DuckDB: fill-down de parcela/amostra/substrato/forma_vida via last_value() IGNORE NULLS; normalização de observações; cast de status_identificacao pra inteiro']
 Dep: stg_arboreto_citations -> cln_arboreto_citations [note: 'DuckDB: fill-down de familia via last_value() IGNORE NULLS; parsing de nome_cientifico.py em Python puro; cast de quantidade']
-Dep: stg_arboreto_specimens -> cln_arboreto_specimens [note: 'fill-down de familia; resolve N° de Registro preferindo lacre azul quando lacre amarelo (RBRv...) e azul coexistem']
+Dep: stg_arboreto_specimens -> cln_arboreto_specimens [note: 'fill-down de familia; resolve N° de Registro preferindo lacre azul quando lacre amarelo e azul coexistem (ver ADR-0009)']
 Dep: stg_arboreto_canteiro_c -> cln_arboreto_canteiro_c [note: 'RASCUNHO — normaliza Origem; separa Domínio fitogeográfico multi-valorado; Grau de Ameaça "na" -> código IUCN NA (ADR-0005)']
 
 // --- clean -> dimensões de taxonomia (agrupado por destino, mostra reconciliação entre fontes) ---
@@ -458,7 +458,7 @@ Dep occurrence_identification_qualifier_lineage {
 Dep occurrence_arboretum_registration_lineage {
   cln_arboreto_specimens.registration_number -> occurrence_arboretum.registration_number
 
-  note: 'transforms/registration_number.py: lacre azul preferido sobre lacre amarelo (RBRv...) quando ambos existem'
+  note: 'transforms/registration_number.py: lacre azul preferido sobre lacre amarelo (RBRv...) quando ambos existem(ver ADR-0009)'
 }
 
 Dep occurrence_arboretum_location_lineage {

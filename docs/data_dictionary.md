@@ -123,7 +123,7 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 
 ## 4. Regras de negócio entre fontes
 
-- **Lacre azul**: qualquer número de registro **sem prefixo "RBRv"** é lacre azul, mesmo sem a palavra "AZUL" escrita. Quando os dois lacres (amarelo `RBRv...` e azul) existem na mesma linha, o azul prevalece.
+- **Lacre azul**: qualquer número de registro **sem prefixo "RBRv"** é lacre azul, mesmo sem a palavra "AZUL" escrita. Quando os dois lacres (amarelo `RBRv...` e azul) existem na mesma linha, o azul prevalece (ver ADR-0009).
 - **"na" em Grau de Ameaça** -> código IUCN `NA` (Not Applicable). Não é ausência de dado, é uma DER que sobrepõe a leitura literal da planilha.
 - **Domínio Fitogeográfico e Substrato** são campos multivalorados (separados por vírgula), sempre viram bridge table, nunca string crua na dimensão.
 - **`identificacao`/`identificação`/`StatusIdentificacao*`**: mesmo conceito, três grafias diferentes entre fontes, cuidado ao integrar fonte nova que reuse esse campo.
