@@ -3,22 +3,9 @@
 
 import pandas as pd
 
-try:
-    from .. import config
-    from ..db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    from ..transforms import epiteto_especifico as epiteto_t
-    from ..transforms import filo as filo_t
-    from ..transforms import observacoes as observacoes_t
-    from ..transforms import substrato as substrato_t
-    from . import taxonomy
-except ImportError:
-    import config
-    from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    from transforms import epiteto_especifico as epiteto_t
-    from transforms import filo as filo_t
-    from transforms import observacoes as observacoes_t
-    from transforms import substrato as substrato_t
-    from scripts.load import taxonomy
+import scripts.config as config
+from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+from scripts.load import taxonomy
 
 
 def _expand_filo(values: pd.Series) -> pd.Series:

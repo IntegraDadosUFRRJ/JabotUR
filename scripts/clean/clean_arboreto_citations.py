@@ -8,12 +8,8 @@ A transformação combina:
 import pandas as pd
 import duckdb
 
-try:
-    from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    import scripts.config as config
-except ImportError:
-    from ..db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    from .. import config
+from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+import scripts.config as config
 
 try:
     from scripts.transforms.nome_cientifico import (

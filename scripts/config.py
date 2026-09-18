@@ -129,6 +129,7 @@ SUBSTRATO_NOME_MAP = {
     "TD": "Tronco em decomposição",
     "TV": "Tronco vivo",
     "A": "Artificial",
+    "alt": "amostragem aleatória",
 }
  
 # Legendas Tabela_Briofitas: StatusIdentificacao

@@ -10,12 +10,8 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
-try:
-    from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    import scripts.config as config
-except ImportError:
-    from ..db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    from .. import config
+from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+import scripts.config as config
 
 
 def extract_spp() -> pd.DataFrame:
