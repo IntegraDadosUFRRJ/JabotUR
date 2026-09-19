@@ -17,12 +17,11 @@ dado: problemas de qualidade viram colunas (`needs_review`,
 
 1. Este arquivo
 2. `data_dictionary.md`: o que cada coluna de cada fonte significa
-3. `JabotUR_DER.md`: schema (DBML, abrir em dbdiagram.io)
+3. `der/JabotUR_DER.md`: schema (DBML, abrir em dbdiagram.io)
 4. `docs/adr/`: por que o schema é do jeito que é
 5. `panorama_tecnico_jabotur.md`: referência técnica completa (denso, ler sob demanda, não de ponta a ponta)
 
-## 3. Convenções que o código segue (e você deve seguir)
-
+## 3. Convenções que o código segue
 - **Nomenclatura**: tabelas/colunas já existentes (SPP) ficam em português,
   não retroativo. Tabelas/colunas novas seguem inglês/Darwin Core
   (`occurrence`, `identification_qualifier`).
@@ -49,21 +48,21 @@ dado: problemas de qualidade viram colunas (`needs_review`,
   ambíguo ou faltando, ela entra mesmo assim, sinalizada. Descartar
   silenciosamente já causou bug real (`clean_arboreto_citations.py`,
   linhas com espécie em branco descartadas por engano).
-- **Nunca comparar valor lido do Postgres em chave de dict/tupla sem
+- **Não comparar valor lido do Postgres em chave de dict/tupla sem
   `_none_if_nan()` antes.** `pd.read_sql_query` devolve `float('nan')`
   pra coluna NULL, e `NaN != NaN` mesmo dentro de tupla, quebra o
   `dict.get` silenciosamente (sem erro, só devolve `None` como se a
   chave não existisse).
-- **Nunca remova o guard `if id_especie is None: continue` de um
+- **Não remova o guard `if id_especie is None: continue` de um
   `build_occurrence*`.** Sem ele, a linha é gravada com
   `id_species=NULL` em vez de pulada, sem erro, sem log, só quebra
   integridade referencial mais tarde.
-- **Nunca crie uma linha "N/A"/"na" numa dimensão via get-or-create**
+- **Não crie uma linha "N/A"/"na" numa dimensão via get-or-create**
   (ex.: `reproductive_status`, `phytogeographic_domain`) pra representar
   dado ausente. Dado ausente = NULL na FK / nenhuma linha na bridge
   table. Exceção deliberada única: `conservation_status.code = 'NA'` é
   o código IUCN real ("Not Applicable"), não um placeholder.
-- **Nunca escape barra invertida em regex passada pro `regexp_replace`
+- **Não escape barra invertida em regex passada pro `regexp_replace`
   do DuckDB**, só escape aspas simples. Já quebrou metacaracteres
   (`\b`, `\s`) uma vez.
 

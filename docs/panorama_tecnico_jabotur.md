@@ -50,7 +50,7 @@ base PostgreSQL normalizada e única. Requisitos centrais:
   valores), `reproductive_status` (2: "Adulto"/"jovem"). `occurrence`:
   366 linhas; `occurrence_arboretum`: 366 satélites.
 
-### Escrito, aguardando validação contra Postgres real
+### Em desenvolvimento, aguardando validação contra Postgres real
 
 - **Arboreto — Canteiro C**: `species_status`, `conservation_status`
   (regra "na" -> código IUCN `NA`, ADR-0005), `phytogeographic_domain`.
@@ -100,8 +100,7 @@ Convenções que não chegam a ser decisão de schema (ficam aqui mesmo):
   ~15 linhas ou que combine mais de uma técnica.
 - **Função de entrada de módulo não se chama `run()`**, nome
   descritivo (`populate_normalized_tables()`).
-- **Organização de pastas**: `docs/adr/`, `docs/der/`,
-  `docs/templates/`, `.github/` (CODEOWNERS + PR template); `data/`
+- **Organização de pastas**: `docs/adr/`, `docs/der/`,`.github/` (CODEOWNERS + PR template); `data/`
   continua sendo a cópia operacional que o pipeline lê, a submissão
   original do pesquisador fica no Drive, como prova de proveniência.
 
@@ -117,21 +116,20 @@ Convenções que não chegam a ser decisão de schema (ficam aqui mesmo):
 **Status confirmado contra o código real:** SPP, Arboreto — Citações,
 Arboreto — Espécimes.
 
-## 6. Débito técnico conhecido (refactor planejado, não urgente)
+## 6. Débito técnico conhecido
 
-- A resolução de `id_species` (chave + guard) está duplicada em
-  `load_SPP.py`, `load_arboreto_citations.py` e
-  `load_arboreto_specimens.py`, extrair pra 
-  `taxonomy.resolve_species_id(row, epiteto_ids)`.
-- O loop de atribuição de id por chave natural (`existing_keys_to_id` +
-  `next_id` manual) reimplementa o que `taxonomy._merge_ids()` já faz
-  trocar por essa função em vez de reescrever a cada fonte.
-- Menor: helper `optional_fk(id_map, value)` pro padrão repetido
-  `.get(x) if pd.notna(x) else None`.
+**Prioridade Alta (Bug/Integridade):**
+- **Bug de Determinismo no Fill-Down do DuckDB:** Nas camadas `clean_`, as *Window Functions* que fazem `fill-down` (`last_value(... IGNORE NULLS) OVER ()`) não possuem `ORDER BY`. Por conta do paralelismo do DuckDB, a ordem de processamento das linhas não é garantida. Isso cria o risco de misturar a herança de parcelas ou substratos de uma linha para outra. É necessário adicionar `ORDER BY _source_file, CAST(_source_row AS INTEGER)` dentro das cláusulas `OVER()`.
 
-Revisitar num momento de refactor, não bloqueia nenhuma integração atual,
-bom gatilho: ao integrar Lista Completa Sps ou o inventário do Gabriel.
+**Prioridade Média (Refatorações Arquiteturais e Código):**
+- **Extração de Queries SQL (DuckDB):** Remover as queries cruas inseridas como *strings* no meio dos arquivos Python (em `clean_SPP.py` e `clean_arboreto_citations.py`) e transacioná-las para arquivos `.sql` independentes numa pasta `queries/` para facilitar a manutenção.
+- **Segregação de Responsabilidades nos Loaders:** Atualmente, as funções principais de `load_<fonte>.py` fazem todo o processamento de tabelas satélite (`prepare`, `build_*`) embutido na transação física do banco de dados (`write_dataframe_to_postgres`). Isso impede a testabilidade unitária e exige o banco rodando só para validar a transformação. Os arquivos precisam ser quebrados em dois papéis distintos.
+- **Reuso de Regras em `taxonomy.py` (DRY):**
+  - **Resolução de `id_species`:** Extrair a validação redundante e a criação das tuplas taxonômicas dos loaders e delegar para uma helper em `taxonomy.resolve_species_id(row, epiteto_ids)`.
+  - **Loop de Idempotência:** O gerenciamento do dicionário `existing_keys_to_id` com o incremento manual do `next_id` repete o trabalho que o módulo taxonômico já implementa perfeitamente através da `taxonomy._merge_ids()`. Substituir as ocorrências locais pela chamada importada.
+- **Testes Automatizados de Idempotência:** Criar testes simulando o reprocessamento sucessivo do pipeline para garantir que os registros não sejam duplicados e contadores de tabelas-fato permaneçam imutáveis.
 
+- **Externalização da Tabela de Lineage:** Remover as strings de `origin_file`, `origin_sheet` e `origin_row` das tabelas de fato (`occurrence`, `bibliographic_citation`) e movê-las para uma tabela de suporte (`lineage`). A motivação principal é manter a tabela de fato enxuta (limpeza semântica e visual do banco), evitando repetição literal de strings com nomes de arquivos em cada linha da dimensão. **Ajuste no Pipeline:** As funções de load/build exigirão um passo extra de resolver-ou-criar a linha de lineage primeiro, a fim de extrair seu ID para ser usado como Foreign Key na tabela fato.
 ## 7. Próximos passos
 
 1. Finalizar Canteiro C (checklist da seção 5 + validar contra Postgres
