@@ -17,9 +17,10 @@ dado: problemas de qualidade viram colunas (`needs_review`,
 
 1. Este arquivo
 2. `data_dictionary.md`: o que cada coluna de cada fonte significa
-3. `der/JabotUR_DER.md`: schema (DBML, abrir em dbdiagram.io)
-4. `docs/adr/`: por que o schema é do jeito que é
-5. `panorama_tecnico_jabotur.md`: referência técnica completa (denso, ler sob demanda, não de ponta a ponta)
+3. `processos_de_etl.md`: que transformação cada coluna sofre, staging -> clean -> load
+4. `der/JabotUR_DER.md`: schema (DBML, abrir em dbdiagram.io)
+5. `docs/adr/`: por que o schema é do jeito que é
+6. `panorama_tecnico_jabotur.md`: referência técnica completa (denso, ler sob demanda, não de ponta a ponta)
 
 ## 3. Convenções que o código segue
 - **Nomenclatura**: tabelas/colunas já existentes (SPP) ficam em português,

@@ -309,6 +309,9 @@ Table stg_arboreto_canteiro_c {
   origem varchar
   grau_ameaca varchar
   dominio_fitogeografico varchar
+  numeracao_lacre varchar
+  localizacao_canteiro varchar
+  altura_m varchar
 }
 
 Table cln_arboreto_canteiro_c {
@@ -320,8 +323,10 @@ Table cln_arboreto_canteiro_c {
   origem varchar
   grau_ameaca varchar
   dominio_fitogeografico varchar
+  numeracao_lacre varchar
+  localizacao_canteiro varchar
+  altura_m numeric
 
-  note: 'RASCUNHO — colunas ainda não confirmadas contra código real (Canteiro C em desenvolvimento)'
 }
 
 
@@ -339,11 +344,9 @@ Table cln_arboreto_canteiro_c {
 //     de coluna (A.col -> B.col), por isso os vínculos de tabela inteira
 //     usam a forma solta `Dep: A -> B [note: '...']`, fora de blocos.
 //
-// SPP e arboreto-citações: refletem o pipeline como está em produção/
-// validado. Espécimes: refletem o pipeline validado contra Postgres
-// simulado. Canteiro C: RASCUNHO pipeline ainda em desenvolvimento,
-// nomes de tabela/coluna de staging/clean ainda não estão fixados em
-// config.py; ajustar aqui assim que o código for escrito.
+// SPP, arboreto-citações e Espécimes: refletem o pipeline como está em produção/
+// validado. Canteiro C: pipeline já mapeado estruturalmente,
+// nomes de tabela/coluna de staging/clean fixados de acordo com o dicionário de dados.
 // =========================================================================
 
 // --- staging -> clean (por fonte) ---
@@ -351,7 +354,7 @@ Table cln_arboreto_canteiro_c {
 Dep: stg_spp_briofitas -> cln_spp_briofitas [note: 'DuckDB: fill-down de parcela/amostra/substrato/forma_vida via last_value() IGNORE NULLS; normalização de observações; cast de status_identificacao pra inteiro']
 Dep: stg_arboreto_citations -> cln_arboreto_citations [note: 'DuckDB: fill-down de familia via last_value() IGNORE NULLS; parsing de nome_cientifico.py em Python puro; cast de quantidade']
 Dep: stg_arboreto_specimens -> cln_arboreto_specimens [note: 'fill-down de familia; resolve N° de Registro preferindo lacre azul quando lacre amarelo e azul coexistem (ver ADR-0009)']
-Dep: stg_arboreto_canteiro_c -> cln_arboreto_canteiro_c [note: 'RASCUNHO — normaliza Origem; separa Domínio fitogeográfico multi-valorado; Grau de Ameaça "na" -> código IUCN NA (ADR-0005)']
+Dep: stg_arboreto_canteiro_c -> cln_arboreto_canteiro_c [note: 'normaliza Origem; multivalora Domínio fitogeográfico por vírgula; Grau de Ameaça uppercase e "na" -> código IUCN NA (ADR-0005); resolve lacre azul sobre amarelo (ADR-0009); mapeia setor S2C2/S2C4 para sector; NULL nas linhas de altura com erro (183, 184, 185)']
 
 // --- clean -> dimensões de taxonomia (agrupado por destino, mostra reconciliação entre fontes) ---
 
@@ -423,6 +426,9 @@ Dep observacao_lineage {
 
 Dep sector_lineage {
   cln_arboreto_specimens.setor -> sector.name
+  cln_arboreto_canteiro_c.localizacao_canteiro -> sector.name
+
+  note: 'SCC1-4 e S2C2/S2C4 de Canteiro C vão para o mesmo sector compartilhado com Espécimes'
 }
 
 Dep reproductive_status_lineage {
@@ -440,13 +446,13 @@ Dep conservation_status_lineage {
 Dep species_status_lineage {
   cln_arboreto_canteiro_c.origem -> species_status.origin
 
-  note: 'ausente -> NULL, não "N/A"(ADR-0008)'
+  note: 'canonicalizar Exótico/Exótica; "na" ou ausente -> NULL, não "N/A" (ADR-0008)'
 }
 
 Dep species_domain_lineage {
   cln_arboreto_canteiro_c.dominio_fitogeografico -> species_domain.id_domain
 
-  note: 'multi-valorado (comma-separated); ausente não insere linha via get-or-create(ADR-0008)'
+  note: 'multi-valorado por vírgula; "na" ou ausente -> nenhuma linha em species_domain (ADR-0008)'
 }
 
 Dep occurrence_identification_qualifier_lineage {
@@ -457,8 +463,15 @@ Dep occurrence_identification_qualifier_lineage {
 
 Dep occurrence_arboretum_registration_lineage {
   cln_arboreto_specimens.registration_number -> occurrence_arboretum.registration_number
+  cln_arboreto_canteiro_c.numeracao_lacre -> occurrence_arboretum.registration_number
 
-  note: 'transforms/registration_number.py: lacre azul preferido sobre lacre amarelo (RBRv...) quando ambos existem(ver ADR-0009)'
+  note: 'transforms/registration_number.py: lacre azul preferido sobre lacre amarelo (RBRv...) quando ambos existem (ver ADR-0009)'
+}
+
+Dep occurrence_arboretum_height_lineage {
+  cln_arboreto_canteiro_c.altura_m -> occurrence_arboretum.height_m
+
+  note: 'linhas 183, 184 e 185 forçadas para NULL devido a erro de digitação'
 }
 
 Dep occurrence_arboretum_location_lineage {
@@ -478,7 +491,7 @@ Dep bibliographic_citation_lineage {
 
 Dep: cln_spp_briofitas -> occurrence [note: 'get-or-create por (origin_file=_source_file, origin_row=_source_row); basis_of_record fixo = PreservedSpecimen']
 Dep: cln_arboreto_specimens -> occurrence [note: 'basis_of_record fixo = LivingSpecimen']
-Dep: cln_arboreto_canteiro_c -> occurrence [note: 'RASCUNHO — basis_of_record fixo = LivingSpecimen']
+Dep: cln_arboreto_canteiro_c -> occurrence [note: 'basis_of_record fixo = LivingSpecimen']
 
 Dep: occurrence -> occurrence_bryophyte [note: '1:1, colunas exclusivas de briófita']
 Dep: occurrence -> occurrence_arboretum [note: '1:1, populado por Espécimes e Canteiro C']
