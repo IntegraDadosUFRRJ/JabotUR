@@ -8,11 +8,11 @@
 # Núcleo compartilhado entre todas as fontes — qualquer mudança aqui afeta
 # staging/clean/load de SPP, arboreto-citações, Espécimes e Canteiro C ao
 # mesmo tempo, então exige revisão do Davidson antes de mergear.
-/scripts/config.py            @davidson-github-user
-/scripts/db/db_utils.py       @davidson-github-user
-/scripts/load/taxonomy.py     @davidson-github-user
-/migrations/                  @davidson-github-user
+/scripts/config.py            @DavidsonWasserman
+/scripts/db/db_utils.py       @DavidsonWasserman
+/scripts/load/taxonomy.py     @DavidsonWasserman
+/migrations/                  @DavidsonWasserman
 
 # Schema/DER — decisões de arquitetura, mesmo dono do núcleo compartilhado
-/JabotUR_DER.md                @davidson-github-user
-/docs/adr/                     @davidson-github-user
+/docs/der/JabotUR_DER.md       @DavidsonWasserman
+/docs/adr/                     @DavidsonWasserman
