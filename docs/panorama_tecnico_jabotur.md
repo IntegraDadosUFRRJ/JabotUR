@@ -130,7 +130,11 @@ Arboreto — Espécimes.
 - **Testes Automatizados de Idempotência:** Criar testes simulando o reprocessamento sucessivo do pipeline para garantir que os registros não sejam duplicados e contadores de tabelas-fato permaneçam imutáveis.
 
 - **Externalização da Tabela de Lineage:** Remover as strings de `origin_file`, `origin_sheet` e `origin_row` das tabelas de fato (`occurrence`, `bibliographic_citation`) e movê-las para uma tabela de suporte (`lineage`). A motivação principal é manter a tabela de fato enxuta (limpeza semântica e visual do banco), evitando repetição literal de strings com nomes de arquivos em cada linha da dimensão. **Ajuste no Pipeline:** As funções de load/build exigirão um passo extra de resolver-ou-criar a linha de lineage primeiro, a fim de extrair seu ID para ser usado como Foreign Key na tabela fato.
-## 7. Próximos passos
+## 7. Débitos e Bugs Resolvidos
+
+- **Suporte genérico a PK em `db_utils.py`:** O bug de inferência incorreta de Primary Keys foi corrigido e a nova capacidade genérica (`pk_column`) foi estabilizada. O módulo de escrita no Postgres agora respeita a definição correta das chaves de acordo com o DER, sem conflitos de inserção.
+
+## 8. Próximos passos
 
 1. Finalizar Canteiro C (checklist da seção 5 + validar contra Postgres
    real).

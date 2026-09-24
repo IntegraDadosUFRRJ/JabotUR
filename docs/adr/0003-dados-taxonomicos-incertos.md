@@ -25,19 +25,11 @@ já tomada antes desta, aqui só se aplica ao caso concreto de taxonomia.
 Ambos os casos são registrados em `epiteto_especifico`, não descartados,
 mas com semânticas de reconciliação diferentes:
 
-- **Gênero só**: `id_genero` preenchido, `nome=NULL`. **Reconcilia**
-  normalmente entre fontes via get-or-create — é o mesmo conceito
-  taxonômico independente da fonte. Confirmado em produção: 4 citações
-  "Handroanthus" no JABOT resolvem pro mesmo `id_species`.
-- **Morfo-espécie**: `id_genero=NULL`, `nome="Morfo-Espécie 1 [aba#linha]"`
-  — origem embutida no nome pelo `load_arboreto_citations.prepare()`.
-  **Nunca reconcilia** entre fontes, porque a numeração ("Morfo-Espécie 1",
-  "Morfo-Espécie 2"...) é local a cada planilha/levantamento — duas fontes
-  com "Morfo-Espécie 1" não são necessariamente o mesmo espécime.
+- **Gênero só (e "Genus sp.")**: Casos como "Handroanthus" ou "Citrus sp." são tratados puramente como Gênero-só (o sufixo "sp." é absorvido/ignorado). Possuem `id_genero` preenchido e `nome=NULL`. **Reconcilia** normalmente entre fontes via get-or-create — é o mesmo conceito taxonômico.
+- **Morfo-espécie**: `id_genero=NULL`, `nome="Morfo-Espécie 1 [aba#linha]"` (origem embutida no nome). **Nunca reconcilia** entre fontes (numeração é local à planilha).
+- **Unparseable**: Casos onde a string taxonômica inteira é ininteligível ou falha catastróficamente no parser (ex: "Árvore grande com flor"). É tratada como um placeholder não-reconciliável (semelhante à morfo-espécie), recebendo `id_genero=NULL` e um nome composto com a origem (`"Unparseable [aba#linha]"`). **Nunca reconcilia** entre fontes.
 
-`clean_arboreto_citations.py` sinaliza os dois casos via `parse_status`
-(`PARSE_STATUS_GENUS_ONLY` / `PARSE_STATUS_MORPHOSPECIES`) e a coluna
-`reconcile_across_sources` (False só para morfo-espécie).
+As sinalizações ocorrem via `parse_status` (`PARSE_STATUS_GENUS_ONLY`, `PARSE_STATUS_MORPHOSPECIES`, `PARSE_STATUS_UNPARSEABLE`) e a flag `reconcile_across_sources` (que é `False` para morfo-espécie e unparseable).
 
 ## Alternativas consideradas
 
