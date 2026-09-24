@@ -6,6 +6,10 @@ import pandas as pd
 import scripts.config as config
 from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
 from scripts.load import taxonomy
+import scripts.transforms.filo as filo_t
+import scripts.transforms.epiteto_especifico as epiteto_t
+import scripts.transforms.substrato as substrato_t
+import scripts.transforms.observacoes as observacoes_t
 
 
 def _expand_filo(values: pd.Series) -> pd.Series:
