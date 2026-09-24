@@ -1,66 +1,67 @@
-# JabotUR
+# JabotUR ETL
 
 ## Sobre
 
-O JB-UFRRJ possui informações distribuídas em planilhas, sistemas e inventários fragmentados. Este repositorio contém o JabotUR que integra diferentes fontes de dados de pesquisa do Jardim Botânico da UFRRJ (JB-UFRRJ), como acervo de espécies, registros de campo e metadados de suporte, em um único fluxo ETL que produz tabelas normalizadas no PostgreSQL. Com isso ele busca reduzir retrabalho, melhorar a qualidade dos dados e preparar a base para análises e aplicações futuras de catalogação, mapeamento e pesquisa científica.
-No momento o pipeline realiza a integração de duas bases, sendo elas o levantamento de briófitas (SPP) e a diversidade florística do arboreto (contendo a parte de registros de citações bibliográficas e espécimes do arboreto).
+O Jardim Botânico da UFRRJ (JB-UFRRJ) reúne seus dados de pesquisa em planilhas, sistemas e inventários que não conversam entre si. O **JabotUR** é um pipeline ETL que integra essas fontes em um banco PostgreSQL unificado e normalizado.
 
-## Requisitos para executar
+O pipeline segue três camadas (staging -> clean -> load), não descarta nenhuma linha por incerteza de dado (problemas de qualidade viram colunas de sinalização, como `needs_review`) e reconcilia a mesma espécie citada em fontes diferentes em um único registro taxonômico central. Com isso, busca reduzir retrabalho, melhorar a qualidade dos dados e preparar a base para catalogação, mapeamento e pesquisa científica.
 
-- Python 3.10 ou superior
-- PostgreSQL 14 ou superior
+## Documentação
 
-## Como começar
+Comece pelo [ONBOARDING.md](docs/ONBOARDING.md); ele indica a ordem de leitura do resto.
 
-1. Clone o repositório:
+- [docs/ONBOARDING.md](docs/ONBOARDING.md): por onde começar, convenções e erros comuns
+- [docs/data_dictionary.md](docs/data_dictionary.md): o que cada coluna de cada fonte significa
+- [docs/processos_de_etl.md](docs/processos_de_etl.md): que transformação cada coluna sofre (staging -> clean -> load)
+- [docs/der/JabotUR_DER.md](docs/der/JabotUR_DER.md): schema completo (DBML, abrir no dbdiagram.io)
+- [docs/adr/](docs/adr/): por que o schema é do jeito que é
+- [docs/panorama_tecnico_jabotur.md](docs/panorama_tecnico_jabotur.md): referência técnica completa (consultar sob demanda)
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md): fluxo de branch e PR
 
+## Fontes integradas
+
+| Fonte | Status |
+|---|---|
+| Briófitas (SPP) | Integrada |
+| Arboreto: citações bibliográficas | Integrada |
+| Arboreto: espécimes | Integrada |
+| Arboreto: Canteiro C | Em desenvolvimento |
+
+## Executando o projeto
+
+**Requisitos:**
+- Python 3.12
+- PostgreSQL
+
+**1. Clonando o repositório:**
 ```bash
 git clone <url-do-repositorio>
 cd jabotur
 ```
 
-2. Crie um ambiente virtual e ative-o:
-
+**2. Instalação e Ambiente Virtual:**
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate      # Linux/macOS
-# .venv\Scripts\activate     # Windows
-```
+# .venv\Scripts\activate       # Windows
 
-3. Instale as dependências:
-
-```bash
 pip install -r requirements.txt
+pip install -e .
 ```
 
-4. Crie o banco PostgreSQL:
+**3. Configurando o Banco de Dados:**
+Verifique o arquivo `config.py` e certifique-se de possuir o PostgreSQL rodando localmente (ou via Docker).
 
+**4. Inicializando o Banco:**
 ```bash
 python3 -m scripts.init_postgres
 ```
 
-5. Execute o pipeline completo:
-
+**5. Rodando o Pipeline:**
 ```bash
 python3 -m scripts.run_pipeline
 ```
-
-> `-m`: os módulos usam import relativo entre si, então rodar como script direto (`python3 scripts/run_pipeline.py`) falha com `ImportError`.
-
-### O que o pipeline gera
-
-O pipeline processa cada fonte em camadas próprias de staging e clean, que convergem pro mesmo núcleo taxonômico na carga final:
-
-- **Staging**:
-  `stg_spp_briofitas`, `stg_arboreto_citations`, `stg_arboreto_specimens`
-- **Clean** (normalizado, nada é descartado aqui, problemas de qualidade viram colunas como `parse_status`/`needs_review`):
-  `cln_spp_briofitas`, `cln_arboreto_citations`, `cln_arboreto_specimens`
-- **Tabelas finais normalizadas no PostgreSQL**:
-  - núcleo taxonômico compartilhado entre fontes: `filo`, `familia`, `genero`, `autor`, `epiteto_especifico`
-  - específicas de briófitas: `forma_vida`, `parcela`, `substrato`, `identificacao`, `observacao`, `occurrence`, `occurrence_bryophyte`, `coleta_substrato`, `coleta_observacao`
-  - específicas do arboreto: `bibliographic_citation`, `occurrence_arboretum`, `sector`, `reproductive_status`
-
-Schema completo esta documentado em `JabotUR_DER.md`.
+> **Nota:** o uso do `-m` é obrigatório. Como os módulos utilizam imports absolutos a partir da raiz do projeto (ex: `from scripts.clean...`), tentar rodar o script diretamente (`python3 scripts/run_pipeline.py`) causará um `ModuleNotFoundError`.
 
 ## Help
 
