@@ -1,0 +1,18 @@
+# CODEOWNERS
+#
+# Sintaxe: <padrão de caminho>  <usuário(s) do GitHub, com @>
+# A última regra que casa com um arquivo é a que vale.
+
+# Default: sem dono específico definido aqui
+
+# Núcleo compartilhado entre todas as fontes — qualquer mudança aqui afeta
+# staging/clean/load de SPP, arboreto-citações, Espécimes e Canteiro C ao
+# mesmo tempo, então exige revisão do Davidson antes de mergear.
+/scripts/config.py            @DavidsonWasserman
+/scripts/db/db_utils.py       @DavidsonWasserman
+/scripts/load/taxonomy.py     @DavidsonWasserman
+/migrations/                  @DavidsonWasserman
+
+# Schema/DER — decisões de arquitetura, mesmo dono do núcleo compartilhado
+/docs/der/JabotUR_DER.md       @DavidsonWasserman
+/docs/adr/                     @DavidsonWasserman
