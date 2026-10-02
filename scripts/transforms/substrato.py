@@ -25,9 +25,11 @@ def expand_multivalued(series: pd.Series) -> pd.Series:
             key = token.upper()
             if key not in mapping:
                 print(f"[transforms.substrato] sigla de substrato desconhecida: {token!r} (mantendo original)")
-                nomes.append(token)
+                nome = token
             else:
-                nomes.append(mapping[key])
+                nome = mapping[key]
+            if nome not in nomes:
+                nomes.append(nome)
         return nomes
 
     return series.map(_expand)
