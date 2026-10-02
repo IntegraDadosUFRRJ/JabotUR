@@ -4,6 +4,9 @@
 # Bancos locais DuckDB
 *.duckdb
 
+# Dados locais
+data/
+
 # Cache Python
 __pycache__/
 *.pyc

@@ -7,10 +7,7 @@ mantidas no texto original e registradas para revisão manual.
 
 import pandas as pd
 
-try:
-    from .. import config
-except ImportError:
-    import config
+import scripts.config as config
 
 
 def expand_multivalued(series: pd.Series) -> pd.Series:
