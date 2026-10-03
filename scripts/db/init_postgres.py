@@ -4,8 +4,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, text
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import config
+import scripts.config as config
 
 
 def init_postgres() -> None:

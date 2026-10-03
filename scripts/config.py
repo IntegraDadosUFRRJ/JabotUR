@@ -63,8 +63,6 @@ SPP_COLUMN_MAP = {
     "Observações": "observacao",
 }
 
-<<<<<<< HEAD
-=======
 # === Colunas usadas na camada clean (derivadas de SPP_COLUMN_MAP) ===
 COL_IDENTIFICACAO = SPP_COLUMN_MAP["StatusIdentificacao*"]
 COL_OBSERVACAO = SPP_COLUMN_MAP["Observações"]
@@ -83,7 +81,6 @@ ARBORETO_CITATION_SHEETS = [
 ARBORETO_CITATION_USECOLS = "A:C"
 
 # Nome na planilha original -> nome da coluna normalizado
->>>>>>> 5b1cc64ff4ec5cffae2b334103abe4ece585f478
 ARBORETO_CITATION_COLUMN_MAP = {
     "Família": "familia",
     "Espécie": "especie",
