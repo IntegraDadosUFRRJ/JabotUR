@@ -1,8 +1,8 @@
 """Executa o pipeline ETL completo"""
 
-from scripts.clean import clean_SPP, clean_arboreto_citations
-from scripts.staging import stage_SPP, stage_arboreto_citations
-from scripts.load import load_SPP, load_arboreto_citations
+from scripts.clean import clean_SPP, clean_arboreto_citations, clean_arboreto_specimens
+from scripts.staging import stage_SPP, stage_arboreto_citations, stage_arboreto_specimens
+from scripts.load import load_SPP, load_arboreto_citations, load_arboreto_specimens
 
 
 def main() -> None:
