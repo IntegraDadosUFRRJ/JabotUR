@@ -27,6 +27,9 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 
 DUCKDB_PATH = Path("./jabotur_test.duckdb")
 
+# Nome da tabela registrada no DuckDB durante o transform()
+DUCKDB_STAGING_ALIAS = "df_input"
+
 # === Briofitas (SPP) ===
 SPP_SHEET_NAME = "SPP - JB"
 SPP_USECOLS = "A:K"  # colunas com dados reais 
@@ -60,6 +63,27 @@ SPP_COLUMN_MAP = {
     "Observações": "observacao",
 }
 
+<<<<<<< HEAD
+=======
+# === Colunas usadas na camada clean (derivadas de SPP_COLUMN_MAP) ===
+COL_IDENTIFICACAO = SPP_COLUMN_MAP["StatusIdentificacao*"]
+COL_OBSERVACAO = SPP_COLUMN_MAP["Observações"]
+COL_OBSERVACOES = "observacoes"
+COL_STATUS_IDENTIFICACAO = "status_identificacao"
+
+STG_SPP_TABLE = "stg_spp_briofitas"
+CLN_SPP_TABLE = "cln_spp_briofitas"
+
+# Arboreto (Monografia Gabriel, Livro Pesquisas, JABOT) 
+ARBORETO_CITATION_SHEETS = [
+    "Monografia Gabriel",
+    "Livro Pesquisas no JB",
+    "JABOT",
+]
+ARBORETO_CITATION_USECOLS = "A:C"
+
+# Nome na planilha original -> nome da coluna normalizado
+>>>>>>> 5b1cc64ff4ec5cffae2b334103abe4ece585f478
 ARBORETO_CITATION_COLUMN_MAP = {
     "Família": "familia",
     "Espécie": "especie",
