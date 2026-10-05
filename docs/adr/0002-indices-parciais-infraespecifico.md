@@ -1,8 +1,9 @@
-# ADR-002 — Índices únicos parciais em vez de sentinela para `infraespecifico`
+# ADR-0002 — Índices únicos parciais em vez de sentinela para `infraespecifico`
 
 **Data:** 11/08/2026
 **Status:** Aprovado
 **Autor(es):** Davidson
+**Relação com outras decisões:** Os identificadores citados neste ADR foram atualizados para o inglês pelo **ADR-0010** (a tabela `epiteto_especifico` passou a ser `species`, as colunas `(id_genero, nome, infraespecifico, id_autor)` passaram a `(id_genus, epithet, infraspecific, id_author)`, e os índices parciais passaram a `species_uniq_with_infra` e `species_uniq_without_infra`). O padrão arquitetural de índices parciais aqui definido é reutilizado pelo **ADR-0011** para a tabela `lineage`.
 
 ---
 
