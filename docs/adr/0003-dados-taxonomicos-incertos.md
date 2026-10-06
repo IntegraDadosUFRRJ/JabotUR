@@ -1,53 +1,62 @@
-# ADR 0003 — Registro de dados taxonômicos incertos (gênero-só / morfo-espécie)
+# ADR-0003 — Registro de dados taxonômicos incertos (gênero-só, "Genus sp.", morfo-espécie e unparseable)
 
-**Data:** 09/08/2026
-**Status:** aprovada (temporária: ver "Consequências")
+**Data:** 09/08/2026 (atualizado em 05/10/2026)
+**Status:** Aprovado
 **Autor(es):** Davidson
+**Relação com outras decisões:**
+- Atualizado pelo **ADR-0010**: `epiteto_especifico` passa a ser `species`, `nome` passa a `epithet`, e `id_genero` passa a `id_genus`.
+- Complementado pelo **ADR-0012**: linhas em branco que correspondem a somatórios de controle de Citações são `total_row` (`needs_review = False`), enquanto linhas ininteligíveis sem justificativa permanecem como `unparseable` (`needs_review = True`).
 
 ---
 
 ## Contexto
 
-As planilhas de citação do arboreto (Monografia Gabriel, Livro Pesquisas no
-JB, JABOT) trazem registros que não seguem o padrão binomial completo
-"Gênero + epíteto + autor":
+As planilhas de citação do arboreto (Monografia Gabriel, Livro Pesquisas no JB, JABOT) e de espécimes trazem registros que não seguem o padrão binomial completo "Gênero + epíteto específico + autor":
 
-- **Gênero só** (ex.: planilha só diz "Handroanthus", sem epíteto).
-- **Morfo-espécie** (ex.: "Morfo-Espécie 1"), usada quando o espécime não
-  foi identificado a nível de gênero/espécie.
+1. **Gênero só**: A planilha cita apenas o gênero botânico (ex.: "Handroanthus").
+2. **Gênero com indicação indeterminada ("Genus sp.")**: A planilha cita o gênero acompanhado do marcador de indeterminação da espécie (ex.: "Citrus sp." ou "Eugenia sp").
+3. **Morfo-espécie**: Registros classificados provisoriamente pelo coletor (ex.: "Morfo-Espécie 1"), sem identificação a nível de gênero ou espécie.
+4. **Strings ininteligíveis ("Unparseable")**: Células com descrições livres, notas de campo ou textos corrompidos que falham no parser botânico (ex.: "Árvore grande com flor amarela").
 
-A política geral do projeto (ver `panorama_tecnico_jabotur.md`,
-seção 1) é registrar tudo, nunca descartar por incerteza de dado, decisão
-já tomada antes desta, aqui só se aplica ao caso concreto de taxonomia.
+A política central do projeto (`panorama_tecnico_jabotur.md`, §1) determina que nenhum dado seja descartado por incerteza. Era necessário definir a representação dessas quatro situações no schema relacional normalizado.
 
 ## Decisão
 
-Ambos os casos são registrados em `epiteto_especifico`, não descartados,
-mas com semânticas de reconciliação diferentes:
+Todos os registros são preservados na camada clean e integrados na dimensão de espécies (`epiteto_especifico` / `species`), porém com semânticas distintas de reconciliação e preenchimento:
 
-- **Gênero só (e "Genus sp.")**: Casos como "Handroanthus" ou "Citrus sp." são tratados puramente como Gênero-só (o sufixo "sp." é absorvido/ignorado). Possuem `id_genero` preenchido e `nome=NULL`. **Reconcilia** normalmente entre fontes via get-or-create — é o mesmo conceito taxonômico.
-- **Morfo-espécie**: `id_genero=NULL`, `nome="Morfo-Espécie 1 [aba#linha]"` (origem embutida no nome). **Nunca reconcilia** entre fontes (numeração é local à planilha).
-- **Unparseable**: Casos onde a string taxonômica inteira é ininteligível ou falha catastróficamente no parser (ex: "Árvore grande com flor"). É tratada como um placeholder não-reconciliável (semelhante à morfo-espécie), recebendo `id_genero=NULL` e um nome composto com a origem (`"Unparseable [aba#linha]"`). **Nunca reconcilia** entre fontes.
+- **Gênero só e "Genus sp."**: Casos como "Handroanthus" ou "Citrus sp." são tratados puramente como Gênero-só (o sufixo "sp." ou "sp" é absorvido e ignorado). Possuem `id_genero` preenchido e `nome = NULL` (`epithet = NULL`). **Reconciliam normalmente** entre fontes via get-or-create, pois representam o mesmo táxon genérico.
+- **Morfo-espécie**: Possuem `id_genero = NULL` e recebem como nome um identificador qualificado com a origem (`nome = "Morfo-Espécie 1 [aba#linha]"`). **Nunca reconciliam** entre fontes diferentes, visto que a numeração de morfo-espécies é puramente local à planilha de origem.
+- **Unparseable**: Possuem `id_genero = NULL` e recebem como nome um placeholder qualificado com a origem (`nome = "Unparseable [aba#linha]"`). **Nunca reconciliam** entre fontes.
 
-As sinalizações ocorrem via `parse_status` (`PARSE_STATUS_GENUS_ONLY`, `PARSE_STATUS_MORPHOSPECIES`, `PARSE_STATUS_UNPARSEABLE`) e a flag `reconcile_across_sources` (que é `False` para morfo-espécie e unparseable).
+As sinalizações ocorrem na camada clean por meio das colunas de controle:
+- `parse_status`: assume `genus_only`, `morphospecies` ou `unparseable` (além de `ok`).
+- `reconcile_across_sources`: assume `True` para gênero-só e `False` para morfo-espécie e unparseable.
+- `needs_review`: assume `False` para `ok`, `genus_only` e `morphospecies` (casos legítimos e esperados no arboreto), e `True` para `unparseable` (exigindo conferência humana com os botânicos).
 
 ## Alternativas consideradas
 
 | Alternativa | Motivo da rejeição |
 |---|---|
-| Descartar esses registros até o pytaxon chegar | rejeitada, viola a política central do projeto de nunca descartar por incerteza. |
-| **Caso especial em `taxonomy.py` pra impedir reconciliação de morfo-espécie** | rejeitada em favor de embutir a origem na própria chave natural (`nome`), que já garante chave sempre distinta sem lógica condicional extra no get-or-create. |
-
+| Descartar registros incertos ou unparseable no staging | Viola a política fundamental de preservação total do dado bruto. |
+| Cadastrar "sp." como um epíteto específico comum | Polui a dimensão de espécies com um pseudo-epíteto que colidiria entre todos os gêneros e mascararia consultas taxonômicas reais. |
+| Reconciliar morfo-espécies pelo nome literal ("Morfo-Espécie 1") | Unificaria indevidamente espécimes de fontes distintas que usaram a mesma convenção numérica local para plantas completamente diferentes. |
+| Criar lógica condicional complexa no get-or-create | Rejeitada em favor de embutir a origem `[aba#linha]` diretamente na string natural (`nome`), garantindo unicidade natural por construção sem exceções no SQL. |
 
 ## Consequências
 
-**Positivas / Negativas / Impacto no código existente:**
-- Ambos os casos aparecem em `epiteto_especifico` com `needs_review=True`
-  seria redundante a nível de espécie, a sinalização de revisão vive na
-  camada clean (`needs_review` em `cln_arboreto_citations`), não na
-  dimensão final.
+**Positivas:**
+- Preservação de 100% dos dados originais sem perda de linhagem.
+- O get-or-create padrão continua simples e declarativo, sem condicionais de reconciliação no código SQL/Pandas.
+- Gêneros idênticos se fundem adequadamente entre fontes, enquanto morfo-espécies e unparseable permanecem estritamente isoladas.
+
+**Negativas / trade-offs aceitos:**
+- A tabela `epiteto_especifico` (`species`) armazena linhas de morfo-espécie e unparseable que não representam espécies taxonômicas formais no sentido biológico estrito.
+- Registros `unparseable` geram alertas em `needs_review = True`, requerendo acompanhamento botânico.
+
+**Impacto no código existente:**
+- Afeta `transforms/nome_cientifico.py`, `clean_arboreto_citations.py`, `clean_arboreto_specimens.py`, `load/taxonomy.py` e `load_arboreto_citations.py`.
+
 ## Referências
 
-- `panorama_tecnico_jabotur.md`
-
----
+- ADR-0001, ADR-0002, ADR-0008, ADR-0010, ADR-0012
+- `panorama_tecnico_jabotur.md`, §1 e §3

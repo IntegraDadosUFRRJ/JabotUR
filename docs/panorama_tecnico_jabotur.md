@@ -50,10 +50,9 @@ base PostgreSQL normalizada e única. Requisitos centrais:
   valores), `reproductive_status` (2: "Adulto"/"jovem"). `occurrence`:
   366 linhas; `occurrence_arboretum`: 366 satélites.
 
-### Em desenvolvimento, aguardando validação contra Postgres real
+### Especificado, não implementado
 
-- **Arboreto — Canteiro C**: `species_status`, `conservation_status`
-  (regra "na" -> código IUCN `NA`, ADR-0005), `phytogeographic_domain`.
+- **Arboreto — Canteiro C**: pipeline já mapeado estruturalmente no DER e ADRs (`species_status`, `conservation_status` com regra "na" -> código IUCN `NA` via ADR-0005, `phytogeographic_domain`), mas scripts de staging, clean e load ainda não implementados.
 
 ### Recebido, integração não iniciada
 
@@ -132,8 +131,7 @@ Arboreto — Espécimes.
 - **Externalização da Tabela de Lineage:** Remover as strings de `origin_file`, `origin_sheet` e `origin_row` das tabelas de fato (`occurrence`, `bibliographic_citation`) e movê-las para uma tabela de suporte (`lineage`). A motivação principal é manter a tabela de fato enxuta (limpeza semântica e visual do banco), evitando repetição literal de strings com nomes de arquivos em cada linha da dimensão. **Ajuste no Pipeline:** As funções de load/build exigirão um passo extra de resolver-ou-criar a linha de lineage primeiro, a fim de extrair seu ID para ser usado como Foreign Key na tabela fato.
 ## 7. Próximos passos
 
-1. Finalizar Canteiro C (checklist da seção 5 + validar contra Postgres
-   real).
+1. Implementar pipeline de Canteiro C (conforme especificação no DER e dicionário; checklist da seção 5 + validação contra Postgres real).
 2. Lista Completa Sps.
 3. Inventário do JB (Gabriel), percepção sobre polinizadores, mapas
    táteis do DEGEO.

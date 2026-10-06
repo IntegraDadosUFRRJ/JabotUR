@@ -18,6 +18,18 @@
 // Este arquivo tem duas partes: o schema (Table/Ref) e, ao final, a seção
 // de lineage (Dep) mostrando como o dado flui de staging até as tabelas
 // normalizadas, por fonte.
+//
+// NOTA DE AUDITORIA (Realidade de Implementação em config.py vs DER Alvo):
+// O DER consolida o modelo conceitual e relacional alvo do JabotUR. No pipeline ativo atual
+// (scripts/config.py e run_pipeline.py), estão configuradas e implementadas 15 tabelas
+// normalizadas (filo, familia, genero, epiteto_especifico, autor, identificacao,
+// forma_vida, parcela, observacao, substrato, coleta_observacao, coleta_substrato,
+// occurrence, occurrence_bryophyte e bibliographic_citation).
+// As 12 tabelas normalizadas adicionais constam neste DER como especificação alvo:
+//   - Arboreto — Espécimes (branch em desenvolvimento/aguardando validação): occurrence_arboretum, reproductive_status, sector;
+//   - Arboreto — Canteiro C (especificado, não implementado em código): species_status, conservation_status, phytogeographic_domain, species_domain;
+//   - Arboreto — Lista Completa Sps (recebido, integração não iniciada): country, state, species_country, species_state, species_geographic_area.
+// Da mesma forma, tabelas de staging/clean para Canteiro C e Espécimes constam como stubs de modelagem para o lineage.
 // =========================================================================
 
 
@@ -115,6 +127,8 @@ Table occurrence {
   origin_file varchar
   origin_sheet varchar  // nullable: NULL pras linhas antigas do SPP (1 arquivo = 1 aba lá); obrigatório a partir do arboreto,mesmo motivo do ADR-0007
   origin_row varchar
+
+  note: 'Auditoria de implementação vs DER: no código atual da branch (load_SPP.py), a coluna física no banco ainda se chama "id_especie" e as colunas basis_of_record, identification_qualifier e origin_sheet não são populadas. A padronização para id_species e a população ou externalização do lineage estão previstas para as próximas migrações/PRs conforme ADR-0010 e ADR-0011.'
 }
 
 Table occurrence_bryophyte {
@@ -258,7 +272,8 @@ Table cln_spp_briofitas {
   autor varchar
   forma_vida varchar
   parcela varchar
-  status_identificacao varchar
+  amostra varchar
+  status_identificacao int
   substrato varchar
   observacoes varchar
 }
@@ -276,7 +291,7 @@ Table cln_arboreto_citations {
   infraespecifico varchar
   autor varchar
   identification_qualifier varchar
-  quantidade varchar
+  quantidade int
 }
 
 Table stg_arboreto_specimens {
@@ -353,7 +368,7 @@ Table cln_arboreto_canteiro_c {
 
 Dep: stg_spp_briofitas -> cln_spp_briofitas [note: 'DuckDB: fill-down de parcela/amostra/substrato/forma_vida via last_value() IGNORE NULLS; normalização de observações; cast de status_identificacao pra inteiro']
 Dep: stg_arboreto_citations -> cln_arboreto_citations [note: 'DuckDB: fill-down de familia via last_value() IGNORE NULLS; parsing de nome_cientifico.py em Python puro; cast de quantidade']
-Dep: stg_arboreto_specimens -> cln_arboreto_specimens [note: 'fill-down de familia; resolve N° de Registro preferindo lacre azul quando lacre amarelo e azul coexistem (ver ADR-0009)']
+Dep: stg_arboreto_specimens -> cln_arboreto_specimens [note: 'resolve N° de Registro preferindo lacre azul quando lacre amarelo e azul coexistem (ver ADR-0009)']
 Dep: stg_arboreto_canteiro_c -> cln_arboreto_canteiro_c [note: 'normaliza Origem; multivalora Domínio fitogeográfico por vírgula; Grau de Ameaça uppercase e "na" -> código IUCN NA (ADR-0005); resolve lacre azul sobre amarelo (ADR-0009); mapeia setor S2C2/S2C4 para sector; NULL nas linhas de altura com erro (183, 184, 185)']
 
 // --- clean -> dimensões de taxonomia (agrupado por destino, mostra reconciliação entre fontes) ---
