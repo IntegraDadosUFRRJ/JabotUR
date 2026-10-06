@@ -51,7 +51,7 @@ só criando tabela/lógica nova para o que for exclusivo daquela fonte.
 
 | Coluna | Regra |
 |---|---|
-| Parcela | Fill-down; remover "\*4" e substituir por "4" |
+| Parcela | Fill-down; substituir "4*" por "4" (o asterisco é sufixo na planilha original) |
 | Amostra | Fill-down |
 | StatusIdentificacao | Significado em tabela externa, conforme legenda |
 | Filo | Juntar sigla + nome completo |
@@ -104,6 +104,8 @@ sobre como cada um desses casos é registrado hoje.
 
 ### 2.4 Arboreto — Espécimes
 
+> **Nota sobre Extração e Linhas Ocultas (Excel):** A biblioteca `openpyxl` lê nativamente todas as linhas físicas da planilha, incluindo aquelas ocultas por filtros no Excel. Na aba Espécimes, das 376 linhas extraídas, **84 são linhas originalmente ocultas** (das quais **82 não possuem setor preenchido**). Em conformidade com o princípio de que staging e clean nunca descartam dados, essas linhas entram no pipeline: são preservadas em `stg_arboreto_specimens` e `cln_arboreto_specimens`. Quando faltam dados botânicos ou há placeholders (ex.: "Cássia Rosa", "sem identificação"), elas recebem `needs_review = True` na camada clean e são puladas na criação de `occurrence` durante o load com log explícito por linha.
+
 | Coluna | Regra |
 |---|---|
 | Família | Transpor os dados |
@@ -119,7 +121,7 @@ sobre como cada um desses casos é registrado hoje.
 
 ### 2.5 Arboreto — Canteiro C
 
-> **Nota importante sobre Extração (Excel):** A biblioteca `openpyxl` lê nativamente as linhas ocultas/filtradas das planilhas Excel. Isso é relevante para a fonte do Arboreto (Espécimes e Canteiro C estão na mesma planilha com filtros aplicados), exigindo que a extração limpe o que não pertence à aba/visão desejada.
+> **Nota sobre Estrutura das Fontes (Excel):** "Espécimes" e "Canteiro C" são **abas do mesmo arquivo** Excel (`Diversidade florística do arboreto do JB.xlsx`), e não a mesma planilha com filtros aplicados. Cada aba é processada por rotinas de extração independentes, respeitando as colunas e regras de negócio específicas de cada uma.
 
 | Coluna | Regra |
 |---|---|
