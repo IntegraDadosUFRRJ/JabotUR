@@ -1,52 +1,52 @@
-import pandas as pd
-import numpy as np
+import duckdb
 from scripts import config
 from scripts.db import db_utils
 
 def clean_canteiro_c_data():
-   
-    # 1. Lê os dados brutos salvos na staging
-    df = db_utils.read_dataframe_from_postgres("stg_canteiro_c")
+    
+    df_stg = db_utils.read_dataframe_from_postgres("stg_canteiro_c")
+    con = duckdb.connect(database=":memory:")
+    con.register("stg_canteiro_c", df_stg)
 
-    # Inicializa colunas de controle de qualidade
-    df["needs_review"] = False
-    df["parse_status"] = "OK"
+    query = f"""
+    SELECT 
+        *,
+        CASE 
+            WHEN TRY_CAST(REPLACE(CAST("{config.COL_CANTEIRO_C_ALTURA}" AS VARCHAR), ',', '.') AS DOUBLE) IS NOT NULL 
+                THEN TRY_CAST(REPLACE(CAST("{config.COL_CANTEIRO_C_ALTURA}" AS VARCHAR), ',', '.') AS DOUBLE)
+            ELSE NULL 
+        END AS altura_m,
+        CASE 
+            WHEN "{config.COL_CANTEIRO_C_ESPECIE}" IN ('na', 'NA', 'sem id', 'SEM ID') THEN NULL 
+            ELSE "{config.COL_CANTEIRO_C_ESPECIE}" 
+        END AS especie_clean,
+        CASE 
+            WHEN "Família" IN ('na', 'NA', 'sem id', 'SEM ID') THEN NULL 
+            ELSE "Família" 
+        END AS familia_clean,
+        CASE 
+            WHEN "{config.COL_CANTEIRO_C_ESPECIE}" IS NULL 
+              OR "{config.COL_CANTEIRO_C_ESPECIE}" IN ('na', 'NA', 'sem id', 'SEM ID')
+              OR ("{config.COL_CANTEIRO_C_ALTURA}" IS NOT NULL 
+                  AND TRY_CAST(REPLACE(CAST("{config.COL_CANTEIRO_C_ALTURA}" AS VARCHAR), ',', '.') AS DOUBLE) IS NULL)
+            THEN TRUE 
+            ELSE FALSE 
+        END AS needs_review
+    FROM stg_canteiro_c
+    """
 
-    # 2. Tratamento do campo Altura (m)
-    def parse_altura(val):
-        if pd.isna(val):
-            return None
-        val_str = str(val).strip().replace(",", ".")
-        try:
-            return float(val_str)
-        except ValueError:
-            return None  # Retorna None para textos invalidos (ex: 'A', 'B')
+    df_clean = con.execute(query).df()
 
-    # Aplica o parse na altura
-    altura_original = df[config.COL_CANTEIRO_C_ALTURA]
-    df["altura_m"] = altura_original.apply(parse_altura)
+    df_clean[config.COL_CANTEIRO_C_ESPECIE] = df_clean["especie_clean"]
+    df_clean["Família"] = df_clean["familia_clean"]
+    df_clean = df_clean.drop(columns=["especie_clean", "familia_clean"])
 
-    # Marca needs_review caso haja texto invalido na altura onde havia conteudo original
-    invalid_altura_mask = altura_original.notna() & df["altura_m"].isna()
-    df.loc[invalid_altura_mask, "needs_review"] = True
-    df.loc[invalid_altura_mask, "parse_status"] = "ALTURA_INVALIDA"
-
-    # 3. Tratamento de campos em branco / "na"
-    for col in [config.COL_CANTEIRO_C_ESPECIE, config.COL_CANTEIRO_C_FAMILIA]:
-        if col in df.columns:
-            # Substitui 'na' ou 'sem id' por Nulo
-            df[col] = df[col].replace(["na", "NA", "sem id", "SEM ID"], None)
-
-    # Marca para revisão se a espécie estiver ausente
-    df.loc[df[config.COL_CANTEIRO_C_ESPECIE].isna(), "needs_review"] = True
-
-    # 4. Salva o resultado na camada clean
     db_utils.write_dataframe_to_postgres(
-        df, 
+        df_clean, 
         table_name=config.CLN_CANTEIRO_C_TABLE, 
         mode="replace"
     )
-    print("Limpeza (Clean) do Canteiro C realizada com sucesso!")
+    print("Limpeza do Canteiro C com DuckDB realizada com sucesso!")
 
 if __name__ == "__main__":
     clean_canteiro_c_data()
