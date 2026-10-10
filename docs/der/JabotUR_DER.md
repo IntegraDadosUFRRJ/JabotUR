@@ -367,7 +367,7 @@ Table cln_arboreto_canteiro_c {
 // --- staging -> clean (por fonte) ---
 
 Dep: stg_spp_briofitas -> cln_spp_briofitas [note: 'DuckDB: fill-down de parcela/amostra/substrato/forma_vida via last_value() IGNORE NULLS; normalização de observações; cast de status_identificacao pra inteiro']
-Dep: stg_arboreto_citations -> cln_arboreto_citations [note: 'DuckDB: fill-down de familia via last_value() IGNORE NULLS; parsing de nome_cientifico.py em Python puro; cast de quantidade']
+Dep: stg_arboreto_citations -> cln_arboreto_citations [note: 'DuckDB: fill-down de familia via last_value() IGNORE NULLS; parsing de nome_cientifico.py em Python puro; cast de quantidade; marca parse_status = total_row (família original em family_raw, soma acumulada por aba com ORDER BY explícito; ADR-0012)']
 Dep: stg_arboreto_specimens -> cln_arboreto_specimens [note: 'resolve N° de Registro preferindo lacre azul quando lacre amarelo e azul coexistem (ver ADR-0009)']
 Dep: stg_arboreto_canteiro_c -> cln_arboreto_canteiro_c [note: 'normaliza Origem; multivalora Domínio fitogeográfico por vírgula; Grau de Ameaça uppercase e "na" -> código IUCN NA (ADR-0005); resolve lacre azul sobre amarelo (ADR-0009); mapeia setor S2C2/S2C4 para sector; NULL nas linhas de altura com erro (183, 184, 185)']
 
