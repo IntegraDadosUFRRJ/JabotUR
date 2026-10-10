@@ -70,7 +70,7 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 | Grau de Ameaça | `conservation_status` | código IUCN em maiúsculas; `"na"`/vazio -> código IUCN real `NA` (Not Applicable, ADR-0005), nunca NULL. Mapeia para `conservation_status.code` |
 | Numeração Lacre | `registration_number` | lacre azul prevalece sobre amarelo (RBRv); sem prefixo = lacre azul (ADR-0009). Mapeia para `occurrence_arboretum.registration_number` |
 | Localização Canteiro | `sector_location` | códigos de setor/canteiro (ex.: "SCC1-4", "S2C2", "S2C4"); mapeados para a dimensão compartilhada `sector.name` (não confundir com `location_description` de Espécimes) |
-| Altura (m) | `height_m` | coerção numérica; linhas 183, 184 e 185 possuem erros de digitação e são forçadas para NULL. Mapeia para `occurrence_arboretum.height_m` |
+| Altura (m) | `height_m` | conversão para número; linhas 183, 184 e 185 possuem erros de digitação e são forçadas para NULL. Mapeia para `occurrence_arboretum.height_m` |
 
 ### Arboreto — Lista Completa Sps (não iniciado)
 | Original | Normalizado (Inglês — ADR-0010) | Observação |

@@ -136,7 +136,7 @@ sobre como cada um desses casos é registrado hoje.
 | Grau de Ameaça (Categoria CNCFlora) | Uppercase; `"na"`/vazio -> código IUCN real `NA` (ADR-0005), nunca NULL |
 | Numeração lacre | Sem prefixo "RBRv" = lacre azul, mesmo sem a palavra "AZUL" escrita (ADR-0009) |
 | Localização canteiro | "SCC1-4" e "S2C2"/"S2C4" são códigos legítimos (confirmados contra o Setor real de Espécimes), mapeados para o mesmo `sector` compartilhado |
-| Altura (m) | Linhas 183, 184 e 185 têm erro de digitação que passa incólume pela coerção numérica, forçar NULL nestas linhas e flagar o status |
+| Altura (m) | Linhas 183, 184 e 185 têm erro de digitação que passa incólume pela conversão para número, forçar NULL nestas linhas e flagar o status |
 
 *(Ainda não implementado.)*
 
