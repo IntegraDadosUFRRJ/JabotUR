@@ -200,6 +200,12 @@ ficou errado desde o ADR-0001 (a coluna referencia `occurrence.id`).
 | `dominio_fitogeografico` | `phytogeographic_domain` |
 | `altura_m` | `height_m` |
 
+**Colunas criadas depois do levantamento:** `family_raw`, `previous_quantity_sum`
+e `is_total_row` (query de totais de Citações, ADR-0012) já nascem em inglês e
+ficam fora da renomeação. As intermediárias da mesma query (`especie_raw`,
+`quantidade_raw`, `quantidade_cast`) seguem a renomeação de `especie` e
+`quantidade`.
+
 **A decidir na issue (ambíguo ou em desenvolvimento):**
 - `especie`: nas fontes de arboreto guarda o nome completo bruto (antes do
   parsing) e em SPP guarda só o epíteto. Sugestão: `species_raw` no arboreto e
