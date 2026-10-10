@@ -29,7 +29,7 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 ### SPP (briófitas)
 | Original | Normalizado | Observação |
 |---|---|---|
-| Parcela | `parcela` (`plot` no ADR-0010) | fill-down; valores "1" a "5" e "aleat" (14 ocorrências por amostragem aleatória fora de parcela fixa; ver seção 4) |
+| Parcela | `parcela` (`plot` no ADR-0010) | fill-down; valores "1" a "5" e "aleat" |
 | Amostra | `amostra` (`sample` no ADR-0010) | fill-down |
 | StatusIdentificacao* | `identificacao` [#] | também aparece como "identificação" em outras fontes; ver seção 4 |
 | Filo | `filo` (`phylum` no ADR-0010) | só existe pra briófitas (arboreto fica NULL (ADR-0004)) |
@@ -54,9 +54,9 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 | Família                  | `familia` (`family`)                             |                                          |
 | Espécie                  | `species_raw` -> parseada igual citações         | via `transforms/nome_cientifico.py`      |
 | N° de registro           | `numero_registro` (`registration_number`)        | ver regra do lacre azul, seção 4         |
-| Setor                    | `setor` (`sector`)                               | 25 valores distintos confirmados         |
+| Setor                    | `setor` (`sector`)                                        |
 | Descrição da localização | `descricao_localizacao` (`location_description`) | maioria NULL, nunca virar string `"N/A"` |
-| Estado reprodutivo       | `estado_reprodutivo` (`reproductive_status`)     | 2 valores confirmados: "Adulto"/"jovem"  |
+| Estado reprodutivo       | `estado_reprodutivo` (`reproductive_status`)     | valores confirmados: "Adulto"/"jovem"  |
 
 ### Arboreto — Canteiro C
 | Original na Planilha | Normalizado (Inglês — ADR-0010) | Observação de Negócio / Regra de ETL |
