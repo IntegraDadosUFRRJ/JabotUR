@@ -26,6 +26,15 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
     out["source_sheet"] = out["_source_sheet"]
     out["source_row"] = out["_source_row"]
 
+    # linha de totais não gera citação, sai antes do bloco de morfo-espécie
+    is_total_row = out["parse_status"] == config.PARSE_STATUS_TOTAL_ROW
+    for row in out[is_total_row].itertuples(index=True):
+        print(
+            f"[load_arboreto_citations] linha {row.Index} "
+            f"({row.source_sheet}#{row.source_row}): linha de totais, ignorada"
+        )
+    out = out[~is_total_row].copy()
+
     # morfo-espécie recebe a origem no nome
     is_morphospecies = ~out["reconcile_across_sources"]
     out.loc[is_morphospecies, "epiteto_especifico"] = (
