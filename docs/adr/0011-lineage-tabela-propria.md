@@ -75,4 +75,3 @@ parte desta decisão.
 ## Referências
 
 - ADR-0001, ADR-0002, ADR-0007, ADR-0010, ADR-0012
-- `panorama_tecnico_jabotur.md` §6 (item "Externalização da Tabela de Lineage")
