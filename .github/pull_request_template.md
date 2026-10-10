@@ -31,8 +31,12 @@
 ##  Checklist técnico
 - [ ] Meu código pode ser reproduzido por outra pessoa.
 - [ ] Realizei uma autorrevisão do meu próprio código
-- [ ] Adicionei testes que provam que esse código faz o que está escrito na descrição de forma eficaz
 - [ ] O código de outros desenvolvedores continua funcional após a minha mudança
+- [ ] Atualizei a documentação afetada
+- [ ] Decisão de schema, padrão entre fontes ou nomenclatura? Há ADR linkado?
+- [ ] Modifica config.py, db_utils.py ou taxonomy.py? Revisão do responsável (CODEOWNERS)
+- [ ] Nenhum literal fora de config.py
+- [ ] Clean não descarta linha; problema vira coluna
 
 ---
 

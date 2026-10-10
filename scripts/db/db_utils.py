@@ -3,10 +3,7 @@ from urllib.parse import quote_plus
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-try:
-    from .. import config
-except ImportError: 
-    import config
+import scripts.config as config
 
 
 def get_postgres_url() -> str:

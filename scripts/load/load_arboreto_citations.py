@@ -3,14 +3,9 @@
 
 import pandas as pd
 
-try:
-    from .. import config
-    from ..db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    from . import taxonomy
-except ImportError:
-    import config
-    from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    from scripts.load import taxonomy
+import scripts.config as config
+from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+from scripts.load import taxonomy
 
 
 def load_clean_df() -> pd.DataFrame:
@@ -37,10 +32,6 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
     out["epiteto"] = out["epiteto_especifico"]
     return out
 
-def _normalize_key_value(value):
-    return None if pd.isna(value) else value
-
-
 def build_bibliographic_citation(df: pd.DataFrame, epiteto_ids: dict) -> pd.DataFrame:
     existing = taxonomy._load_existing(config.TB_BIBLIOGRAPHIC_CITATION)
     existing_keys_to_id = {}
@@ -57,7 +48,7 @@ def build_bibliographic_citation(df: pd.DataFrame, epiteto_ids: dict) -> pd.Data
 
     for row in df.itertuples(index=True):
         chave_especie = tuple(
-            _normalize_key_value(value)
+            taxonomy._none_if_nan(value)
             for value in (
                 row.genero,
                 row.epiteto,

@@ -6,10 +6,7 @@
 
 import pandas as pd
 
-try:
-    from .. import config
-except ImportError:
-    import config
+import scripts.config as config
 
 
 def split_multivalued(series: pd.Series) -> pd.Series:
