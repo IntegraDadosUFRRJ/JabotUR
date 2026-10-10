@@ -28,7 +28,7 @@ Planilhas legadas de Excel frequentemente contêm linhas que não representam es
    - O leitor de `openpyxl` extrai todas as linhas da planilha, visíveis ou ocultas (376 linhas em Espécimes).
 
 2. **A camada Clean classifica e sinaliza declarativamente:**
-   - **Totais de Citações:** Identificados quando família e espécie são vazias e a quantidade coincide exatamente com a soma das linhas anteriores da aba. Recebem `parse_status = "total_row"` e `needs_review = False`. A soma de controle é validada e registrada no log. Linhas vazias que não batem com a soma permanecem como `unparseable` e `needs_review = True`.
+   - **Totais de Citações:** Identificados quando a família **original** (antes do fill-down, preservada em `family_raw`) e a espécie são vazias e a quantidade coincide exatamente com a soma das linhas anteriores da mesma aba (soma acumulada por aba, com `ORDER BY` explícito, calculada na própria query DuckDB do clean). Recebem `parse_status = "total_row"`, `needs_review = False` e `reconcile_across_sources = False` (a linha não representa um táxon). A soma de controle é validada e registrada no log, por aba. Linhas vazias que não batem com a soma permanecem como `unparseable` e `needs_review = True`.
    - **Linhas Ocultas de Espécimes:** Preservadas em `cln_arboreto_specimens` com todas as suas colunas (incluindo `sector = NULL` quando ausente). Registros com nomes populares ou placeholders recebem `needs_review = True` e `parse_status` correspondente.
 
 3. **A camada Load decide a inserção nos fatos com log explícito:**
