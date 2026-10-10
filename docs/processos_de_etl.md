@@ -79,6 +79,10 @@ reais:
   espécie)
 - **Só gênero**: alguns registros têm só o gênero, sem epíteto,
   planilha incompleta na fonte
+- **Gênero + "sp."**: `"Citrus sp."`, `"Eugenia sp"`, marcador de espécie
+  indeterminada; tratado como gênero-só (ADR-0003). O escopo é só `sp.`/`sp`
+  sem nenhum texto depois: `spp.`, `sp. 1` e `sp.` seguido de autor não estão
+  cobertos
 - **Morfo-espécie**: placeholder tipo `"Morfo-Espécie 1"` pra espécime
   ainda não identificado a nível de espécie/gênero
 - **Qualificador de incerteza**: `"Handroanthus cf ochraceus (Cham.)
@@ -146,6 +150,15 @@ fonte em vez de três quase iguais.
 | Família | Fill-down |
 | Espécie | Script de parsing (mesmo do item 2.2) |
 | Quant | Transpor os dados |
+
+**Linhas de totais.** Duas das três abas terminam em linha de somatório
+(Monografia Gabriel e Livro Pesquisas no JB). O staging preserva todas as
+linhas (ADR-0012); o clean marca como `parse_status = "total_row"` a linha com
+família original e espécie vazias e quantidade igual à soma das linhas
+anteriores da mesma aba (soma acumulada por aba, com ordem explícita), com
+`needs_review = False` e `reconcile_across_sources = False`; o load a ignora
+com log, sem criar citação. Linha vazia cuja quantidade não bate com a soma
+continua `unparseable` (`needs_review = True`).
 
 
 ---
