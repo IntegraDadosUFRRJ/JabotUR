@@ -93,3 +93,4 @@ específico.
 - Branch por fonte/tabela, PR pequeno, review cruzado antes de merge na
   `main`, especialmente em qualquer mudança que toque `load/taxonomy.py`
   ou o padrão `occurrence`, que são compartilhados entre todas as fontes.
+- Ao abrir um PR, siga o **checklist do template**, garantindo que atualizou os ADRs e documentação e pediu a revisão exigida no `CODEOWNERS`.
