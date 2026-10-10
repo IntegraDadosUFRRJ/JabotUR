@@ -41,7 +41,7 @@ def _staging_rows():
 
 def _to_input(rows):
     # DataFrame mínimo na entrada: inevitável enquanto transform() receber um
-    # DataFrame (a E/S ainda é pandas; migração prevista no item 5.5).
+    # DataFrame (a E/S ainda é pandas; migração prevista no issue #19).
     return pd.DataFrame(
         [
             {
@@ -107,7 +107,7 @@ class TotalRowTests(unittest.TestCase):
 
     def test_shuffled_input_gives_same_flags(self):
         # compara só parse_status, needs_review e reconcile_across_sources;
-        # nunca `familia` (o fill-down depende da ordem de entrada, Etapa 3)
+        # nunca `familia` (o fill-down depende da ordem de entrada, issue #11)
         rows = _staging_rows()
         shuffled = [rows[i] for i in (4, 2, 6, 0, 3, 1, 5)]
 
