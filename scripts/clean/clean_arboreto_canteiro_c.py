@@ -2,7 +2,7 @@ import duckdb
 from scripts import config
 from scripts.db import db_utils
 
-def clean_canteiro_c_data():
+def clean_arboreto_canteiro_c_data():
     
     df_stg = db_utils.read_dataframe_from_postgres("stg_canteiro_c")
     con = duckdb.connect(database=":memory:")
@@ -49,4 +49,4 @@ def clean_canteiro_c_data():
     print("Limpeza do Canteiro C com DuckDB realizada com sucesso!")
 
 if __name__ == "__main__":
-    clean_canteiro_c_data()
+    clean_arboreto_canteiro_c_data()
