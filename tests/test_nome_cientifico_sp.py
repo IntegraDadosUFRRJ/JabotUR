@@ -1,7 +1,7 @@
 import sys
 import unittest
 from pathlib import Path
-import pandas as pd
+import duckdb
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -36,11 +36,14 @@ class NomeCientificoSpTests(unittest.TestCase):
 
     def test_series_processing(self):
         # A série processa os mesmos casos
-        series = pd.Series(["Citrus sp.", "Pinus sp."])
+        series = duckdb.sql("SELECT unnest(['Citrus sp.', 'Pinus sp.']) AS nome").df()["nome"]
         df = parse_nome_cientifico_series(series)
-        self.assertEqual(len(df), 2)
-        self.assertTrue((df["parse_status"] == PARSE_STATUS_GENUS_ONLY).all())
-        self.assertListEqual(df["genero"].tolist(), ["Citrus", "Pinus"])
+        rows = duckdb.sql("SELECT parse_status, genero FROM df").fetchall()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(
+            rows,
+            [(PARSE_STATUS_GENUS_ONLY, "Citrus"), (PARSE_STATUS_GENUS_ONLY, "Pinus")],
+        )
 
     def test_epithets_starting_with_sp_remain_ok(self):
         # Não pode casar "speciosa" ou "spinosa"

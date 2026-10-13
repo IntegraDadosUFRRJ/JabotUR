@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import pandas as pd
+import duckdb
 from openpyxl import Workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -40,21 +40,25 @@ def _staging_rows():
 
 
 def _to_input(rows):
-    # DataFrame mínimo na entrada: inevitável enquanto transform() receber um
-    # DataFrame (a E/S ainda é pandas; migração prevista no issue #19).
-    return pd.DataFrame(
-        [
-            {
-                "_source_file": "teste.xlsx",
-                "_source_sheet": sheet,
-                "_source_row": row,
-                "familia": familia,
-                "especie": especie,
-                "quantidade": quantidade,
-            }
-            for sheet, row, familia, especie, quantidade in rows
-        ]
+    # Adaptador temporário: converte a tabela DuckDB em DataFrame porque 
+    # clean.transform() ainda não teve a E/S migrada (previsto na issue #19).
+    con = duckdb.connect()
+    con.execute(
+        """
+        CREATE TABLE staging (
+            _source_file VARCHAR,
+            _source_sheet VARCHAR,
+            _source_row BIGINT,
+            familia VARCHAR,
+            especie VARCHAR,
+            quantidade VARCHAR
+        )
+        """
     )
+    con.executemany("INSERT INTO staging VALUES ('teste.xlsx', ?, ?, ?, ?, ?)", rows)
+    df = con.table("staging").df()
+    con.close()
+    return df
 
 
 def _write_mini_xlsx(path):
@@ -69,10 +73,14 @@ def _write_mini_xlsx(path):
 
 
 def _flags(result):
-    """Colunas independentes da ordem de entrada, indexadas por (aba, linha)."""
-    return result.set_index(["_source_sheet", "_source_row"])[
-        ["parse_status", "needs_review", "reconcile_across_sources"]
-    ].sort_index()
+    """Colunas independentes da ordem de entrada, ordenadas por (aba, linha)."""
+    return duckdb.query(
+        """
+        SELECT _source_sheet, _source_row, parse_status, needs_review, reconcile_across_sources
+        FROM result
+        ORDER BY _source_sheet, _source_row
+        """
+    ).fetchall()
 
 
 class TotalRowTests(unittest.TestCase):
@@ -80,30 +88,58 @@ class TotalRowTests(unittest.TestCase):
         result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
         self.assertEqual(len(result), 7)
 
-        total = _flags(result).loc[("A", 4)]
-        self.assertEqual(total["parse_status"], config.PARSE_STATUS_TOTAL_ROW)
-        self.assertFalse(total["needs_review"])
-        self.assertFalse(total["reconcile_across_sources"])
+        total = duckdb.query(
+            """
+            SELECT parse_status, needs_review, reconcile_across_sources
+            FROM result
+            WHERE _source_sheet = 'A' AND _source_row = 4
+            """
+        ).fetchone()
+        self.assertEqual(total, (config.PARSE_STATUS_TOTAL_ROW, False, False))
 
     def test_sheet_without_total_keeps_last_row(self):
         result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
-        sheet_b = result[result["_source_sheet"] == "B"]
+        b_count, total_in_b = duckdb.query(
+            """
+            SELECT 
+                count(*),
+                count(*) FILTER (WHERE parse_status = 'total_row')
+            FROM result
+            WHERE _source_sheet = 'B'
+            """
+        ).fetchone()
 
-        self.assertEqual(len(sheet_b), 2)
-        self.assertNotIn(config.PARSE_STATUS_TOTAL_ROW, set(sheet_b["parse_status"]))
-        last = sheet_b[sheet_b["_source_row"] == 3].iloc[0]
-        self.assertEqual(last["genero"], "Citharexylum")
-        self.assertEqual(last["parse_status"], "ok")
+        self.assertEqual(b_count, 2)
+        self.assertEqual(total_in_b, 0)
+        last = duckdb.query(
+            """
+            SELECT genero, parse_status
+            FROM result
+            WHERE _source_sheet = 'B' AND _source_row = 3
+            """
+        ).fetchone()
+        self.assertEqual(last, ("Citharexylum", "ok"))
 
     def test_empty_row_with_mismatching_sum_is_unparseable(self):
         result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
 
-        mismatch = _flags(result).loc[("C", 3)]
-        self.assertEqual(mismatch["parse_status"], "unparseable")
-        self.assertTrue(mismatch["needs_review"])
-        self.assertEqual(
-            (result["parse_status"] == config.PARSE_STATUS_TOTAL_ROW).sum(), 1
-        )
+        mismatch = duckdb.query(
+            """
+            SELECT parse_status, needs_review
+            FROM result
+            WHERE _source_sheet = 'C' AND _source_row = 3
+            """
+        ).fetchone()
+        self.assertEqual(mismatch, ("unparseable", True))
+
+        total_rows_count = duckdb.query(
+            f"""
+            SELECT count(*)
+            FROM result
+            WHERE parse_status = '{config.PARSE_STATUS_TOTAL_ROW}'
+            """
+        ).fetchone()[0]
+        self.assertEqual(total_rows_count, 1)
 
     def test_shuffled_input_gives_same_flags(self):
         # compara só parse_status, needs_review e reconcile_across_sources;
@@ -114,12 +150,13 @@ class TotalRowTests(unittest.TestCase):
         expected = _flags(clean_arboreto_citations.transform(_to_input(rows)))
         actual = _flags(clean_arboreto_citations.transform(_to_input(shuffled)))
 
-        pd.testing.assert_frame_equal(expected, actual)
+        self.assertEqual(expected, actual)
 
     def test_control_columns_not_in_output(self):
         result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
+        cols = [c[0] for c in duckdb.query("DESCRIBE result").fetchall()]
         for column in CONTROL_COLUMNS:
-            self.assertNotIn(column, result.columns)
+            self.assertNotIn(column, cols)
 
 
 class StagingTests(unittest.TestCase):
@@ -132,9 +169,16 @@ class StagingTests(unittest.TestCase):
                  mock.patch.object(config, "ARBORETO_CITATION_SHEETS", ["Aba1"]):
                 df = stage_arboreto_citations.extract_citations()
 
-        self.assertEqual(len(df), 3)
-        self.assertEqual(list(df["_source_row"]), [2, 3, 4])
-        self.assertEqual(df["quantidade"].iloc[-1], "5")
+        rows = duckdb.query(
+            """
+            SELECT _source_row, quantidade
+            FROM df
+            ORDER BY _source_row
+            """
+        ).fetchall()
+        self.assertEqual(len(rows), 3)
+        self.assertEqual([r[0] for r in rows], [2, 3, 4])
+        self.assertEqual(rows[-1][1], "5")
 
 
 class LoadPrepareTests(unittest.TestCase):
@@ -152,7 +196,14 @@ class LoadPrepareTests(unittest.TestCase):
             prepared = load_arboreto_citations.prepare(cleaned)
 
         self.assertEqual(len(prepared), 2)
-        self.assertNotIn(config.PARSE_STATUS_TOTAL_ROW, set(prepared["parse_status"]))
+        total_in_prepared = duckdb.query(
+            f"""
+            SELECT count(*)
+            FROM prepared
+            WHERE parse_status = '{config.PARSE_STATUS_TOTAL_ROW}'
+            """
+        ).fetchone()[0]
+        self.assertEqual(total_in_prepared, 0)
         logged = " ".join(str(call.args[0]) for call in fake_print.call_args_list)
         self.assertIn("linha de totais, ignorada", logged)
 
