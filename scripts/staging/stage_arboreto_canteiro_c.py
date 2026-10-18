@@ -1,24 +1,28 @@
-import pandas as pd
+import duckdb
 from scripts import config
 from scripts.db import db_utils
 
 def stage_arboreto_canteiro_c_data():
-    
-    df = pd.read_excel(
-        config.ARBORETO_XLSX_PATH,
-        sheet_name=config.CANTEIRO_C_SHEET_NAME
-    )
+    con = duckdb.connect(database=":memory:")
+    con.execute("INSTALL spatial; LOAD spatial;")
 
-    df["_source_file"] = "Diversidade florística do arboreto do JB.xlsx"
-    df["_source_sheet"] = config.CANTEIRO_C_SHEET_NAME
-    df["_source_row"] = df.index + 2  # Considera o cabeçalho no Excel
+    query = f"""
+    SELECT 
+        *,
+        'Diversidade florística do arboreto do JB.xlsx' AS _source_file,
+        '{config.CANTEIRO_C_SHEET_NAME}' AS _source_sheet,
+        row_number() OVER () + 1 AS _source_row
+    FROM st_read('{config.ARBORETO_XLSX_PATH}', layer='{config.CANTEIRO_C_SHEET_NAME}')
+    """
+    
+    df_stg = con.execute(query).df()
 
     db_utils.write_dataframe_to_postgres(
-        df, 
+        df_stg, 
         table_name="stg_canteiro_c", 
         mode="replace"
     )
-    print("Staging do Canteiro C realizado com sucesso!")
+    print("Staging do Canteiro C realizado com sucesso via DuckDB!")
 
 if __name__ == "__main__":
     stage_arboreto_canteiro_c_data()
