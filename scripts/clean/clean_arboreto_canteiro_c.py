@@ -12,17 +12,19 @@ def clean_arboreto_canteiro_c_data():
     SELECT 
         *,
         CASE 
+            WHEN TRY_CAST(REPLACE(CAST("{config.COL_CANTEIRO_C_ALTURA}" AS VARCHAR), ',', '.') AS DOUBLE) IN (15124, 15125)
+                THEN NULL
             WHEN TRY_CAST(REPLACE(CAST("{config.COL_CANTEIRO_C_ALTURA}" AS VARCHAR), ',', '.') AS DOUBLE) IS NOT NULL 
                 THEN TRY_CAST(REPLACE(CAST("{config.COL_CANTEIRO_C_ALTURA}" AS VARCHAR), ',', '.') AS DOUBLE)
             ELSE NULL 
-        END AS altura_m,
+        END AS height_m,
         CASE 
             WHEN "{config.COL_CANTEIRO_C_ESPECIE}" IN ('na', 'NA', 'sem id', 'SEM ID') THEN NULL 
             ELSE "{config.COL_CANTEIRO_C_ESPECIE}" 
         END AS especie_clean,
         CASE 
-            WHEN "Família" IN ('na', 'NA', 'sem id', 'SEM ID') THEN NULL 
-            ELSE "Família" 
+            WHEN "{config.COL_CANTEIRO_C_FAMILIA}" IN ('na', 'NA', 'sem id', 'SEM ID') THEN NULL 
+            ELSE "{config.COL_CANTEIRO_C_FAMILIA}" 
         END AS familia_clean,
         CASE 
             WHEN "{config.COL_CANTEIRO_C_ESPECIE}" IS NULL 
@@ -38,7 +40,7 @@ def clean_arboreto_canteiro_c_data():
     df_clean = con.execute(query).df()
 
     df_clean[config.COL_CANTEIRO_C_ESPECIE] = df_clean["especie_clean"]
-    df_clean["Família"] = df_clean["familia_clean"]
+    df_clean[config.COL_CANTEIRO_C_FAMILIA] = df_clean["familia_clean"]
     df_clean = df_clean.drop(columns=["especie_clean", "familia_clean"])
 
     db_utils.write_dataframe_to_postgres(

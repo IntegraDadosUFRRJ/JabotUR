@@ -9,7 +9,7 @@ def stage_arboreto_canteiro_c_data():
     query = f"""
     SELECT 
         *,
-        'Diversidade florística do arboreto do JB.xlsx' AS _source_file,
+        '{config.ARBORETO_XLSX_PATH.name}' AS _source_file,
         '{config.CANTEIRO_C_SHEET_NAME}' AS _source_sheet,
         row_number() OVER () + 1 AS _source_row
     FROM st_read('{config.ARBORETO_XLSX_PATH}', layer='{config.CANTEIRO_C_SHEET_NAME}')
