@@ -14,7 +14,7 @@ from scripts.transforms.nome_cientifico import (
 )
 
 
-class NomeCientificoSpTests(unittest.TestCase):
+class ScientificNameSpTests(unittest.TestCase):
     def test_genus_sp_returns_genus_only(self):
         # Escopo do bug: "sp." e "sp" com espaço final opcional
         names = ["Citrus sp.", "Pinus sp. ", "Eugenia sp"]
