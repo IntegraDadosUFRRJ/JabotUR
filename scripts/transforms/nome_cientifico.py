@@ -18,6 +18,8 @@ _MORPHOSPECIES_RE = re.compile(r"^Morfo-Esp[ée]cie\s+\d+$", re.IGNORECASE)
 
 _GENUS_ONLY_RE = re.compile(r"^[A-ZÀ-Ý][a-zà-ÿ]+$")
 
+_GENUS_SP_RE = re.compile(r"^(?P<genus>[A-ZÀ-Ý][a-zà-ÿ]+)\s+sp\.?$")
+
 _GENUS_EPITHET_RE = re.compile(
     r"^(?P<genus>[A-ZÀ-Ý][a-zà-ÿ]+)"
     rf"(?:\s+(?P<qualifier>{_QUALIFIER}))?"
@@ -95,6 +97,15 @@ def parse_nome_cientifico(nome_raw):
             nome_norm,
             status=PARSE_STATUS_GENUS_ONLY,
             genero=nome_norm,
+        )
+
+    m_sp = _GENUS_SP_RE.match(nome_norm)
+    if m_sp:
+        return _result(
+            nome_raw,
+            nome_norm,
+            status=PARSE_STATUS_GENUS_ONLY,
+            genero=m_sp.group("genus"),
         )
 
     m = _GENUS_EPITHET_RE.match(nome_norm)
