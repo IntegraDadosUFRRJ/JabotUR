@@ -1,8 +1,9 @@
-# ADR 0004 — `filo` NULL para famílias de origem arboreto
+# ADR-0004 — `filo` NULL para famílias de origem arboreto
 
 **Data:** 08/08/2026
 **Status:** aprovada (revisitar quando virar bloqueio real)
 **Autor(es):** Davidson
+**Relação com outras decisões:** Atualizado pelo **ADR-0010**: a tabela `filo` foi renomeada para `phylum`, a tabela `familia` para `family`, e a chave estrangeira `familia.id_filo` passou a ser `family.id_phylum`. A regra de negócio de manter `id_phylum = NULL` para famílias de origem arboreto permanece inalterada.
 
 ---
 

@@ -71,9 +71,7 @@ python -m scripts.run_pipeline
 
 - Branch a partir de `main`, nome `feature/<fonte>-<etapa>`
   (ex.: `feature/lista-completa-staging`).
-- PRs que tocam `config.py`, `db_utils.py` ou `load/taxonomy.py` (código
-  compartilhado entre todas as fontes) precisam de revisão do Davidson,
-  ver `CODEOWNERS`.
+- PRs que tocam arquivos protegidos listados em `.github/CODEOWNERS` exigem revisão do Author indicado.
 - Se a mudança envolve uma decisão de arquitetura nova (não só implementação
   de algo já decidido), documentar como ADR em `docs/adr/` (ver
   `docs/adr/template_adr.md`) antes de abrir o PR de código.
@@ -84,5 +82,5 @@ python -m scripts.run_pipeline
   reconciliação) -> aprovação da equipe antes de virar código.
 - Dúvida de convenção de código já estabelecida → este arquivo + ADRs.
 - Regras de negócio específicas de uma planilha (ex.: como tratar "na" em
-  Grau de Ameaça) -> `Processos_de_ETL_*.pdf` correspondente + ADR se a
+  Grau de Ameaça) -> `docs/processos_de_etl.md` correspondente + ADR se a
   regra não for óbvia pela planilha.

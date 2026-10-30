@@ -51,7 +51,7 @@ só criando tabela/lógica nova para o que for exclusivo daquela fonte.
 
 | Coluna | Regra |
 |---|---|
-| Parcela | Fill-down; remover "\*4" e substituir por "4" |
+| Parcela | Fill-down; substituir "4*" por "4" (o asterisco é sufixo na planilha original) |
 | Amostra | Fill-down |
 | StatusIdentificacao | Significado em tabela externa, conforme legenda |
 | Filo | Juntar sigla + nome completo |
@@ -79,6 +79,10 @@ reais:
   espécie)
 - **Só gênero**: alguns registros têm só o gênero, sem epíteto,
   planilha incompleta na fonte
+- **Gênero + "sp."**: `"Citrus sp."`, `"Eugenia sp"`, marcador de espécie
+  indeterminada; tratado como gênero-só (ADR-0003). O escopo é só `sp.`/`sp`
+  sem nenhum texto depois: `spp.`, `sp. 1` e `sp.` seguido de autor não estão
+  cobertos
 - **Morfo-espécie**: placeholder tipo `"Morfo-Espécie 1"` pra espécime
   ainda não identificado a nível de espécie/gênero
 - **Qualificador de incerteza**: `"Handroanthus cf ochraceus (Cham.)
@@ -104,6 +108,8 @@ sobre como cada um desses casos é registrado hoje.
 
 ### 2.4 Arboreto — Espécimes
 
+> **Nota sobre Extração e Linhas Ocultas (Excel):** A biblioteca `openpyxl` lê nativamente todas as linhas físicas da planilha, incluindo aquelas ocultas por filtros no Excel. Na aba Espécimes, das 376 linhas extraídas, **84 são linhas originalmente ocultas** (das quais **82 não possuem setor preenchido**). Em conformidade com o princípio de que staging e clean nunca descartam dados, essas linhas entram no pipeline: são preservadas em `stg_arboreto_specimens` e `cln_arboreto_specimens`. Quando faltam dados botânicos ou há placeholders (ex.: "Cássia Rosa", "sem identificação"), elas recebem `needs_review = True` na camada clean e são puladas na criação de `occurrence` durante o load com log explícito por linha.
+
 | Coluna | Regra |
 |---|---|
 | Família | Transpor os dados |
@@ -119,7 +125,7 @@ sobre como cada um desses casos é registrado hoje.
 
 ### 2.5 Arboreto — Canteiro C
 
-> **Nota importante sobre Extração (Excel):** A biblioteca `openpyxl` lê nativamente as linhas ocultas/filtradas das planilhas Excel. Isso é relevante para a fonte do Arboreto (Espécimes e Canteiro C estão na mesma planilha com filtros aplicados), exigindo que a extração limpe o que não pertence à aba/visão desejada.
+> **Nota sobre Estrutura das Fontes (Excel):** "Espécimes" e "Canteiro C" são **abas do mesmo arquivo** Excel (`Diversidade florística do arboreto do JB.xlsx`), e não a mesma planilha com filtros aplicados. Cada aba é processada por rotinas de extração independentes, respeitando as colunas e regras de negócio específicas de cada uma.
 
 | Coluna | Regra |
 |---|---|
@@ -130,7 +136,7 @@ sobre como cada um desses casos é registrado hoje.
 | Grau de Ameaça (Categoria CNCFlora) | Uppercase; `"na"`/vazio -> código IUCN real `NA` (ADR-0005), nunca NULL |
 | Numeração lacre | Sem prefixo "RBRv" = lacre azul, mesmo sem a palavra "AZUL" escrita (ADR-0009) |
 | Localização canteiro | "SCC1-4" e "S2C2"/"S2C4" são códigos legítimos (confirmados contra o Setor real de Espécimes), mapeados para o mesmo `sector` compartilhado |
-| Altura (m) | Linhas 183, 184 e 185 têm erro de digitação que passa incólume pela coerção numérica, forçar NULL nestas linhas e flagar o status |
+| Altura (m) | Linhas 183, 184 e 185 têm erro de digitação que passa incólume pela conversão para número, forçar NULL nestas linhas e flagar o status |
 
 *(Ainda não implementado.)*
 
@@ -144,6 +150,15 @@ fonte em vez de três quase iguais.
 | Família | Fill-down |
 | Espécie | Script de parsing (mesmo do item 2.2) |
 | Quant | Transpor os dados |
+
+**Linhas de totais.** Duas das três abas terminam em linha de somatório
+(Monografia Gabriel e Livro Pesquisas no JB). O staging preserva todas as
+linhas (ADR-0012); o clean marca como `parse_status = "total_row"` a linha com
+família original e espécie vazias e quantidade igual à soma das linhas
+anteriores da mesma aba (soma acumulada por aba, com ordem explícita), com
+`needs_review = False` e `reconcile_across_sources = False`; o load a ignora
+com log, sem criar citação. Linha vazia cuja quantidade não bate com a soma
+continua `unparseable` (`needs_review = True`).
 
 
 ---

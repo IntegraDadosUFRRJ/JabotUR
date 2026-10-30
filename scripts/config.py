@@ -103,6 +103,10 @@ CLN_ARBORETO_CITATIONS_TABLE = "cln_arboreto_citations"
 STG_ARBORETO_SPECIMENS_TABLE = "stg_arboreto_specimens"
 CLN_ARBORETO_SPECIMENS_TABLE = "cln_arboreto_specimens"
 
+# Citações do arboreto: linhas de totais
+PARSE_STATUS_TOTAL_ROW = "total_row"
+ARBORETO_CITATION_COL_FAMILY_RAW = "family_raw"
+
 # === Nomes das tabelas finais normalizadas ===
 TB_FILO = "filo"
 TB_FAMILIA = "familia"
