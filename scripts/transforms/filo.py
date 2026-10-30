@@ -7,10 +7,7 @@ se encontrar uma sigla não prevista, mantém o valor original e registra um avi
 import numpy as np
 import pandas as pd
 
-try:
-    from .. import config
-except ImportError:
-    import config
+import scripts.config as config
 
 
 def expand(series: pd.Series) -> pd.Series:
