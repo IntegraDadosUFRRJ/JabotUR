@@ -3,11 +3,15 @@
 
 ## Descrição
 <!-- Inclua um resumo das alterações e qual problema foi resolvido. -->
+### Problema
 - 
+
+### Solução
+-
 
 ### Links úteis
 <!-- Adicione links para a tarefa e documentação que a motiva. -->
-- **Card:** #
+- **Card:** closes #
 
 ---
 
