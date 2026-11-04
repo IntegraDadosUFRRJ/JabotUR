@@ -10,3 +10,5 @@ data/
 # Cache Python
 __pycache__/
 *.pyc
+
+.idea/
