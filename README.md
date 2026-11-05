@@ -69,7 +69,6 @@ Comece pelo [ONBOARDING.md](docs/ONBOARDING.md); ele indica a ordem de leitura d
 
 ### Membros
 
-- Cássio Lima 
 - Davidson Wasserman
 - Julia Prearo
 - Liliane Kunstmann

@@ -23,7 +23,11 @@ class CleanSppDuckDBTests(unittest.TestCase):
                 "familia": [None, "Pottiaceae", None],
                 "genero": ["Barbula", None, "Riccardia"],
                 "epiteto_especifico": ["sp.", None, "latifrons"],
-                "autor": ["Hedw.", None, "L."]
+                "autor": ["Hedw.", None, "L."],
+                # Lineage como o stage_SPP grava; o clean exige _source_file e _source_row
+                "_source_file": ["SPP.xlsx", "SPP.xlsx", "SPP.xlsx"],
+                "_source_sheet": ["Planilha1", "Planilha1", "Planilha1"],
+                "_source_row": [2, 3, 4],
             }
         )
 
