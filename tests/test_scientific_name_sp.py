@@ -5,9 +5,9 @@ import duckdb
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.transforms.nome_cientifico import (
-    parse_nome_cientifico,
-    parse_nome_cientifico_series,
+from scripts.transforms.scientific_name import (
+    parse_scientific_name,
+    parse_scientific_name_series,
     PARSE_STATUS_GENUS_ONLY,
     PARSE_STATUS_OK,
     PARSE_STATUS_MORPHOSPECIES,
@@ -19,7 +19,7 @@ class ScientificNameSpTests(unittest.TestCase):
         # Escopo do bug: "sp." e "sp" com espaço final opcional
         names = ["Citrus sp.", "Pinus sp. ", "Eugenia sp"]
         for name in names:
-            result = parse_nome_cientifico(name)
+            result = parse_scientific_name(name)
             self.assertEqual(result["parse_status"], PARSE_STATUS_GENUS_ONLY)
             self.assertEqual(result["genero"], name.split()[0])
             self.assertIsNone(result["epiteto_especifico"])
@@ -29,15 +29,15 @@ class ScientificNameSpTests(unittest.TestCase):
 
     def test_genus_sp_is_identical_to_pure_genus(self):
         # Mesma resposta do construtor de resultado de um gênero-só
-        res_sp = parse_nome_cientifico("Citrus sp.")
-        res_pure = parse_nome_cientifico("Citrus")
+        res_sp = parse_scientific_name("Citrus sp.")
+        res_pure = parse_scientific_name("Citrus")
         for k in ["parse_status", "genero", "epiteto_especifico", "infraespecifico", "autor", "identification_qualifier"]:
             self.assertEqual(res_sp[k], res_pure[k])
 
     def test_series_processing(self):
         # A série processa os mesmos casos
         series = duckdb.sql("SELECT unnest(['Citrus sp.', 'Pinus sp.']) AS nome").df()["nome"]
-        df = parse_nome_cientifico_series(series)
+        df = parse_scientific_name_series(series)
         rows = duckdb.sql("SELECT parse_status, genero FROM df").fetchall()
         self.assertEqual(len(rows), 2)
         self.assertEqual(
@@ -49,20 +49,20 @@ class ScientificNameSpTests(unittest.TestCase):
         # Não pode casar "speciosa" ou "spinosa"
         names = ["Ceiba speciosa", "Jacaratia spinosa"]
         for name in names:
-            result = parse_nome_cientifico(name)
+            result = parse_scientific_name(name)
             self.assertEqual(result["parse_status"], PARSE_STATUS_OK)
             self.assertIsNotNone(result["epiteto_especifico"])
 
     def test_normal_binomial_remains_ok(self):
         # Baseline
-        result = parse_nome_cientifico("Astronium urundeuva")
+        result = parse_scientific_name("Astronium urundeuva")
         self.assertEqual(result["parse_status"], PARSE_STATUS_OK)
         self.assertEqual(result["genero"], "Astronium")
         self.assertEqual(result["epiteto_especifico"], "urundeuva")
 
     def test_morphospecies_remains_morphospecies(self):
         # Baseline
-        result = parse_nome_cientifico("Morfo-Espécie 1")
+        result = parse_scientific_name("Morfo-Espécie 1")
         self.assertEqual(result["parse_status"], PARSE_STATUS_MORPHOSPECIES)
         self.assertIsNone(result["genero"])
 

@@ -64,7 +64,7 @@ def _result(nome_raw, nome_normalizado, status, genero=None, epiteto=None,
     }
 
 
-def parse_nome_cientifico(nome_raw):
+def parse_scientific_name(nome_raw):
     """Faz o parsing de uma string de espécie do arboreto.
 
     Retorna um dicionário com os componentes taxonômicos extraídos e
@@ -144,5 +144,5 @@ def parse_nome_cientifico(nome_raw):
     )
 
 
-def parse_nome_cientifico_series(serie: pd.Series) -> pd.DataFrame:
-    return pd.DataFrame(serie.map(parse_nome_cientifico).tolist())
+def parse_scientific_name_series(serie: pd.Series) -> pd.DataFrame:
+    return pd.DataFrame(serie.map(parse_scientific_name).tolist())

@@ -12,20 +12,20 @@ from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to
 import scripts.config as config
 
 try:
-    from scripts.transforms.nome_cientifico import (
+    from scripts.transforms.scientific_name import (
         PARSE_STATUS_GENUS_ONLY,
         PARSE_STATUS_MORPHOSPECIES,
         PARSE_STATUS_OK,
         PARSE_STATUS_UNPARSEABLE,
-        parse_nome_cientifico_series,
+        parse_scientific_name_series,
     )
 except ImportError:
-    from ..transforms.nome_cientifico import (
+    from ..transforms.scientific_name import (
         PARSE_STATUS_GENUS_ONLY,
         PARSE_STATUS_MORPHOSPECIES,
         PARSE_STATUS_OK,
         PARSE_STATUS_UNPARSEABLE,
-        parse_nome_cientifico_series,
+        parse_scientific_name_series,
     )
 
 UNPARSEABLE_QUANTIDADE = "unparseable_quantidade"
@@ -161,7 +161,7 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
     filled = _fill_down_and_trim(con)
     con.close()
 
-    parsed = parse_nome_cientifico_series(filled["especie_raw"])
+    parsed = parse_scientific_name_series(filled["especie_raw"])
     out = pd.concat([filled.reset_index(drop=True), parsed], axis=1)
 
     # quantidade (DOUBLE, inválido = NULL) já vem da query
