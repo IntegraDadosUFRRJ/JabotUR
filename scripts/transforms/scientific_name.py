@@ -64,7 +64,7 @@ def _result(nome_raw, nome_normalizado, status, genero=None, epiteto=None,
     }
 
 
-def parse_nome_cientifico(nome_raw):
+def parse_scientific_name(nome_raw):
     """Faz o parsing de uma string de espécie do arboreto.
 
     Retorna um dicionário com os componentes taxonômicos extraídos e
@@ -110,7 +110,7 @@ def parse_nome_cientifico(nome_raw):
 
     m = _GENUS_EPITHET_RE.match(nome_norm)
     if not m:
-        return _result(nome_raw, nome_norm, status="unparseable")
+        return _result(nome_raw, nome_norm, status=PARSE_STATUS_UNPARSEABLE)
 
     genus = m.group("genus")
     epithet = m.group("epithet")
@@ -119,7 +119,7 @@ def parse_nome_cientifico(nome_raw):
 
     if not rest:
         # só "genero + epiteto"
-        return _result(nome_raw, nome_norm, status="ok", genero=genus,
+        return _result(nome_raw, nome_norm, status=PARSE_STATUS_OK, genero=genus,
                         epiteto=epithet, infra=None, autor=None)
 
     infra_match = _INFRA_RANK_RE.search(rest)
@@ -145,5 +145,5 @@ def parse_nome_cientifico(nome_raw):
     )
 
 
-def parse_nome_cientifico_series(serie: pd.Series) -> pd.DataFrame:
-    return pd.DataFrame(serie.map(parse_nome_cientifico).tolist())
+def parse_scientific_name_series(serie: pd.Series) -> pd.DataFrame:
+    return pd.DataFrame(serie.map(parse_scientific_name).tolist())

@@ -4,7 +4,7 @@ Mesma divisão de responsabilidade de clean_arboreto_citations.py:
   - DuckDB (SQL) pro mecânico: trim e normalização pontual de
     familia/setor/descrição/estado reprodutivo;
   - Python puro pros dois parsers especializados: nome científico
-    (transforms.nome_cientifico, reaproveitado de citations sem
+    (transforms.scientific_name, reaproveitado de citations sem
     modificação nenhuma) e número de registro/lacre
     (transforms.registration_number, exclusivo desta fonte).
 
@@ -24,13 +24,13 @@ except ImportError:
     from .. import config
 
 try:
-    from scripts.transforms.nome_cientifico import parse_nome_cientifico_series
+    from scripts.transforms.scientific_name import parse_scientific_name_series
     from scripts.transforms.registration_number import (
         parse_registration_number_series,
         STATUS_UNPARSEABLE as REG_STATUS_UNPARSEABLE,
     )
 except ImportError:
-    from ..transforms.nome_cientifico import parse_nome_cientifico_series
+    from ..transforms.scientific_name import parse_scientific_name_series
     from ..transforms.registration_number import (
         parse_registration_number_series,
         STATUS_UNPARSEABLE as REG_STATUS_UNPARSEABLE,
@@ -94,7 +94,7 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
     filled = _trim_and_normalize(con)
     con.close()
 
-    nome_parsed = parse_nome_cientifico_series(filled["especie_raw"])
+    nome_parsed = parse_scientific_name_series(filled["especie_raw"])
     reg_parsed = parse_registration_number_series(filled["numero_registro_raw"])
     out = pd.concat([filled.reset_index(drop=True), nome_parsed, reg_parsed], axis=1)
 

@@ -183,3 +183,18 @@ PARCELA_COORDENADAS = {
 
 # São as árvores vivas do arboreto, não material herborizado como o SPP
 ARBORETO_SPECIMENS_BASIS_OF_RECORD = "LivingSpecimen"
+ 
+
+# Canteiro C 
+CANTEIRO_C_SHEET_NAME = "Canteiro C - Rosa dos Ventos"
+
+COL_CANTEIRO_C_FAMILIA = "Família"
+COL_CANTEIRO_C_ESPECIE = "Espécie"
+COL_CANTEIRO_C_ORIGEM = "Origem"
+COL_CANTEIRO_C_DOMINIO = "Domínio fitogeográfico"
+COL_CANTEIRO_C_CATEGORIA_CNCFLORA = "Categoria CNCFlora"
+COL_CANTEIRO_C_NUMERO_LACRE = "Numeração lacre"
+COL_CANTEIRO_C_LOCALIZACAO = "Localização canteiro"
+COL_CANTEIRO_C_ALTURA = "height_m"
+
+CLN_CANTEIRO_C_TABLE = "cln_canteiro_c"

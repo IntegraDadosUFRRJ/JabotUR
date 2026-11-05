@@ -10,7 +10,7 @@
 
 Nomes científicos do arboreto às vezes vêm com um qualificador de
 incerteza de identificação "cf." ou "aff." (ex.: "Handroanthus cf.
-chrysotrichus"), capturado por `nome_cientifico.py`. A dúvida de design
+chrysotrichus"), capturado por `scientific_name.py`. A dúvida de design
 era onde essa informação deveria morar: em `epiteto_especifico` (nível
 espécie) ou em cada registro individual que cita/observa a espécie.
 
@@ -37,7 +37,7 @@ espécie em si.
   nem em nenhuma satélite, qualquer fonte com identificação incerta se
   beneficia da coluna estar no nível comum, sem duplicar por sub-tipo.
 - Confirmado em código: `clean_arboreto_specimens.py` já produz
-  `identification_qualifier` reaproveitando `nome_cientifico.py` sem
+  `identification_qualifier` reaproveitando `scientific_name.py` sem
   modificação. Espécimes é a primeira fonte `occurrence_arboretum`-based
   a popular essa coluna de verdade.
 - `bibliographic_citation.identification_qualifier` continua existindo em
