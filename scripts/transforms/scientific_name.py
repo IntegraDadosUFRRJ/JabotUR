@@ -110,7 +110,7 @@ def parse_scientific_name(nome_raw):
 
     m = _GENUS_EPITHET_RE.match(nome_norm)
     if not m:
-        return _result(nome_raw, nome_norm, status="unparseable")
+        return _result(nome_raw, nome_norm, status=PARSE_STATUS_UNPARSEABLE)
 
     genus = m.group("genus")
     epithet = m.group("epithet")
@@ -119,7 +119,7 @@ def parse_scientific_name(nome_raw):
 
     if not rest:
         # só "genero + epiteto"
-        return _result(nome_raw, nome_norm, status="ok", genero=genus,
+        return _result(nome_raw, nome_norm, status=PARSE_STATUS_OK, genero=genus,
                         epiteto=epithet, infra=None, autor=None)
 
     infra_match = _INFRA_RANK_RE.search(rest)
@@ -130,7 +130,7 @@ def parse_scientific_name(nome_raw):
         # autor do táxon infraespecífico tem prioridade sobre o da espécie quando os dois existem 
         autor = author_after or author_before or None
         infra = f"{rank} {infra_epithet}"
-        return _result(nome_raw, nome_norm, status="ok", genero=genus,
+        return _result(nome_raw, nome_norm, status=PARSE_STATUS_OK, genero=genus,
                         epiteto=epithet, infra=infra, autor=autor)
 
     return _result(
