@@ -76,8 +76,11 @@ def build_occurrence_specimens(df: pd.DataFrame, epiteto_ids: dict, sector_ids: 
             taxonomy._none_if_nan(row.infraespecifico),
             taxonomy._none_if_nan(row.autor),
         )
-        id_especie = epiteto_ids.get(chave_especie)
-        if id_especie is None:
+        # sem gênero e sem epíteto o taxonomy não cria espécie: a ocorrência
+        # entra com id_species NULL; o clean já a marca needs_review
+        sem_identificacao = chave_especie[0] is None and chave_especie[1] is None
+        id_species = epiteto_ids.get(chave_especie)
+        if id_species is None and not sem_identificacao:
             print(
                 f"[load_arboreto_specimens] linha {row.Index} "
                 f"({row.source_sheet}#{row.source_row}): não encontrei "
@@ -96,7 +99,7 @@ def build_occurrence_specimens(df: pd.DataFrame, epiteto_ids: dict, sector_ids: 
         occurrence_rows.append(
             {
                 "id": occurrence_id,
-                "id_species": id_especie,
+                "id_species": id_species,
                 "basis_of_record": config.ARBORETO_SPECIMENS_BASIS_OF_RECORD,
                 "identification_qualifier": row.identification_qualifier,
                 "origin_file": row.source_file,
