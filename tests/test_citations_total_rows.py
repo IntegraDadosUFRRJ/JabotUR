@@ -120,6 +120,28 @@ class TotalRowTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual(last, ("Citharexylum", "ok"))
 
+    def test_unparseable_and_total_rows_do_not_reconcile(self):
+        # ADR-0003 (unparseable) e ADR-0012 (total_row): nenhuma reconcilia entre fontes
+        result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
+        flags = duckdb.query(
+            """
+            SELECT _source_sheet, _source_row, parse_status, reconcile_across_sources
+            FROM result
+            WHERE (_source_sheet = 'A' AND _source_row = 4)
+               OR (_source_sheet = 'C' AND _source_row = 3)
+               OR (_source_sheet = 'B' AND _source_row = 3)
+            ORDER BY _source_sheet, _source_row
+            """
+        ).fetchall()
+        self.assertEqual(
+            flags,
+            [
+                ("A", 4, config.PARSE_STATUS_TOTAL_ROW, False),
+                ("B", 3, "ok", True),
+                ("C", 3, "unparseable", False),
+            ],
+        )
+
     def test_empty_row_with_mismatching_sum_is_unparseable(self):
         result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
 

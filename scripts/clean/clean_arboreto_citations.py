@@ -169,9 +169,10 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
     out.loc[is_morphospecies, "epiteto_especifico"] = out.loc[is_morphospecies, "nome_normalizado"]
     out.loc[is_morphospecies, "genero"] = None
 
-    # "morfo-espécie" e "total_row" não reconciliam entre fontes na carga
+    # "morfo-espécie", "unparseable" (ADR-0003) e "total_row" não reconciliam entre fontes na carga
     # Quando só possui genero(sem epiteto) reconcilia normal
-    out["reconcile_across_sources"] = ~(is_morphospecies | is_total_row)
+    is_unparseable = out["parse_status"] == PARSE_STATUS_UNPARSEABLE
+    out["reconcile_across_sources"] = ~(is_morphospecies | is_total_row | is_unparseable)
 
     # sinaliza "erros" a serem alterados
     out["needs_review"] = ~out["parse_status"].isin(
