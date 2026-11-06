@@ -66,7 +66,7 @@ só criando tabela/lógica nova para o que for exclusivo daquela fonte.
 ### 2.2 Arboreto — observações gerais sobre a coluna "Espécie"
 
 A coluna de espécie do arboreto não segue um padrão único, o parser
-(`transforms/nome_cientifico.py`) precisa cobrir, todos vistos em dados
+(`transforms/scientific_name.py`) precisa cobrir, todos vistos em dados
 reais:
 
 - **Padrão simples**: `"Astronium concinnum Schott"` → Astronium(gênero) +

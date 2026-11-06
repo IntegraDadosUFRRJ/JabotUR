@@ -18,7 +18,7 @@ em todas, indica "derivação" de outro táxon.
 | | Briófitas (SPP) | Arboreto (todas as abas — JB) |
 |---|---|---|
 | Coluna "Espécie" contém | só o epíteto (gênero abreviado: `O. albidum`) | string única sem separador: Gênero + Epíteto + Infraespecífico + **Autor** |
-| Autor | coluna própria (`Autor`) | embutido dentro de "Espécie" — por isso `transforms/nome_cientifico.py` existe só pro lado arboreto |
+| Autor | coluna própria (`Autor`) | embutido dentro de "Espécie" — por isso `transforms/scientific_name.py` existe só pro lado arboreto |
 | Exemplo bruto | `O. albidum` (autor em coluna separada) | `Astronium urundeuva (M.Allemão) Engl.` |
 | Identificador normalizado (ADR-0010) | `epithet` | `species_raw` (antes do parsing) |
 
@@ -45,14 +45,14 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 | Original | Normalizado | Observação |
 |---|---|---|
 | Família | `familia` (`family`) | fill-down |
-| Espécie | `species_raw` -> parseada em `genus`/`epithet`/`infraspecific`/`author`/`identification_qualifier` | via `transforms/nome_cientifico.py` (ADR-0010) |
+| Espécie | `species_raw` -> parseada em `genus`/`epithet`/`infraspecific`/`author`/`identification_qualifier` | via `transforms/scientific_name.py` (ADR-0010) |
 | Quant | `quantidade` (`quantity`) | |
 
 ### Arboreto — Espécimes
 | Original                 | Normalizado                                      | Observação                               |
 | --------------------------| --------------------------------------------------| ------------------------------------------|
 | Família                  | `familia` (`family`)                             |                                          |
-| Espécie                  | `species_raw` -> parseada igual citações         | via `transforms/nome_cientifico.py`      |
+| Espécie                  | `species_raw` -> parseada igual citações         | via `transforms/scientific_name.py`      |
 | N° de registro           | `numero_registro` (`registration_number`)        | ver regra do lacre azul, seção 4         |
 | Setor                    | `setor` (`sector`)                                        |
 | Descrição da localização | `descricao_localizacao` (`location_description`) | maioria NULL, nunca virar string `"N/A"` |
@@ -63,7 +63,7 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 |---|---|---|
 | (sem cabeçalho, 1ª coluna) | `familia` (`family`) | renomeação posicional obrigatória; fill-down não aplicável |
 | Gênero | `genero` (`genus`) | preenchido na fonte; validado no parsing taxonômico |
-| Espécie | `species_raw` | string composta bruta com epíteto, infraespecífico e autor; parseada via `transforms/nome_cientifico.py` em `genero`, `epithet`, `infraspecific`, `author`, `identification_qualifier` |
+| Espécie | `species_raw` | string composta bruta com epíteto, infraespecífico e autor; parseada via `transforms/scientific_name.py` em `genero`, `epithet`, `infraspecific`, `author`, `identification_qualifier` |
 | Autor | embutido em `species_raw` | extraído pelo parser botânico |
 | Origem | `origin` [#] | variante de grafia "Exótico"/"Exótica", canonizar pra "Exótica"; `"na"`/vazio -> NULL. Mapeia para `species_status.origin` |
 | Domínio Fitogeográfico | `phytogeographic_domain` | multivalorada (vírgula); `"na"`/vazio -> nenhuma linha na tabela associativa `species_domain` (ADR-0008) |
@@ -135,7 +135,7 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 - **`identificacao`/`identificação`/`StatusIdentificacao*`**: mesmo conceito, três grafias diferentes entre fontes, cuidado ao integrar fonte nova que reuse esse campo.
 - **Linhas de totais (Citações)**: a última linha de Monografia Gabriel e de Livro Pesquisas no JB é um somatório (família e espécie vazias, quantidade igual à soma das linhas anteriores da aba). É preservada no staging e no clean com `parse_status = "total_row"` e ignorada no load (ADR-0012). A aba JABOT não tem linha de totais.
 - **Resolução da ambiguidade da coluna `especie` (`species_raw` vs `epithet`)**: Conforme padronizado pelo ADR-0010 para sanar a ambiguidade conceitual de nomenclatura entre fontes:
-  - Nas fontes de Arboreto (Citações, Espécimes, Canteiro C e Lista Completa), a coluna de entrada na planilha traz uma string composta bruta (Gênero + Epíteto + Infraespecífico + Autor) e é mapeada na camada intermediária como `species_raw`. Essa coluna é então processada por `transforms/nome_cientifico.py`, que extrai `genus`, `epithet`, `infraspecific`, `author` e `identification_qualifier`.
+  - Nas fontes de Arboreto (Citações, Espécimes, Canteiro C e Lista Completa), a coluna de entrada na planilha traz uma string composta bruta (Gênero + Epíteto + Infraespecífico + Autor) e é mapeada na camada intermediária como `species_raw`. Essa coluna é então processada por `transforms/scientific_name.py`, que extrai `genus`, `epithet`, `infraspecific`, `author` e `identification_qualifier`.
   - Na fonte SPP (Briófitas), a coluna da planilha contém exclusivamente o epíteto específico (a abreviação de gênero pré-fixada, ex.: `"O. "`, é descartada no clean), sendo padronizada como `epithet` (ou `epiteto_especifico` no schema legado).
   - No banco de dados relacional final, ambas as fontes convergem perfeitamente para a dimensão compartilhada `species` (`species.epithet`).
 - **Tratamento de `"aleat"` em Parcela (SPP)**: Na fonte SPP (Briófitas), exatamente 14 ocorrências biológicas possuem o valor textual `"aleat"` na coluna `Parcela`, indicando coletas realizadas por amostragem aleatória fora das parcelas fixas 1–5. O pipeline preserva esse valor no staging (`stg_spp_briofitas`) e no clean (`cln_spp_briofitas`) sem descartar linhas nem forçar para `NULL`, propagando o valor por fill-down. No carregamento (`scripts/load/load_SPP.py`), cria-se uma linha válida na dimensão `parcela` (ou `plot` no novo schema) com `codigo = 'aleat'` e coordenadas geográficas `NULL` (pois `config.PARCELA_COORDENADAS.get("aleat")` retorna `None`). As 14 ocorrências na tabela satélite `occurrence_bryophyte` recebem a chave estrangeira `id_parcela` apontando corretamente para esse registro. (A entrada `"alt": "amostragem aleatória"` em `SUBSTRATO_NOME_MAP` é um resíduo de confusão da legenda legada que diz respeito a esse mesmo método de amostragem de Parcela).

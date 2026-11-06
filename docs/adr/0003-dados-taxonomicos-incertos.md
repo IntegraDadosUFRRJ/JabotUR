@@ -54,7 +54,7 @@ As sinalizações ocorrem na camada clean por meio das colunas de controle:
 - Registros `unparseable` geram alertas em `needs_review = True`, requerendo acompanhamento botânico.
 
 **Impacto no código existente:**
-- Afeta `transforms/nome_cientifico.py`, `clean_arboreto_citations.py`, `clean_arboreto_specimens.py`, `load/taxonomy.py` e `load_arboreto_citations.py`.
+- Afeta `transforms/scientific_name.py`, `clean_arboreto_citations.py`, `clean_arboreto_specimens.py`, `load/taxonomy.py` e `load_arboreto_citations.py`.
 
 ## Referências
 

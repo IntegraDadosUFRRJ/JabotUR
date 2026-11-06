@@ -18,6 +18,8 @@ _MORPHOSPECIES_RE = re.compile(r"^Morfo-Esp[ée]cie\s+\d+$", re.IGNORECASE)
 
 _GENUS_ONLY_RE = re.compile(r"^[A-ZÀ-Ý][a-zà-ÿ]+$")
 
+_GENUS_SP_RE = re.compile(r"^(?P<genus>[A-ZÀ-Ý][a-zà-ÿ]+)\s+sp\.?$")
+
 _GENUS_EPITHET_RE = re.compile(
     r"^(?P<genus>[A-ZÀ-Ý][a-zà-ÿ]+)"
     rf"(?:\s+(?P<qualifier>{_QUALIFIER}))?"
@@ -62,7 +64,7 @@ def _result(nome_raw, nome_normalizado, status, genero=None, epiteto=None,
     }
 
 
-def parse_nome_cientifico(nome_raw):
+def parse_scientific_name(nome_raw):
     """Faz o parsing de uma string de espécie do arboreto.
 
     Retorna um dicionário com os componentes taxonômicos extraídos e
@@ -97,9 +99,18 @@ def parse_nome_cientifico(nome_raw):
             genero=nome_norm,
         )
 
+    m_sp = _GENUS_SP_RE.match(nome_norm)
+    if m_sp:
+        return _result(
+            nome_raw,
+            nome_norm,
+            status=PARSE_STATUS_GENUS_ONLY,
+            genero=m_sp.group("genus"),
+        )
+
     m = _GENUS_EPITHET_RE.match(nome_norm)
     if not m:
-        return _result(nome_raw, nome_norm, status="unparseable")
+        return _result(nome_raw, nome_norm, status=PARSE_STATUS_UNPARSEABLE)
 
     genus = m.group("genus")
     epithet = m.group("epithet")
@@ -108,7 +119,7 @@ def parse_nome_cientifico(nome_raw):
 
     if not rest:
         # só "genero + epiteto"
-        return _result(nome_raw, nome_norm, status="ok", genero=genus,
+        return _result(nome_raw, nome_norm, status=PARSE_STATUS_OK, genero=genus,
                         epiteto=epithet, infra=None, autor=None)
 
     infra_match = _INFRA_RANK_RE.search(rest)
@@ -119,7 +130,7 @@ def parse_nome_cientifico(nome_raw):
         # autor do táxon infraespecífico tem prioridade sobre o da espécie quando os dois existem 
         autor = author_after or author_before or None
         infra = f"{rank} {infra_epithet}"
-        return _result(nome_raw, nome_norm, status="ok", genero=genus,
+        return _result(nome_raw, nome_norm, status=PARSE_STATUS_OK, genero=genus,
                         epiteto=epithet, infra=infra, autor=autor)
 
     return _result(
@@ -133,5 +144,5 @@ def parse_nome_cientifico(nome_raw):
     )
 
 
-def parse_nome_cientifico_series(serie: pd.Series) -> pd.DataFrame:
-    return pd.DataFrame(serie.map(parse_nome_cientifico).tolist())
+def parse_scientific_name_series(serie: pd.Series) -> pd.DataFrame:
+    return pd.DataFrame(serie.map(parse_scientific_name).tolist())
