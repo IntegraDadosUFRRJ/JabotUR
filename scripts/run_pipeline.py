@@ -3,10 +3,14 @@
 from scripts.clean import clean_SPP, clean_arboreto_citations, clean_arboreto_specimens
 from scripts.staging import stage_SPP, stage_arboreto_citations, stage_arboreto_specimens
 from scripts.load import load_SPP, load_arboreto_citations, load_arboreto_specimens
+from scripts.db.init_postgres import init_postgres
 
 
 def main() -> None:
-    print("== STAGING (SPP) ==")
+    print("== INIT (banco + esquema) ==")
+    init_postgres()
+
+    print("\n== STAGING (SPP) ==")
     stage_SPP.load_staging(stage_SPP.extract_spp())
 
     print("\n== CLEAN (SPP) ==")
