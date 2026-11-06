@@ -181,6 +181,9 @@ PARCELA_COORDENADAS = {
     "5": "22° 45' 59.3\"S 43° 41' 37.5\"O",   
 }
 
+# Briófitas coletadas e herborizadas (Darwin Core basisOfRecord)
+SPP_BASIS_OF_RECORD = "PreservedSpecimen"
+
 # São as árvores vivas do arboreto, não material herborizado como o SPP
 ARBORETO_SPECIMENS_BASIS_OF_RECORD = "LivingSpecimen"
  
