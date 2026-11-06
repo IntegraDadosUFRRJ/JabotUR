@@ -30,12 +30,13 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
         )
     out = out[~is_total_row].copy()
 
-    # morfo-espécie recebe a origem no nome
-    is_morphospecies = ~out["reconcile_across_sources"]
-    out.loc[is_morphospecies, "epiteto_especifico"] = (
-        out.loc[is_morphospecies, "epiteto_especifico"]
-        + " [" + out.loc[is_morphospecies, "source_sheet"]
-        + "#" + out.loc[is_morphospecies, "source_row"].astype(str) + "]"
+    # morfo-espécie e unparseable nunca reconciliam entre fontes (ADR-0003);
+    # recebem a origem no nome
+    not_reconciled = ~out["reconcile_across_sources"]
+    out.loc[not_reconciled, "epiteto_especifico"] = (
+        out.loc[not_reconciled, "epiteto_especifico"]
+        + " [" + out.loc[not_reconciled, "source_sheet"]
+        + "#" + out.loc[not_reconciled, "source_row"].astype(str) + "]"
     )
 
     out["epiteto"] = out["epiteto_especifico"]
