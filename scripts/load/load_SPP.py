@@ -166,7 +166,7 @@ def build_occurrence(df: pd.DataFrame, epiteto_ids: dict, forma_ids: dict, ident
             {
                 "id": occurrence_id,
                 "id_species": id_especie,
-                "basis_of_record": "PreservedSpecimen",
+                "basis_of_record": config.SPP_BASIS_OF_RECORD,
                 "origin_file": row.source_file,
                 "origin_row": row.source_row,
             }
