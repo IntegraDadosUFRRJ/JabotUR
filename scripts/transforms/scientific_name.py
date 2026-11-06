@@ -120,7 +120,7 @@ def parse_scientific_name(nome_raw):
     if not rest:
         # só "genero + epiteto"
         return _result(nome_raw, nome_norm, status=PARSE_STATUS_OK, genero=genus,
-                        epiteto=epithet, infra=None, autor=None)
+                        epiteto=epithet, infra=None, autor=None, qualifier=qualifier)
 
     infra_match = _INFRA_RANK_RE.search(rest)
     if infra_match:
