@@ -16,25 +16,19 @@ removida ou dataframe separado.
 import pandas as pd
 import duckdb
 
-try:
-    from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    import scripts.config as config
-except ImportError:
-    from ..db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    from .. import config
-
-try:
-    from scripts.transforms.scientific_name import parse_scientific_name_series
-    from scripts.transforms.registration_number import (
-        parse_registration_number_series,
-        STATUS_UNPARSEABLE as REG_STATUS_UNPARSEABLE,
-    )
-except ImportError:
-    from ..transforms.scientific_name import parse_scientific_name_series
-    from ..transforms.registration_number import (
-        parse_registration_number_series,
-        STATUS_UNPARSEABLE as REG_STATUS_UNPARSEABLE,
-    )
+from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+import scripts.config as config
+from scripts.transforms.scientific_name import (
+    PARSE_STATUS_GENUS_ONLY,
+    PARSE_STATUS_MORPHOSPECIES,
+    PARSE_STATUS_OK,
+    PARSE_STATUS_UNPARSEABLE,
+    parse_scientific_name_series,
+)
+from scripts.transforms.registration_number import (
+    parse_registration_number_series,
+    STATUS_UNPARSEABLE as REG_STATUS_UNPARSEABLE,
+)
 
 
 def load_staging_df() -> pd.DataFrame:
@@ -56,7 +50,7 @@ def _trim_and_normalize(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     sql = r"""
     CREATE OR REPLACE TEMP TABLE filled AS
     WITH numbered AS (
-        SELECT row_number() OVER () AS rn, * FROM df_input
+        SELECT row_number() OVER (ORDER BY CAST(_source_row AS INTEGER)) AS rn, * FROM df_input
     )
     SELECT
         rn,
@@ -101,14 +95,16 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
     # morfo-espécie: mesma convenção de clean_arboreto_citations.py -- não
     # visto nos dados reais de Espécimes ainda, mas mantido por consistência
     # caso apareça numa atualização futura da planilha
-    is_morphospecies = out["parse_status"] == "morphospecies"
+    is_morphospecies = out["parse_status"] == PARSE_STATUS_MORPHOSPECIES
     out.loc[is_morphospecies, "epiteto_especifico"] = out.loc[is_morphospecies, "nome_normalizado"]
     out.loc[is_morphospecies, "genero"] = None
 
-    out["reconcile_across_sources"] = ~is_morphospecies
+    # ADR-0003: morfo-espécie e unparseable nunca reconciliam entre fontes
+    is_unparseable = out["parse_status"] == PARSE_STATUS_UNPARSEABLE
+    out["reconcile_across_sources"] = ~(is_morphospecies | is_unparseable)
 
     out["needs_review"] = (
-        ~out["parse_status"].isin(["ok", "genus_only", "morphospecies"])
+        ~out["parse_status"].isin([PARSE_STATUS_OK, PARSE_STATUS_GENUS_ONLY, PARSE_STATUS_MORPHOSPECIES])
         | (out["registration_status"] == REG_STATUS_UNPARSEABLE)
     )
 

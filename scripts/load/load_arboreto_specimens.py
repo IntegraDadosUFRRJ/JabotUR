@@ -10,14 +10,9 @@ Arboreto não tem Filo fica NULL.
 
 import pandas as pd
 
-try:
-    from .. import config
-    from ..db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    from . import taxonomy
-except ImportError:
-    import config
-    from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
-    from scripts.load import taxonomy
+import scripts.config as config
+from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+from scripts.load import taxonomy
 
 
 def load_clean_df() -> pd.DataFrame:
@@ -33,12 +28,13 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
     out["source_sheet"] = out["_source_sheet"]
     out["source_row"] = out["_source_row"]
 
-    # morfo-espécie nunca reconcilia entre fontes
-    is_morphospecies = ~out["reconcile_across_sources"]
-    out.loc[is_morphospecies, "epiteto_especifico"] = (
-        out.loc[is_morphospecies, "epiteto_especifico"]
-        + " [" + out.loc[is_morphospecies, "source_sheet"]
-        + "#" + out.loc[is_morphospecies, "source_row"].astype(str) + "]"
+    # morfo-espécie e unparseable nunca reconciliam entre fontes (ADR-0003);
+    # em unparseable o epíteto é NULL e continua NULL depois do sufixo
+    not_reconciled = ~out["reconcile_across_sources"]
+    out.loc[not_reconciled, "epiteto_especifico"] = (
+        out.loc[not_reconciled, "epiteto_especifico"]
+        + " [" + out.loc[not_reconciled, "source_sheet"]
+        + "#" + out.loc[not_reconciled, "source_row"].astype(str) + "]"
     )
 
     out["epiteto"] = out["epiteto_especifico"]
