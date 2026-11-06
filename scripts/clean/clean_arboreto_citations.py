@@ -11,22 +11,13 @@ import duckdb
 from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
 import scripts.config as config
 
-try:
-    from scripts.transforms.scientific_name import (
-        PARSE_STATUS_GENUS_ONLY,
-        PARSE_STATUS_MORPHOSPECIES,
-        PARSE_STATUS_OK,
-        PARSE_STATUS_UNPARSEABLE,
-        parse_scientific_name_series,
-    )
-except ImportError:
-    from ..transforms.scientific_name import (
-        PARSE_STATUS_GENUS_ONLY,
-        PARSE_STATUS_MORPHOSPECIES,
-        PARSE_STATUS_OK,
-        PARSE_STATUS_UNPARSEABLE,
-        parse_scientific_name_series,
-    )
+from scripts.transforms.scientific_name import (
+    PARSE_STATUS_GENUS_ONLY,
+    PARSE_STATUS_MORPHOSPECIES,
+    PARSE_STATUS_OK,
+    PARSE_STATUS_UNPARSEABLE,
+    parse_scientific_name_series,
+)
 
 UNPARSEABLE_QUANTIDADE = "unparseable_quantidade"
 
