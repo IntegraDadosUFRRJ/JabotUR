@@ -98,7 +98,7 @@ Table substrato {
 // (não retroativo). Alvo da referência é occurrence, não a antiga coleta
 // (ver ADR-0001) hoje só populado para occurrences de briófita.
 Table coleta_observacao {
-  id_briofita int [ref: > occurrence.id]
+  id_briofita int [ref: > occurrence_bryophyte.id]
   id_observacao int [ref: > observacao.id]
 
   indexes {
@@ -107,7 +107,7 @@ Table coleta_observacao {
 }
 
 Table coleta_substrato {
-  id_briofita int [ref: > occurrence.id]
+  id_briofita int [ref: > occurrence_bryophyte.id]
   id_substrato int [ref: > substrato.id]
 
   indexes {
@@ -128,7 +128,7 @@ Table occurrence {
   origin_sheet varchar  // nullable: NULL pras linhas antigas do SPP (1 arquivo = 1 aba lá); obrigatório a partir do arboreto,mesmo motivo do ADR-0007
   origin_row varchar
 
-  note: 'Auditoria de implementação vs DER: no código atual da branch (load_SPP.py), a coluna física no banco ainda se chama "id_especie" e as colunas basis_of_record, identification_qualifier e origin_sheet não são populadas. A padronização para id_species e a população ou externalização do lineage estão previstas para as próximas migrações/PRs conforme ADR-0010 e ADR-0011.'
+  note: 'Auditoria de implementação vs DER: o carregador do SPP preenche basis_of_record e não preenche origin_sheet nem identification_qualifier; o do arboreto (espécimes) preenche os três. A coluna de espécie se chama id_species no banco (ADR-0010). A população ou externalização do lineage está prevista conforme ADR-0011.'
 }
 
 Table occurrence_bryophyte {
@@ -145,7 +145,7 @@ Table occurrence_arboretum {
   id_sector int [ref: >? sector.id]
   registration_number varchar
   location_description varchar  // ausente -> NULL, não string "N/A"(ver ADR-0008)
-  height_m numeric
+  height_m double precision
 }
 
 Table reproductive_status {
