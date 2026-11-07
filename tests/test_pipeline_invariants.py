@@ -58,7 +58,7 @@ FLAGGED_CLEAN_TABLES = [
     config.CLN_ARBORETO_SPECIMENS_TABLE,
 ]
 
-# (filho, coluna, pai): as relações que viram FK depois desta suíte
+# (filho, coluna, pai): cada relação tem FK no schema.sql e consulta de órfãos aqui
 REFERENCES = [
     (config.TB_FAMILIA, "id_filo", config.TB_FILO),
     (config.TB_GENERO, "id_familia", config.TB_FAMILIA),
@@ -255,6 +255,28 @@ class TestPipelineInvariants(unittest.TestCase):
                         f'WHERE p.id IS NULL AND c."{column}" IS NOT NULL',
                     )
                     self.assertEqual(orphans, 0)
+
+    def test_every_reference_has_foreign_key(self):
+        # Igualdade, não inclusão: FK fora da lista também aparece, e a lista de
+        # órfãos e as FKs do schema.sql não se separam
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    "SELECT c.conrelid::regclass::text, a.attname, c.confrelid::regclass::text, "
+                    "fa.attname, cardinality(c.conkey) "
+                    "FROM pg_constraint c "
+                    "JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1] "
+                    "JOIN pg_attribute fa ON fa.attrelid = c.confrelid AND fa.attnum = c.confkey[1] "
+                    "WHERE c.contype = 'f' AND c.connamespace = 'public'::regnamespace"
+                )
+            ).all()
+        for child, column, parent, parent_column, n_columns in rows:
+            with self.subTest(foreign_key=f"{child}.{column} -> {parent}"):
+                self.assertEqual(n_columns, 1)
+                self.assertEqual(parent_column, "id")
+        self.assertEqual({(child, column, parent) for child, column, parent, _, _ in rows}, set(REFERENCES))
+        # o conjunto esconderia uma FK duplicada
+        self.assertEqual(len(rows), len(REFERENCES))
 
     def test_origin_is_unique(self):
         # ADR-0007: a origem identifica a linha da planilha

@@ -1,6 +1,7 @@
 -- Esquema das tabelas finais do JabotUR, aplicado por init_postgres().
 -- Idempotente: só CREATE ... IF NOT EXISTS, sem DROP. Não migra banco antigo.
--- Sem chaves estrangeiras por enquanto (entram depois da suíte de invariantes).
+-- Chaves estrangeiras sem ON DELETE CASCADE: uma violação é achado a investigar.
+-- Banco criado antes delas não ganha as FKs aqui; é preciso recriar o esquema.
 -- Tabelas stg_* e cln_* ficam de fora: write_dataframe_to_postgres(mode="replace") as recria.
 
 -- Núcleo taxonômico
@@ -12,13 +13,15 @@ CREATE TABLE IF NOT EXISTS filo (
 CREATE TABLE IF NOT EXISTS familia (
     id bigint PRIMARY KEY,
     id_filo bigint,
-    nome text
+    nome text,
+    FOREIGN KEY (id_filo) REFERENCES filo (id)
 );
 
 CREATE TABLE IF NOT EXISTS genero (
     id bigint PRIMARY KEY,
     id_familia bigint,
-    nome text
+    nome text,
+    FOREIGN KEY (id_familia) REFERENCES familia (id)
 );
 
 CREATE TABLE IF NOT EXISTS autor (
@@ -31,7 +34,9 @@ CREATE TABLE IF NOT EXISTS epiteto_especifico (
     id_genero bigint,
     id_autor bigint,
     nome text,
-    infraespecifico text
+    infraespecifico text,
+    FOREIGN KEY (id_genero) REFERENCES genero (id),
+    FOREIGN KEY (id_autor) REFERENCES autor (id)
 );
 
 -- Índices únicos parciais por causa do infraespecifico NULL (ADR-0002)
@@ -90,7 +95,8 @@ CREATE TABLE IF NOT EXISTS occurrence (
     origin_file text,
     origin_row bigint,
     origin_sheet text,
-    identification_qualifier text
+    identification_qualifier text,
+    FOREIGN KEY (id_species) REFERENCES epiteto_especifico (id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS occurrence_uniq_origin
@@ -101,7 +107,11 @@ CREATE TABLE IF NOT EXISTS occurrence_bryophyte (
     id_forma bigint,
     id_identificacao bigint,
     id_parcela bigint,
-    amostra bigint
+    amostra bigint,
+    FOREIGN KEY (id) REFERENCES occurrence (id),
+    FOREIGN KEY (id_forma) REFERENCES forma_vida (id),
+    FOREIGN KEY (id_identificacao) REFERENCES identificacao (id),
+    FOREIGN KEY (id_parcela) REFERENCES parcela (id)
 );
 
 CREATE TABLE IF NOT EXISTS occurrence_arboretum (
@@ -110,20 +120,27 @@ CREATE TABLE IF NOT EXISTS occurrence_arboretum (
     id_sector bigint,
     registration_number text,
     location_description text,
-    height_m double precision
+    height_m double precision,
+    FOREIGN KEY (id) REFERENCES occurrence (id),
+    FOREIGN KEY (id_reproductive_status) REFERENCES reproductive_status (id),
+    FOREIGN KEY (id_sector) REFERENCES sector (id)
 );
 
 -- Associativas (sem id; PK composta)
 CREATE TABLE IF NOT EXISTS coleta_substrato (
     id_briofita bigint,
     id_substrato bigint,
-    PRIMARY KEY (id_briofita, id_substrato)
+    PRIMARY KEY (id_briofita, id_substrato),
+    FOREIGN KEY (id_briofita) REFERENCES occurrence_bryophyte (id),
+    FOREIGN KEY (id_substrato) REFERENCES substrato (id)
 );
 
 CREATE TABLE IF NOT EXISTS coleta_observacao (
     id_briofita bigint,
     id_observacao bigint,
-    PRIMARY KEY (id_briofita, id_observacao)
+    PRIMARY KEY (id_briofita, id_observacao),
+    FOREIGN KEY (id_briofita) REFERENCES occurrence_bryophyte (id),
+    FOREIGN KEY (id_observacao) REFERENCES observacao (id)
 );
 
 -- Citações bibliográficas
@@ -135,5 +152,6 @@ CREATE TABLE IF NOT EXISTS bibliographic_citation (
     identification_qualifier text,
     origin_file text,
     origin_sheet text,
-    origin_row bigint
+    origin_row bigint,
+    FOREIGN KEY (id_species) REFERENCES epiteto_especifico (id)
 );
