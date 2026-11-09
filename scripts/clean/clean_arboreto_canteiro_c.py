@@ -3,10 +3,12 @@ import duckdb
 from scripts import config
 from scripts.db import db_utils
 
-def clean_arboreto_canteiro_c_data():
-    df_stg = db_utils.read_dataframe_from_postgres("stg_canteiro_c")
+def read_staging():
+    return db_utils.read_dataframe_from_postgres("stg_canteiro_c")
+
+
+def transform(df_stg):
     con = duckdb.connect(database=":memory:")
-    
     try:
         con.register("stg_canteiro_c", df_stg)
 
@@ -31,15 +33,25 @@ def clean_arboreto_canteiro_c_data():
         colunas_existentes = [col for col in colunas_para_remover if col in df_clean.columns]
         df_clean = df_clean.drop(columns=colunas_existentes)
 
-        db_utils.write_dataframe_to_postgres(
-            df_clean, 
-            table_name=config.CLN_CANTEIRO_C_TABLE, 
-            mode="replace"
-        )
-        print("Limpeza do Canteiro C realizada com sucesso")
-
+        return df_clean
     finally:
         con.close()
+
+
+def save_clean(df_clean):
+    db_utils.write_dataframe_to_postgres(
+        df_clean, 
+        table_name=config.CLN_CANTEIRO_C_TABLE, 
+        mode="replace"
+    )
+
+
+def clean_arboreto_canteiro_c_data():
+    df_stg = read_staging()
+    df_clean = transform(df_stg)
+    save_clean(df_clean)
+    print("Limpeza do Canteiro C realizada com sucesso")
+
 
 if __name__ == "__main__":
     clean_arboreto_canteiro_c_data()
