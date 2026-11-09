@@ -6,12 +6,13 @@ def stage_arboreto_canteiro_c_data():
     con = duckdb.connect(database=":memory:")
     con.execute("INSTALL spatial; LOAD spatial;")
 
-    query = f"""
+query = f"""
     SELECT 
         *,
         '{config.ARBORETO_XLSX_PATH.name}' AS _source_file,
         '{config.CANTEIRO_C_SHEET_NAME}' AS _source_sheet,
-        row_number() OVER () + 1 AS _source_row
+        row_number() OVER () + 1 AS _source_row,
+        current_timestamp AS _loaded_at
     FROM st_read('{config.ARBORETO_XLSX_PATH}', layer='{config.CANTEIRO_C_SHEET_NAME}')
     """
     
