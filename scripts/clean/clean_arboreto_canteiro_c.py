@@ -27,7 +27,7 @@ def transform(df_stg):
 
         colunas_para_remover = [
             "family_clean", "species_clean", "origin_clean", "domain_clean", "cncflora_clean", "height_m_clean",
-            "Família", "Espécie", "Origem", "Domínio fitogeográfico", "Categoria CNCFlora", "Altura (m)"
+            "Altura (m)" 
         ]
         
         colunas_existentes = [col for col in colunas_para_remover if col in df_clean.columns]

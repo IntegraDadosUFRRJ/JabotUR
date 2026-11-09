@@ -6,7 +6,7 @@ def stage_arboreto_canteiro_c_data():
     con = duckdb.connect(database=":memory:")
     con.execute("INSTALL spatial; LOAD spatial;")
 
-query = f"""
+    query = f"""
     SELECT 
         *,
         '{config.ARBORETO_XLSX_PATH.name}' AS _source_file,
@@ -24,6 +24,7 @@ query = f"""
         mode="replace"
     )
     print("Staging do Canteiro C realizado com sucesso via DuckDB!")
+
 
 if __name__ == "__main__":
     stage_arboreto_canteiro_c_data()
