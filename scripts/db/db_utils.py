@@ -105,6 +105,28 @@ def write_dataframe_to_postgres(df: pd.DataFrame, table_name: str, mode : str = 
 
 
 
-def read_dataframe_from_postgres(table_name: str) -> pd.DataFrame:
+def _has_id_column(conn, table_name: str) -> bool:
+    # Filtra pelo schema atual para não achar uma tabela homônima em outro schema
+    return conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = current_schema() AND table_name = :table AND column_name = 'id'"
+        ),
+        {"table": table_name},
+    ).scalar() is not None
+
+
+def read_dataframe_from_postgres(table_name: str, order_by: list[str] | None = None) -> pd.DataFrame:
+    """
+    Sem ORDER BY o Postgres devolve as linhas na ordem física, que muda a cada upsert.
+    order_by: colunas da ordenação; sem ele, ordena por "id" quando a tabela tem essa coluna
+    (tabelas finais), para que quem itera o resultado veja sempre a mesma ordem.
+    """
     engine = get_connection()
-    return pd.read_sql_query(f'SELECT * FROM "{table_name}"', con=engine)
+    with engine.connect() as conn:
+        if order_by is None and _has_id_column(conn, table_name):
+            order_by = ["id"]
+        query = f'SELECT * FROM "{table_name}"'
+        if order_by:
+            query += " ORDER BY " + ", ".join([f'"{col}"' for col in order_by])
+        return pd.read_sql_query(text(query), con=conn)
