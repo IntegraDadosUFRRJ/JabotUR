@@ -107,6 +107,15 @@ CLN_ARBORETO_SPECIMENS_TABLE = "cln_arboreto_specimens"
 PARSE_STATUS_TOTAL_ROW = "total_row"
 ARBORETO_CITATION_COL_FAMILY_RAW = "family_raw"
 
+# Colunas de linhagem que o staging grava em toda fonte
+SOURCE_FILE_COL = "_source_file"
+SOURCE_SHEET_COL = "_source_sheet"
+SOURCE_ROW_COL = "_source_row"
+
+# Ordem da planilha usada na leitura do staging e no row_number() do clean
+ARBORETO_CITATION_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
+SPP_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_ROW_COL]
+
 # === Nomes das tabelas finais normalizadas ===
 TB_FILO = "filo"
 TB_FAMILIA = "familia"
