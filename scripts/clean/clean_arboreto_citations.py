@@ -22,7 +22,17 @@ from scripts.transforms.scientific_name import (
 UNPARSEABLE_QUANTIDADE = "unparseable_quantidade"
 
 def load_staging_df() -> pd.DataFrame:
-    return read_dataframe_from_postgres(config.STG_ARBORETO_CITATIONS_TABLE)
+    return read_dataframe_from_postgres(
+        config.STG_ARBORETO_CITATIONS_TABLE, order_by=config.ARBORETO_CITATION_STAGING_ORDER
+    )
+
+
+def _staging_order_sql() -> str:
+    # _source_row comparado como número: como texto, a linha 10 viria antes da 9
+    return ", ".join(
+        f"CAST({col} AS INTEGER)" if col == config.SOURCE_ROW_COL else col
+        for col in config.ARBORETO_CITATION_STAGING_ORDER
+    )
 
 
 def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
@@ -32,14 +42,15 @@ def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
 
 
 def _fill_down_and_trim(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
-    # Numera as linhas de staging para preservar a ordem original e aplica
+    # Numera as linhas de staging na ordem da planilha (arquivo, aba, linha) e aplica
     # fill-down de familia com last_value() IGNORE NULLS
-    # (linhas sem familia recebem o último valor, não-nulo, anterior)
+    # (linhas sem familia recebem o último valor, não-nulo, anterior).
+    # A ordem vem do ORDER BY, não da entrada: o Postgres devolve as linhas em ordem física.
     # Normaliza familia com trim + regex e prepara especie/quantidade como
     # campos *_raw, aplicando trim e substituindo valores nulos por strings vazias
     #
     # Resumo da query (CTEs encadeadas, cada passo lê só o anterior):
-    #   numbered: numera as linhas do staging (rn);
+    #   numbered: numera as linhas do staging (rn) na ordem da planilha;
     #   typed:    guarda a família ORIGINAL (family_raw, antes do fill-down), faz o
     #             fill-down de familia, aplica trim em especie/quantidade e faz o
     #             TRY_CAST da quantidade para DOUBLE (inválido vira NULL);
@@ -54,7 +65,7 @@ def _fill_down_and_trim(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     sql = f"""
     CREATE OR REPLACE TEMP TABLE filled AS
     WITH numbered AS (
-        SELECT row_number() OVER () AS rn, * FROM df_input
+        SELECT row_number() OVER (ORDER BY {_staging_order_sql()}) AS rn, * FROM df_input
     ),
     typed AS (
         SELECT

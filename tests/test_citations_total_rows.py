@@ -39,6 +39,14 @@ def _staging_rows():
     ]
 
 
+def _ordering_rows():
+    """_staging_rows() mais uma aba com família em branco na linha 10, herdada da 9."""
+    return _staging_rows() + [
+        ("D", 9, "Malvaceae", "Pachira aquatica Aubl.", "1"),
+        ("D", 10, None, "Pachira glabra Pasq.", "1"),
+    ]
+
+
 def _to_input(rows):
     # Adaptador temporário: converte a tabela DuckDB em DataFrame porque 
     # clean.transform() ainda não teve a E/S migrada (previsto na issue #19).
@@ -81,6 +89,26 @@ def _flags(result):
         ORDER BY _source_sheet, _source_row
         """
     ).fetchall()
+
+
+def _families(result):
+    """Família após o fill-down, ordenada por (aba, linha)."""
+    return duckdb.query(
+        """
+        SELECT _source_sheet, _source_row, familia
+        FROM result
+        ORDER BY _source_sheet, _source_row
+        """
+    ).fetchall()
+
+
+def _family_at(result, sheet, row):
+    return duckdb.query(
+        f"""
+        SELECT familia FROM result
+        WHERE _source_sheet = '{sheet}' AND CAST(_source_row AS INTEGER) = {row}
+        """
+    ).fetchone()[0]
 
 
 class TotalRowTests(unittest.TestCase):
@@ -163,16 +191,28 @@ class TotalRowTests(unittest.TestCase):
         ).fetchone()[0]
         self.assertEqual(total_rows_count, 1)
 
-    def test_shuffled_input_gives_same_flags(self):
-        # compara só parse_status, needs_review e reconcile_across_sources;
-        # nunca `familia` (o fill-down depende da ordem de entrada, issue #11)
-        rows = _staging_rows()
-        shuffled = [rows[i] for i in (4, 2, 6, 0, 3, 1, 5)]
+    def test_shuffled_input_gives_same_clean(self):
+        # o fill-down segue (arquivo, aba, linha), não a ordem em que o staging chega
+        rows = _ordering_rows()
+        shuffled = [rows[i] for i in (8, 4, 2, 6, 0, 7, 3, 1, 5)]
 
-        expected = _flags(clean_arboreto_citations.transform(_to_input(rows)))
-        actual = _flags(clean_arboreto_citations.transform(_to_input(shuffled)))
+        expected = clean_arboreto_citations.transform(_to_input(rows))
+        actual = clean_arboreto_citations.transform(_to_input(shuffled))
 
-        self.assertEqual(expected, actual)
+        self.assertEqual(_flags(expected), _flags(actual))
+        self.assertEqual(_families(expected), _families(actual))
+        self.assertEqual(_family_at(actual, "D", 10), "Malvaceae")
+
+    def test_source_row_is_ordered_as_number(self):
+        # com _source_row em texto, '10' < '9' e a linha 10 herdaria da aba C (Fabaceae)
+        rows = _ordering_rows()
+        shuffled = [rows[i] for i in (8, 7, 0, 1, 2, 3, 4, 5, 6)]
+        df = _to_input(shuffled)
+        df["_source_row"] = df["_source_row"].astype(str)
+
+        result = clean_arboreto_citations.transform(df)
+
+        self.assertEqual(_family_at(result, "D", 10), "Malvaceae")
 
     def test_control_columns_not_in_output(self):
         result = clean_arboreto_citations.transform(_to_input(_staging_rows()))

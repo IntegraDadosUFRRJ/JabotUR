@@ -16,7 +16,15 @@ import scripts.config as config
 
 
 def load_staging_df() -> pd.DataFrame:
-    return read_dataframe_from_postgres(config.STG_SPP_TABLE)
+    return read_dataframe_from_postgres(config.STG_SPP_TABLE, order_by=config.SPP_STAGING_ORDER)
+
+
+def _staging_order_sql() -> str:
+    # _source_row comparado como número: como texto, a linha 10 viria antes da 9
+    return ", ".join(
+        f"CAST({col} AS INTEGER)" if col == config.SOURCE_ROW_COL else col
+        for col in config.SPP_STAGING_ORDER
+    )
 
 
 def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
@@ -50,16 +58,18 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
     con = _to_duckdb_table(df)
 
     observation_expr = _build_observation_expression()
+    order_sql = _staging_order_sql()
 
-    # Numera as linhas de staging e aplica fill-down com
+    # Numera as linhas de staging na ordem da planilha (arquivo, linha) e aplica fill-down com
     # last_value() IGNORE NULLS em parcela/amostra/substrato/forma_vida 
-    # (linhas em branco recebem o último valor, não-nulo, anterior)
+    # (linhas em branco recebem o último valor, não-nulo, anterior).
+    # A ordem vem do ORDER BY, não da entrada: o Postgres devolve as linhas em ordem física.
     # Normaliza (trim + regex) os campos taxonômicos/metadados, converte
     # status_identificacao pra INT e monta a coluna de observações 
     sql = f"""
     CREATE OR REPLACE TEMP TABLE cleaned AS
     WITH numbered AS (
-        SELECT row_number() OVER () AS rn, * FROM df_input
+        SELECT row_number() OVER (ORDER BY {order_sql}) AS rn, * FROM df_input
     ), filled AS (
         SELECT
             rn,
@@ -135,7 +145,7 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
     """
 
     con.execute(sql)
-    out = con.execute("SELECT * FROM cleaned").df()
+    out = con.execute(f"SELECT * FROM cleaned ORDER BY {order_sql}").df()
     con.close()
 
     if "parcela" in out.columns:

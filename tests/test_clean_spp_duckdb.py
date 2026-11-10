@@ -41,3 +41,35 @@ class CleanSppDuckDBTests(unittest.TestCase):
         self.assertEqual(result.loc[0, "substrato"], "rocha")
         self.assertEqual(result.loc[1, "amostra"], "A1")
         self.assertEqual(result.loc[0, "status_identificacao"], 1)
+
+    def test_shuffled_input_gives_same_clean(self) -> None:
+        # o fill-down segue (arquivo, linha), não a ordem em que o staging chega;
+        # _source_row em texto cobre a ordem numérica ('10' < '9' como texto)
+        df = pd.DataFrame(
+            {
+                "parcela": ["4", "5", None],
+                "amostra": ["A1", None, None],
+                "substrato": ["rocha", "cimento", None],
+                "forma_vida": ["terrestre", None, None],
+                "observacao": [None, None, None],
+                "identificacao": ["1", "1", "1"],
+                "filo": ["Bryophyta", "Bryophyta", "Bryophyta"],
+                "familia": ["Pottiaceae", "Pottiaceae", "Pottiaceae"],
+                "genero": ["Barbula", "Barbula", "Barbula"],
+                "epiteto_especifico": ["indica", "indica", "indica"],
+                "autor": ["Hedw.", "Hedw.", "Hedw."],
+                "_source_file": ["SPP.xlsx", "SPP.xlsx", "SPP.xlsx"],
+                "_source_sheet": ["Planilha1", "Planilha1", "Planilha1"],
+                "_source_row": ["8", "9", "10"],
+            }
+        )
+        shuffled = df.iloc[[2, 0, 1]].reset_index(drop=True)
+
+        expected = clean_SPP.transform(df).drop(columns="_cleaned_at")
+        actual = clean_SPP.transform(shuffled).drop(columns="_cleaned_at")
+
+        pd.testing.assert_frame_equal(expected, actual)
+        last = actual[actual["_source_row"] == "10"].iloc[0]
+        self.assertEqual(last["parcela"], "5")
+        self.assertEqual(last["amostra"], "A1")
+        self.assertEqual(last["substrato"], "cimento")
