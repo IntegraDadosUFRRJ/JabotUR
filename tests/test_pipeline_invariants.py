@@ -89,7 +89,7 @@ KNOWN_PARSE_STATUSES = {
 
 # Comparados após lower(trim()); "NA" não entra porque é código IUCN válido (ADR-0005)
 PLACEHOLDERS = sorted(
-    {"", "n/a", "-", "sem identificação", config.OBSERVACAO_NULL_PLACEHOLDER.lower()}
+    {"", "n/a", "-", "sem identificação", "sem observações registradas"}
 )
 
 SKIP_REASON = db_test_support.invariants_skip_reason()

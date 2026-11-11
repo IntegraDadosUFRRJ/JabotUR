@@ -48,8 +48,9 @@ def _build_observation_expression() -> str:
         expression = (
             f"regexp_replace({expression}, {_sql_literal(pattern)}, {_sql_literal(replacement)}, 'gi')"
         )
+    # Célula vazia é ausência de observação: NULL, não texto de preenchimento
     return (
-        f"CASE WHEN trim(coalesce(observacao, '')) = '' THEN {_sql_literal(config.OBSERVACAO_NULL_PLACEHOLDER)} "
+        f"CASE WHEN trim(coalesce(observacao, '')) = '' THEN NULL "
         f"ELSE trim({expression}) END"
     )
 
