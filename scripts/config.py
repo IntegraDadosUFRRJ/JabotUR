@@ -153,9 +153,7 @@ OBSERVACAO_REGEX_FIXES = [
     (r"\bc(?:\s*[\./]\s*|\s+)?esp\b", "com esporófito"),
 ]
 
-OBSERVACAO_NULL_PLACEHOLDER = "sem observações registradas"
 OBSERVACOES_REGEX_FIXES = OBSERVACAO_REGEX_FIXES
-OBSERVACOES_NULL_PLACEHOLDER = OBSERVACAO_NULL_PLACEHOLDER
 
 # === Constantes de negócio usadas no load final ===
  
