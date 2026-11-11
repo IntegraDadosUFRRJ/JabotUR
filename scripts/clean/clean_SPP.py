@@ -61,7 +61,7 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
     order_sql = _staging_order_sql()
 
     # Numera as linhas de staging na ordem da planilha (arquivo, linha) e aplica fill-down com
-    # last_value() IGNORE NULLS em parcela/amostra/substrato/forma_vida 
+    # last_value() IGNORE NULLS em parcela/amostra/substrato, que valem para um bloco de linhas
     # (linhas em branco recebem o último valor, não-nulo, anterior).
     # A ordem vem do ORDER BY, não da entrada: o Postgres devolve as linhas em ordem física.
     # Normaliza (trim + regex) os campos taxonômicos/metadados, converte
@@ -93,12 +93,11 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
                     ELSE regexp_replace(regexp_replace(trim(coalesce(substrato, '')), '\\s+', ' ', 'g'), '^\\s+|\\s+$', '', 'g')
                 END IGNORE NULLS
             ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS substrato,
-            last_value(
-                CASE
-                    WHEN trim(coalesce(forma_vida, '')) = '' THEN NULL
-                    ELSE regexp_replace(trim(coalesce(forma_vida, '')), '^\\s+|\\s+$', '', 'g')
-                END IGNORE NULLS
-            ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS forma_vida,
+            -- forma de vida é da coleta, não do bloco: sem fill-down, vazio fica NULL
+            CASE
+                WHEN trim(coalesce(forma_vida, '')) = '' THEN NULL
+                ELSE regexp_replace(trim(coalesce(forma_vida, '')), '^\\s+|\\s+$', '', 'g')
+            END AS forma_vida,
             {observation_expr} AS observacoes,
             CASE
                 WHEN trim(coalesce(identificacao, '')) = '' THEN NULL

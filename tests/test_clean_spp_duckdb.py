@@ -42,6 +42,35 @@ class CleanSppDuckDBTests(unittest.TestCase):
         self.assertEqual(result.loc[1, "amostra"], "A1")
         self.assertEqual(result.loc[0, "status_identificacao"], 1)
 
+    def test_blank_forma_vida_stays_null(self) -> None:
+        # forma de vida é da coleta: a linha em branco não herda a de cima
+        df = pd.DataFrame(
+            {
+                "parcela": ["4", None, None],
+                "amostra": ["A1", None, None],
+                "substrato": ["rocha", None, None],
+                "forma_vida": [" Tufo ", None, "Tapete"],
+                "observacao": [None, None, None],
+                "identificacao": ["1", "1", "1"],
+                "filo": ["Bryophyta", "Bryophyta", "Bryophyta"],
+                "familia": ["Pottiaceae", "Pottiaceae", "Pottiaceae"],
+                "genero": ["Barbula", "Barbula", "Barbula"],
+                "epiteto_especifico": ["indica", "indica", "indica"],
+                "autor": ["Hedw.", "Hedw.", "Hedw."],
+                "_source_file": ["SPP.xlsx", "SPP.xlsx", "SPP.xlsx"],
+                "_source_sheet": ["Planilha1", "Planilha1", "Planilha1"],
+                "_source_row": [2, 3, 4],
+            }
+        )
+
+        result = clean_SPP.transform(df)
+
+        self.assertEqual(result.loc[0, "forma_vida"], "Tufo")
+        self.assertTrue(pd.isna(result.loc[1, "forma_vida"]))
+        self.assertEqual(result.loc[2, "forma_vida"], "Tapete")
+        # parcela continua com fill-down
+        self.assertEqual(result.loc[1, "parcela"], "4")
+
     def test_shuffled_input_gives_same_clean(self) -> None:
         # o fill-down segue (arquivo, linha), não a ordem em que o staging chega;
         # _source_row em texto cobre a ordem numérica ('10' < '9' como texto)
