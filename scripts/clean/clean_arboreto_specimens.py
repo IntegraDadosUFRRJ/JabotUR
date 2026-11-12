@@ -13,6 +13,8 @@ coluna (parse_status, registration_status, needs_review), nunca linha
 removida ou dataframe separado.
 """
 
+from pathlib import Path
+
 import pandas as pd
 import duckdb
 
@@ -30,6 +32,8 @@ from scripts.transforms.registration_number import (
     STATUS_UNPARSEABLE as REG_STATUS_UNPARSEABLE,
 )
 
+SQL_PATH = Path(__file__).with_name("clean_arboreto_specimens.sql")
+
 
 def load_staging_df() -> pd.DataFrame:
     return read_dataframe_from_postgres(
@@ -44,45 +48,9 @@ def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
 
 
 def _trim_and_normalize(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
-    # Numera as linhas de staging e normaliza os campos mecânicos
-    #   - familia: trim; " - " placeholder usado nas linhas "sem identificação" e vira NULL
-    #   - setor: trim; normaliza os casos onde a planilha trouxe só o
-    #     número solto para o formato de código igual ao resto da coluna
-    #   - descricao_localizacao / estado_reprodutivo: trim, string vazia vira NULL
-    sql = r"""
-    CREATE OR REPLACE TEMP TABLE filled AS
-    WITH numbered AS (
-        SELECT row_number() OVER (ORDER BY CAST(_source_row AS INTEGER)) AS rn, * FROM df_input
-    )
-    SELECT
-        rn,
-        _source_file,
-        _source_sheet,
-        _source_row,
-        CASE
-            WHEN trim(coalesce(familia, '')) IN ('', '-') THEN NULL
-            ELSE regexp_replace(trim(coalesce(familia, '')), '^\s+|\s+$', '', 'g')
-        END AS familia,
-        trim(coalesce(especie, '')) AS especie_raw,
-        trim(coalesce(numero_registro, '')) AS numero_registro_raw,
-        CASE
-            WHEN trim(coalesce(setor, '')) = '' THEN NULL
-            WHEN regexp_matches(trim(coalesce(setor, '')), '^[0-9]+\.0$')
-                THEN regexp_replace(trim(setor), '\.0$', '')
-            ELSE trim(coalesce(setor, ''))
-        END AS setor,
-        CASE
-            WHEN trim(coalesce(descricao_localizacao, '')) = '' THEN NULL
-            ELSE trim(coalesce(descricao_localizacao, ''))
-        END AS descricao_localizacao,
-        CASE
-            WHEN trim(coalesce(estado_reprodutivo, '')) = '' THEN NULL
-            ELSE trim(coalesce(estado_reprodutivo, ''))
-        END AS estado_reprodutivo
-    FROM numbered
-    """
-    con.execute(sql)
-    return con.execute("SELECT * FROM filled ORDER BY rn").df()
+    # A query e o comentário-resumo dela estão em clean_arboreto_specimens.sql; sem
+    # trechos dinâmicos, o arquivo é executado como está (sem format)
+    return con.execute(SQL_PATH.read_text(encoding="utf-8")).df()
 
 
 def transform(df: pd.DataFrame) -> pd.DataFrame:
