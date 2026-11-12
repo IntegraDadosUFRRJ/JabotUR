@@ -9,7 +9,10 @@ from scripts.load import taxonomy
 
 
 def load_clean_df() -> pd.DataFrame:
-    return read_dataframe_from_postgres(config.CLN_ARBORETO_CITATIONS_TABLE)
+    # Os ids saem na ordem das linhas lidas; cln_* não tem id, então a ordem vem da planilha
+    return read_dataframe_from_postgres(
+        config.CLN_ARBORETO_CITATIONS_TABLE, order_by=config.ARBORETO_CITATION_STAGING_ORDER
+    )
 
 
 def prepare(df: pd.DataFrame) -> pd.DataFrame:

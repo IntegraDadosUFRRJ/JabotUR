@@ -32,7 +32,9 @@ from scripts.transforms.registration_number import (
 
 
 def load_staging_df() -> pd.DataFrame:
-    return read_dataframe_from_postgres(config.STG_ARBORETO_SPECIMENS_TABLE)
+    return read_dataframe_from_postgres(
+        config.STG_ARBORETO_SPECIMENS_TABLE, order_by=config.ARBORETO_SPECIMENS_STAGING_ORDER
+    )
 
 
 def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
