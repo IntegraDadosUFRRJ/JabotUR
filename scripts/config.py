@@ -112,8 +112,9 @@ SOURCE_FILE_COL = "_source_file"
 SOURCE_SHEET_COL = "_source_sheet"
 SOURCE_ROW_COL = "_source_row"
 
-# Ordem da planilha usada na leitura do staging e no row_number() do clean
+# Ordem da planilha usada na leitura do staging, no row_number() do clean e na leitura do clean pelos loads
 ARBORETO_CITATION_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
+ARBORETO_SPECIMENS_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
 SPP_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_ROW_COL]
 
 # === Nomes das tabelas finais normalizadas ===
