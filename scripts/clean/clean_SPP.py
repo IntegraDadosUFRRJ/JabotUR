@@ -7,12 +7,15 @@ A transformação é executada principalmente com DuckDB, aplicando:
   - trimming em campos textuais de metadados taxonômicos.
 """
 
+from pathlib import Path
+
 import pandas as pd
 import duckdb
 
 from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
 import scripts.config as config
 
+SQL_PATH = Path(__file__).with_name("clean_SPP.sql")
 
 
 def load_staging_df() -> pd.DataFrame:
@@ -58,94 +61,14 @@ def _build_observation_expression() -> str:
 def transform(df: pd.DataFrame) -> pd.DataFrame:
     con = _to_duckdb_table(df)
 
-    observation_expr = _build_observation_expression()
-    order_sql = _staging_order_sql()
-
-    # Numera as linhas de staging na ordem da planilha (arquivo, linha) e aplica fill-down com
-    # last_value() IGNORE NULLS em parcela/amostra/substrato, que valem para um bloco de linhas
-    # (linhas em branco recebem o último valor, não-nulo, anterior).
-    # A ordem vem do ORDER BY, não da entrada: o Postgres devolve as linhas em ordem física.
-    # Normaliza (trim + regex) os campos taxonômicos/metadados, converte
-    # status_identificacao pra INT e monta a coluna de observações 
-    sql = f"""
-    CREATE OR REPLACE TEMP TABLE cleaned AS
-    WITH numbered AS (
-        SELECT row_number() OVER (ORDER BY {order_sql}) AS rn, * FROM df_input
-    ), filled AS (
-        SELECT
-            rn,
-            _source_file,
-            _source_row,
-            last_value(
-                CASE
-                    WHEN trim(coalesce(parcela, '')) = '' THEN NULL
-                    ELSE regexp_replace(regexp_replace(trim(coalesce(parcela, '')), '^\\s+|\\s+$', '', 'g'), '4\\*', '4')
-                END IGNORE NULLS
-            ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS parcela,
-            last_value(
-                CASE
-                    WHEN trim(coalesce(amostra, '')) = '' THEN NULL
-                    ELSE regexp_replace(trim(coalesce(amostra, '')), '^\\s+|\\s+$', '', 'g')
-                END IGNORE NULLS
-            ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS amostra,
-            last_value(
-                CASE
-                    WHEN trim(coalesce(substrato, '')) = '' THEN NULL
-                    ELSE regexp_replace(regexp_replace(trim(coalesce(substrato, '')), '\\s+', ' ', 'g'), '^\\s+|\\s+$', '', 'g')
-                END IGNORE NULLS
-            ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS substrato,
-            -- forma de vida é da coleta, não do bloco: sem fill-down, vazio fica NULL
-            CASE
-                WHEN trim(coalesce(forma_vida, '')) = '' THEN NULL
-                ELSE regexp_replace(trim(coalesce(forma_vida, '')), '^\\s+|\\s+$', '', 'g')
-            END AS forma_vida,
-            {observation_expr} AS observacoes,
-            CASE
-                WHEN trim(coalesce(identificacao, '')) = '' THEN NULL
-                ELSE CAST(trim(coalesce(identificacao, '')) AS INTEGER)
-            END AS status_identificacao,
-            CASE
-                WHEN trim(coalesce(filo, '')) = '' THEN NULL
-                ELSE regexp_replace(trim(coalesce(filo, '')), '^\\s+|\\s+$', '', 'g')
-            END AS filo,
-            CASE
-                WHEN trim(coalesce(familia, '')) = '' THEN NULL
-                ELSE regexp_replace(trim(coalesce(familia, '')), '^\\s+|\\s+$', '', 'g')
-            END AS familia,
-            CASE
-                WHEN trim(coalesce(genero, '')) = '' THEN NULL
-                ELSE regexp_replace(trim(coalesce(genero, '')), '^\\s+|\\s+$', '', 'g')
-            END AS genero,
-            CASE
-                WHEN trim(coalesce(epiteto_especifico, '')) = '' THEN NULL
-                ELSE regexp_replace(trim(coalesce(epiteto_especifico, '')), '^\\s+|\\s+$', '', 'g')
-            END AS especie,
-            CASE
-                WHEN trim(coalesce(autor, '')) = '' THEN NULL
-                ELSE regexp_replace(trim(coalesce(autor, '')), '^\\s+|\\s+$', '', 'g')
-            END AS autor
-        FROM numbered
+    # A query e o comentário-resumo dela estão em clean_SPP.sql; aqui só entram os
+    # trechos montados a partir de listas do config.py
+    sql = SQL_PATH.read_text(encoding="utf-8").format(
+        staging_order=_staging_order_sql(),
+        observation_expression=_build_observation_expression(),
     )
-    SELECT
-        _source_file,
-        _source_row,
-        parcela,
-        amostra,
-        substrato,
-        forma_vida,
-        observacoes,
-        status_identificacao,
-        filo,
-        familia,
-        genero,
-        especie,
-        autor,
-        CURRENT_TIMESTAMP AS _cleaned_at
-    FROM filled
-    """
 
-    con.execute(sql)
-    out = con.execute(f"SELECT * FROM cleaned ORDER BY {order_sql}").df()
+    out = con.execute(sql).df()
     con.close()
 
     if "parcela" in out.columns:
