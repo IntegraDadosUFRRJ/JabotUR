@@ -5,6 +5,8 @@ A transformação combina:
   - Python para o parsing do nome científico;
 """
 
+from pathlib import Path
+
 import pandas as pd
 import duckdb
 
@@ -20,6 +22,7 @@ from scripts.transforms.scientific_name import (
 )
 
 UNPARSEABLE_QUANTIDADE = "unparseable_quantidade"
+SQL_PATH = Path(__file__).with_name("clean_arboreto_citations.sql")
 
 def load_staging_df() -> pd.DataFrame:
     return read_dataframe_from_postgres(
@@ -42,90 +45,13 @@ def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
 
 
 def _fill_down_and_trim(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
-    # Numera as linhas de staging na ordem da planilha (arquivo, aba, linha) e aplica
-    # fill-down de familia com last_value() IGNORE NULLS
-    # (linhas sem familia recebem o último valor, não-nulo, anterior).
-    # A ordem vem do ORDER BY, não da entrada: o Postgres devolve as linhas em ordem física.
-    # Normaliza familia com trim + regex e prepara especie/quantidade como
-    # campos *_raw, aplicando trim e substituindo valores nulos por strings vazias
-    #
-    # Resumo da query (CTEs encadeadas, cada passo lê só o anterior):
-    #   numbered: numera as linhas do staging (rn) na ordem da planilha;
-    #   typed:    guarda a família ORIGINAL (family_raw, antes do fill-down), faz o
-    #             fill-down de familia, aplica trim em especie/quantidade e faz o
-    #             TRY_CAST da quantidade para DOUBLE (inválido vira NULL);
-    #   checked:  quantidade finita; NaN/inf viram NULL. Divergência deliberada do
-    #             TRY_CAST puro, que aceita 'nan'/'inf', para manter o mesmo
-    #             comportamento do antigo pd.to_numeric(errors="coerce") + isna();
-    #   summed:   previous_quantity_sum = soma das quantidades das linhas ANTERIORES
-    #             da mesma aba, com ORDER BY explícito por _source_row inteiro
-    #             (NULL conta como 0);
-    #   SELECT final: is_total_row = família original e espécie vazias, quantidade
-    #             preenchida e igual à soma anterior da aba (ADR-0012).
-    sql = f"""
-    CREATE OR REPLACE TEMP TABLE filled AS
-    WITH numbered AS (
-        SELECT row_number() OVER (ORDER BY {_staging_order_sql()}) AS rn, * FROM df_input
-    ),
-    typed AS (
-        SELECT
-            rn,
-            _source_file,
-            _source_sheet,
-            _source_row,
-            trim(coalesce(familia, '')) AS {config.ARBORETO_CITATION_COL_FAMILY_RAW},
-            last_value(
-                CASE
-                    WHEN trim(coalesce(familia, '')) = '' THEN NULL
-                    ELSE regexp_replace(trim(coalesce(familia, '')), '^\\s+|\\s+$', '', 'g')
-                END IGNORE NULLS
-            ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS familia,
-            trim(coalesce(especie, '')) AS especie_raw,
-            trim(coalesce(quantidade, '')) AS quantidade_raw,
-            TRY_CAST(NULLIF(trim(coalesce(quantidade, '')), '') AS DOUBLE) AS quantidade_cast
-        FROM numbered
-    ),
-    checked AS (
-        SELECT
-            *,
-            CASE WHEN isfinite(quantidade_cast) THEN quantidade_cast END AS quantidade
-        FROM typed
-    ),
-    summed AS (
-        SELECT
-            *,
-            coalesce(
-                sum(quantidade) OVER (
-                    PARTITION BY _source_file, _source_sheet
-                    ORDER BY CAST(_source_row AS INTEGER)
-                    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-                ),
-                0
-            ) AS previous_quantity_sum
-        FROM checked
+    # A query e o comentário-resumo dela estão em clean_arboreto_citations.sql; aqui só
+    # entram os trechos que vêm do config.py
+    sql = SQL_PATH.read_text(encoding="utf-8").format(
+        staging_order=_staging_order_sql(),
+        family_raw_col=config.ARBORETO_CITATION_COL_FAMILY_RAW,
     )
-    SELECT
-        rn,
-        _source_file,
-        _source_sheet,
-        _source_row,
-        {config.ARBORETO_CITATION_COL_FAMILY_RAW},
-        familia,
-        especie_raw,
-        quantidade_raw,
-        quantidade,
-        previous_quantity_sum,
-        coalesce(
-            {config.ARBORETO_CITATION_COL_FAMILY_RAW} = ''
-            AND especie_raw = ''
-            AND quantidade IS NOT NULL
-            AND quantidade = previous_quantity_sum,
-            FALSE
-        ) AS is_total_row
-    FROM summed
-    """
-    con.execute(sql)
-    return con.execute("SELECT * FROM filled ORDER BY rn").df()
+    return con.execute(sql).df()
 
 
 def _log_control_sums(out: pd.DataFrame) -> None:
