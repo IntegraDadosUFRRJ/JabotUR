@@ -29,7 +29,8 @@ def _split_multivalued_observacoes(values: pd.Series) -> pd.Series:
 
 
 def load_clean_df() -> pd.DataFrame:
-    return read_dataframe_from_postgres(config.CLN_SPP_TABLE)
+    # Os ids saem na ordem das linhas lidas; cln_* não tem id, então a ordem vem da planilha
+    return read_dataframe_from_postgres(config.CLN_SPP_TABLE, order_by=config.SPP_STAGING_ORDER)
 
 
 _load_existing = taxonomy._load_existing
