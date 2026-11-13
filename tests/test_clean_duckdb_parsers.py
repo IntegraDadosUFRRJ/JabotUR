@@ -45,7 +45,7 @@ class RegisteredParserTests(unittest.TestCase):
         )
 
     def test_missing_key_is_refused(self):
-        with mock.patch.object(duckdb_parsers, "parse_scientific_name", lambda value: {"nome_raw": value}):
+        with mock.patch.object(duckdb_parsers, "parse_scientific_name", lambda value: {"name_raw": value}):
             duckdb_parsers.register_scientific_name_parser(self.con)
         with self.assertRaisesRegex(duckdb.Error, "devolveu as chaves"):
             self._call(duckdb_parsers.SCIENTIFIC_NAME_FUNCTION, "'Inga vera'")
@@ -54,7 +54,7 @@ class RegisteredParserTests(unittest.TestCase):
         # Mesma quantidade de chaves, uma com outro nome: o STRUCT sozinho aceitaria
         def parser_with_renamed_key(value):
             result = parse_scientific_name(value)
-            result["genus"] = result.pop("genero")
+            result["genero"] = result.pop("genus")
             return result
 
         with mock.patch.object(duckdb_parsers, "parse_scientific_name", parser_with_renamed_key):

@@ -25,7 +25,7 @@ CONTROL_COLUMNS = [
 # --- dados de entrada (num lugar só, compartilhados pelos testes) ---
 
 def _staging_rows():
-    """(aba, linha, familia, especie, quantidade) no formato do staging."""
+    """(aba, linha, family, species_raw, quantity) no formato do staging."""
     return [
         # aba com totais (soma 2 + 3 = 5)
         ("A", 2, "Fabaceae", "Inga edulis Mart.", "2"),
@@ -56,9 +56,9 @@ def _load_staging(con, rows, source_row_type="BIGINT"):
             _source_file VARCHAR,
             _source_sheet VARCHAR,
             _source_row {source_row_type},
-            familia VARCHAR,
-            especie VARCHAR,
-            quantidade VARCHAR
+            family VARCHAR,
+            species_raw VARCHAR,
+            quantity VARCHAR
         )
         """
     )
@@ -122,7 +122,7 @@ def _families(con):
     """Família após o fill-down, ordenada por (aba, linha)."""
     return con.execute(
         """
-        SELECT _source_sheet, _source_row, familia
+        SELECT _source_sheet, _source_row, family
         FROM result
         ORDER BY _source_sheet, _source_row
         """
@@ -132,7 +132,7 @@ def _families(con):
 def _family_at(con, sheet, row):
     return con.execute(
         f"""
-        SELECT familia FROM result
+        SELECT family FROM result
         WHERE _source_sheet = '{sheet}' AND CAST(_source_row AS INTEGER) = {row}
         """
     ).fetchone()[0]
@@ -173,7 +173,7 @@ class TotalRowTests(unittest.TestCase):
         self.assertEqual(total_in_b, 0)
         last = cleaned.execute(
             """
-            SELECT genero, parse_status
+            SELECT genus, parse_status
             FROM result
             WHERE _source_sheet = 'B' AND _source_row = 3
             """
@@ -278,7 +278,7 @@ class RegisteredParserTests(unittest.TestCase):
 
     def test_return_outside_declared_struct_is_refused(self):
         with mock.patch.object(
-            duckdb_parsers, "parse_scientific_name", lambda value: {"nome_raw": value}
+            duckdb_parsers, "parse_scientific_name", lambda value: {"name_raw": value}
         ):
             with self.assertRaisesRegex(duckdb.Error, "devolveu as chaves"):
                 _transform(_staging_rows()).close()
@@ -298,7 +298,7 @@ class StagingTests(unittest.TestCase):
             con.execute("LOAD excel")
             rows = con.execute(
                 f"""
-                SELECT _source_row, quantidade
+                SELECT _source_row, quantity
                 FROM ({query})
                 ORDER BY _source_row
                 """

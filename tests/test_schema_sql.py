@@ -40,10 +40,10 @@ class SchemaSqlTest(unittest.TestCase):
 
     def test_association_tables_have_composite_key(self):
         self.assertIn(
-            "PRIMARY KEY (id_briofita, id_substrato)", self.tables[config.TB_COLETA_SUBSTRATO]
+            "PRIMARY KEY (id_occurrence, id_substrate)", self.tables[config.TB_COLETA_SUBSTRATO]
         )
         self.assertIn(
-            "PRIMARY KEY (id_briofita, id_observacao)", self.tables[config.TB_COLETA_OBSERVACAO]
+            "PRIMARY KEY (id_occurrence, id_remark)", self.tables[config.TB_COLETA_OBSERVACAO]
         )
 
     def test_every_create_is_if_not_exists(self):

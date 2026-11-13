@@ -21,17 +21,17 @@ class ScientificNameSpTests(unittest.TestCase):
         for name in names:
             result = parse_scientific_name(name)
             self.assertEqual(result["parse_status"], PARSE_STATUS_GENUS_ONLY)
-            self.assertEqual(result["genero"], name.split()[0])
-            self.assertIsNone(result["epiteto_especifico"])
-            self.assertIsNone(result["infraespecifico"])
-            self.assertIsNone(result["autor"])
+            self.assertEqual(result["genus"], name.split()[0])
+            self.assertIsNone(result["epithet"])
+            self.assertIsNone(result["infraspecific"])
+            self.assertIsNone(result["author"])
             self.assertIsNone(result["identification_qualifier"])
 
     def test_genus_sp_is_identical_to_pure_genus(self):
         # Mesma resposta do construtor de resultado de um gênero-só
         res_sp = parse_scientific_name("Citrus sp.")
         res_pure = parse_scientific_name("Citrus")
-        for k in ["parse_status", "genero", "epiteto_especifico", "infraespecifico", "autor", "identification_qualifier"]:
+        for k in ["parse_status", "genus", "epithet", "infraspecific", "author", "identification_qualifier"]:
             self.assertEqual(res_sp[k], res_pure[k])
 
     def test_series_processing(self):
@@ -40,7 +40,7 @@ class ScientificNameSpTests(unittest.TestCase):
         try:
             duckdb_parsers.register_scientific_name_parser(con)
             rows = con.execute(
-                f"SELECT p.parse_status, p.genero FROM ("
+                f"SELECT p.parse_status, p.genus FROM ("
                 f"SELECT {duckdb_parsers.SCIENTIFIC_NAME_FUNCTION}(nome) AS p, n "
                 f"FROM unnest(['Citrus sp.', 'Pinus sp.']) WITH ORDINALITY AS t(nome, n)"
                 f") ORDER BY n"
@@ -59,20 +59,20 @@ class ScientificNameSpTests(unittest.TestCase):
         for name in names:
             result = parse_scientific_name(name)
             self.assertEqual(result["parse_status"], PARSE_STATUS_OK)
-            self.assertIsNotNone(result["epiteto_especifico"])
+            self.assertIsNotNone(result["epithet"])
 
     def test_normal_binomial_remains_ok(self):
         # Baseline
         result = parse_scientific_name("Astronium urundeuva")
         self.assertEqual(result["parse_status"], PARSE_STATUS_OK)
-        self.assertEqual(result["genero"], "Astronium")
-        self.assertEqual(result["epiteto_especifico"], "urundeuva")
+        self.assertEqual(result["genus"], "Astronium")
+        self.assertEqual(result["epithet"], "urundeuva")
 
     def test_morphospecies_remains_morphospecies(self):
         # Baseline
         result = parse_scientific_name("Morfo-Espécie 1")
         self.assertEqual(result["parse_status"], PARSE_STATUS_MORPHOSPECIES)
-        self.assertIsNone(result["genero"])
+        self.assertIsNone(result["genus"])
 
 
 if __name__ == "__main__":

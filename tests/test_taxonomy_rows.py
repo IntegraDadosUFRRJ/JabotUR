@@ -18,34 +18,34 @@ from scripts.load import taxonomy
 
 # Ficus aparece em duas famílias: genero_by_nome fica com o id do último par
 FIRST_RUN_ROWS = [
-    {"filo_nome": None, "familia": "Moraceae", "genero": "Ficus", "epiteto": "elastica",
-     "infraespecifico": None, "autor": "Roxb."},
-    # filo preenchido: na segunda rodada, uma família existente com id_filo não nulo
-    {"filo_nome": "Musgos", "familia": "Fabaceae", "genero": "Inga", "epiteto": "vera",
-     "infraespecifico": "affinis", "autor": None},
-    {"filo_nome": None, "familia": "Urticaceae", "genero": "Ficus", "epiteto": "sp. [Espécimes#7]",
-     "infraespecifico": None, "autor": None},
-    {"filo_nome": None, "familia": None, "genero": "Sem familia", "epiteto": None,
-     "infraespecifico": None, "autor": "L."},
-    {"filo_nome": None, "familia": "Moraceae", "genero": None, "epiteto": None,
-     "infraespecifico": None, "autor": None},
-    {"filo_nome": None, "familia": "Moraceae", "genero": "Ficus", "epiteto": "elastica",
-     "infraespecifico": None, "autor": "Roxb."},
+    {"filo_nome": None, "family": "Moraceae", "genus": "Ficus", "epiteto": "elastica",
+     "infraspecific": None, "author": "Roxb."},
+    # filo preenchido: na segunda rodada, uma família existente com id_phylum não nulo
+    {"filo_nome": "Musgos", "family": "Fabaceae", "genus": "Inga", "epiteto": "vera",
+     "infraspecific": "affinis", "author": None},
+    {"filo_nome": None, "family": "Urticaceae", "genus": "Ficus", "epiteto": "sp. [Espécimes#7]",
+     "infraspecific": None, "author": None},
+    {"filo_nome": None, "family": None, "genus": "Sem familia", "epiteto": None,
+     "infraspecific": None, "author": "L."},
+    {"filo_nome": None, "family": "Moraceae", "genus": None, "epiteto": None,
+     "infraspecific": None, "author": None},
+    {"filo_nome": None, "family": "Moraceae", "genus": "Ficus", "epiteto": "elastica",
+     "infraspecific": None, "author": "Roxb."},
     # NaN, como os transforms do SPP devolvem para célula vazia, conta como NULL
-    {"filo_nome": float("nan"), "familia": "Moraceae", "genero": "Ficus", "epiteto": "elastica",
-     "infraespecifico": None, "autor": "Roxb."},
+    {"filo_nome": float("nan"), "family": "Moraceae", "genus": "Ficus", "epiteto": "elastica",
+     "infraspecific": None, "author": "Roxb."},
 ]
 
 # Segunda fonte: com filo, chaves repetidas da primeira e chaves novas
 SECOND_RUN_ROWS = [
-    {"filo_nome": "Musgos", "familia": "Bryaceae", "genero": "Bryum", "epiteto": "argenteum",
-     "infraespecifico": None, "autor": "Hedw."},
-    {"filo_nome": None, "familia": "Moraceae", "genero": "Ficus", "epiteto": "elastica",
-     "infraespecifico": None, "autor": "Roxb."},
-    {"filo_nome": "Hepáticas", "familia": "Moraceae", "genero": "Ficus", "epiteto": "benjamina",
-     "infraespecifico": None, "autor": "L."},
-    {"filo_nome": None, "familia": None, "genero": None, "epiteto": "solto",
-     "infraespecifico": None, "autor": None},
+    {"filo_nome": "Musgos", "family": "Bryaceae", "genus": "Bryum", "epiteto": "argenteum",
+     "infraspecific": None, "author": "Hedw."},
+    {"filo_nome": None, "family": "Moraceae", "genus": "Ficus", "epiteto": "elastica",
+     "infraspecific": None, "author": "Roxb."},
+    {"filo_nome": "Hepáticas", "family": "Moraceae", "genus": "Ficus", "epiteto": "benjamina",
+     "infraspecific": None, "author": "L."},
+    {"filo_nome": None, "family": None, "genus": None, "epiteto": "solto",
+     "infraspecific": None, "author": None},
 ]
 
 TABLES = [
@@ -53,50 +53,50 @@ TABLES = [
 ]
 
 FIRST_RUN_DIMS = {
-    config.TB_FILO: [{"id": 1, "nome": "Musgos"}],
+    config.TB_FILO: [{"id": 1, "name": "Musgos"}],
     config.TB_FAMILIA: [
-        {"id": 1, "id_filo": None, "nome": "Moraceae"},
-        {"id": 2, "id_filo": 1, "nome": "Fabaceae"},
-        {"id": 3, "id_filo": None, "nome": "Urticaceae"},
+        {"id": 1, "id_phylum": None, "name": "Moraceae"},
+        {"id": 2, "id_phylum": 1, "name": "Fabaceae"},
+        {"id": 3, "id_phylum": None, "name": "Urticaceae"},
     ],
     config.TB_GENERO: [
-        {"id": 1, "id_familia": 1, "nome": "Ficus"},
-        {"id": 2, "id_familia": 2, "nome": "Inga"},
-        {"id": 3, "id_familia": 3, "nome": "Ficus"},
-        {"id": 4, "id_familia": None, "nome": "Sem familia"},
+        {"id": 1, "id_family": 1, "name": "Ficus"},
+        {"id": 2, "id_family": 2, "name": "Inga"},
+        {"id": 3, "id_family": 3, "name": "Ficus"},
+        {"id": 4, "id_family": None, "name": "Sem familia"},
     ],
-    config.TB_AUTOR: [{"id": 1, "nome": "Roxb."}, {"id": 2, "nome": "L."}],
+    config.TB_AUTOR: [{"id": 1, "name": "Roxb."}, {"id": 2, "name": "L."}],
     config.TB_EPITETO_ESPECIFICO: [
-        {"id": 1, "id_genero": 3, "id_autor": 1, "nome": "elastica", "infraespecifico": None},
-        {"id": 2, "id_genero": 2, "id_autor": None, "nome": "vera", "infraespecifico": "affinis"},
-        {"id": 3, "id_genero": 3, "id_autor": None, "nome": "sp. [Espécimes#7]", "infraespecifico": None},
-        {"id": 4, "id_genero": 4, "id_autor": 2, "nome": None, "infraespecifico": None},
+        {"id": 1, "id_genus": 3, "id_author": 1, "epithet": "elastica", "infraspecific": None},
+        {"id": 2, "id_genus": 2, "id_author": None, "epithet": "vera", "infraspecific": "affinis"},
+        {"id": 3, "id_genus": 3, "id_author": None, "epithet": "sp. [Espécimes#7]", "infraspecific": None},
+        {"id": 4, "id_genus": 4, "id_author": 2, "epithet": None, "infraspecific": None},
     ],
 }
 
 SECOND_RUN_DIMS = {
-    config.TB_FILO: [{"id": 1, "nome": "Musgos"}, {"id": 2, "nome": "Hepáticas"}],
+    config.TB_FILO: [{"id": 1, "name": "Musgos"}, {"id": 2, "name": "Hepáticas"}],
     config.TB_FAMILIA: [
-        {"id": 1, "id_filo": None, "nome": "Moraceae"},
-        {"id": 2, "id_filo": 1, "nome": "Fabaceae"},
-        {"id": 3, "id_filo": None, "nome": "Urticaceae"},
-        {"id": 4, "id_filo": 1, "nome": "Bryaceae"},
-        {"id": 5, "id_filo": 2, "nome": "Moraceae"},
+        {"id": 1, "id_phylum": None, "name": "Moraceae"},
+        {"id": 2, "id_phylum": 1, "name": "Fabaceae"},
+        {"id": 3, "id_phylum": None, "name": "Urticaceae"},
+        {"id": 4, "id_phylum": 1, "name": "Bryaceae"},
+        {"id": 5, "id_phylum": 2, "name": "Moraceae"},
     ],
     # O gênero 1 já gravado passa a apontar para a família 5: familia_by_nome["Moraceae"]
     # fica com o último id, e a gravação é upsert
     config.TB_GENERO: [
-        {"id": 1, "id_familia": 5, "nome": "Ficus"},
-        {"id": 2, "id_familia": 2, "nome": "Inga"},
-        {"id": 3, "id_familia": 3, "nome": "Ficus"},
-        {"id": 4, "id_familia": None, "nome": "Sem familia"},
-        {"id": 5, "id_familia": 4, "nome": "Bryum"},
+        {"id": 1, "id_family": 5, "name": "Ficus"},
+        {"id": 2, "id_family": 2, "name": "Inga"},
+        {"id": 3, "id_family": 3, "name": "Ficus"},
+        {"id": 4, "id_family": None, "name": "Sem familia"},
+        {"id": 5, "id_family": 4, "name": "Bryum"},
     ],
-    config.TB_AUTOR: [{"id": 1, "nome": "Roxb."}, {"id": 2, "nome": "L."}, {"id": 3, "nome": "Hedw."}],
+    config.TB_AUTOR: [{"id": 1, "name": "Roxb."}, {"id": 2, "name": "L."}, {"id": 3, "name": "Hedw."}],
     config.TB_EPITETO_ESPECIFICO: FIRST_RUN_DIMS[config.TB_EPITETO_ESPECIFICO] + [
-        {"id": 5, "id_genero": 5, "id_autor": 3, "nome": "argenteum", "infraespecifico": None},
-        {"id": 6, "id_genero": 3, "id_autor": 2, "nome": "benjamina", "infraespecifico": None},
-        {"id": 7, "id_genero": None, "id_autor": None, "nome": "solto", "infraespecifico": None},
+        {"id": 5, "id_genus": 5, "id_author": 3, "epithet": "argenteum", "infraspecific": None},
+        {"id": 6, "id_genus": 3, "id_author": 2, "epithet": "benjamina", "infraspecific": None},
+        {"id": 7, "id_genus": None, "id_author": None, "epithet": "solto", "infraspecific": None},
     ],
 }
 
@@ -148,12 +148,12 @@ class TaxonomyRowsTest(unittest.TestCase):
 
     def test_homonym_genus_keeps_last_id(self):
         dims, (_, _, genero_by_nome, _, _) = _run_rows(FIRST_RUN_ROWS, existing={})
-        ficus_ids = [row["id"] for row in dims[config.TB_GENERO] if row["nome"] == "Ficus"]
+        ficus_ids = [row["id"] for row in dims[config.TB_GENERO] if row["name"] == "Ficus"]
         self.assertEqual(ficus_ids, [1, 3])
         self.assertEqual(genero_by_nome["Ficus"], 3)
         # as duas espécies de Ficus apontam para o último gênero Ficus
-        ficus_species = [row for row in dims[config.TB_EPITETO_ESPECIFICO] if row["id_genero"] in ficus_ids]
-        self.assertEqual({row["id_genero"] for row in ficus_species}, {3})
+        ficus_species = [row for row in dims[config.TB_EPITETO_ESPECIFICO] if row["id_genus"] in ficus_ids]
+        self.assertEqual({row["id_genus"] for row in ficus_species}, {3})
 
     def test_none_if_nan(self):
         self.assertIsNone(taxonomy._none_if_nan(None))

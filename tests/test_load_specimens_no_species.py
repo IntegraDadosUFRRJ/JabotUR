@@ -12,18 +12,18 @@ def _prepared_rows(genero, epiteto):
     """Uma linha no formato de saída de prepare()."""
     return [
         {
-            "genero": genero,
+            "genus": genero,
             "epiteto": epiteto,
-            "infraespecifico": None,
-            "autor": None,
+            "infraspecific": None,
+            "author": None,
             "identification_qualifier": None,
             "source_file": "teste.xlsx",
             "source_sheet": "Espécimes",
             "source_row": 10,
-            "estado_reprodutivo": None,
-            "setor": None,
+            "reproductive_status": None,
+            "sector": None,
             "registration_number": "RBRv90000293",
-            "descricao_localizacao": None,
+            "location_description": None,
         }
     ]
 

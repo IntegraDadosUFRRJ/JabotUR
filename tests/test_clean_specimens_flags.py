@@ -19,8 +19,8 @@ from scripts.transforms.scientific_name import (
 from scripts.transforms.registration_number import STATUS_AZUL, STATUS_UNPARSEABLE
 
 STAGING_COLUMNS = [
-    "_source_file", "_source_sheet", "_source_row", "familia", "especie", "numero_registro",
-    "setor", "descricao_localizacao", "estado_reprodutivo",
+    "_source_file", "_source_sheet", "_source_row", "family", "species_raw", "registration_number",
+    "sector", "location_description", "reproductive_status",
 ]
 
 
@@ -108,7 +108,7 @@ class CleanSpecimensFlagsTests(unittest.TestCase):
             row["_source_row"]: row for row in load_arboreto_specimens.prepare(_transform_rows(_staging_rows()))
         }
         self.assertIsNone(prepared["10"]["epiteto"])
-        self.assertIsNone(prepared["10"]["genero"])
+        self.assertIsNone(prepared["10"]["genus"])
         self.assertEqual(prepared["3"]["epiteto"], "Morfo-Espécie 1 [Espécimes#3]")
         self.assertEqual(prepared["2"]["epiteto"], "concinnum")
 

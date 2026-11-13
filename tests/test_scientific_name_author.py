@@ -14,29 +14,29 @@ class ScientificNameAuthorTests(unittest.TestCase):
     def test_author_kept_without_infraspecific(self):
         result = parse_scientific_name("Astronium concinnum Schott")
         self.assertEqual(result["parse_status"], PARSE_STATUS_OK)
-        self.assertEqual(result["genero"], "Astronium")
-        self.assertEqual(result["epiteto_especifico"], "concinnum")
-        self.assertIsNone(result["infraespecifico"])
-        self.assertEqual(result["autor"], "Schott")
+        self.assertEqual(result["genus"], "Astronium")
+        self.assertEqual(result["epithet"], "concinnum")
+        self.assertIsNone(result["infraspecific"])
+        self.assertEqual(result["author"], "Schott")
         self.assertIsNone(result["identification_qualifier"])
 
     def test_cf_fills_qualifier_with_author(self):
         result = parse_scientific_name("Astronium cf. concinnum Schott")
         self.assertEqual(result["identification_qualifier"], "cf.")
-        self.assertEqual(result["epiteto_especifico"], "concinnum")
-        self.assertEqual(result["autor"], "Schott")
+        self.assertEqual(result["epithet"], "concinnum")
+        self.assertEqual(result["author"], "Schott")
 
     def test_cf_fills_qualifier_without_author(self):
         # caminho "gênero + epíteto" sem resto: antes perdia o qualifier
         result = parse_scientific_name("Astronium cf. concinnum")
         self.assertEqual(result["identification_qualifier"], "cf.")
-        self.assertEqual(result["epiteto_especifico"], "concinnum")
-        self.assertIsNone(result["autor"])
+        self.assertEqual(result["epithet"], "concinnum")
+        self.assertIsNone(result["author"])
 
     def test_cf_fills_qualifier_with_infraspecific(self):
         result = parse_scientific_name("Inga cf. vera subsp. affinis (DC.) T.D.Penn.")
         self.assertEqual(result["identification_qualifier"], "cf.")
-        self.assertEqual(result["infraespecifico"], "subsp. affinis")
+        self.assertEqual(result["infraspecific"], "subsp. affinis")
 
 
 if __name__ == "__main__":

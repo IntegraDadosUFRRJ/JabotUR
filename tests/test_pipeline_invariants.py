@@ -60,22 +60,22 @@ FLAGGED_CLEAN_TABLES = [
 
 # (filho, coluna, pai): cada relação tem FK no schema.sql e consulta de órfãos aqui
 REFERENCES = [
-    (config.TB_FAMILIA, "id_filo", config.TB_FILO),
-    (config.TB_GENERO, "id_familia", config.TB_FAMILIA),
-    (config.TB_EPITETO_ESPECIFICO, "id_genero", config.TB_GENERO),
-    (config.TB_EPITETO_ESPECIFICO, "id_autor", config.TB_AUTOR),
+    (config.TB_FAMILIA, "id_phylum", config.TB_FILO),
+    (config.TB_GENERO, "id_family", config.TB_FAMILIA),
+    (config.TB_EPITETO_ESPECIFICO, "id_genus", config.TB_GENERO),
+    (config.TB_EPITETO_ESPECIFICO, "id_author", config.TB_AUTOR),
     (config.TB_OCCURRENCE, "id_species", config.TB_EPITETO_ESPECIFICO),
     (config.TB_OCCURRENCE_BRYOPHYTE, "id", config.TB_OCCURRENCE),
-    (config.TB_OCCURRENCE_BRYOPHYTE, "id_forma", config.TB_FORMA_VIDA),
-    (config.TB_OCCURRENCE_BRYOPHYTE, "id_identificacao", config.TB_IDENTIFICACAO),
-    (config.TB_OCCURRENCE_BRYOPHYTE, "id_parcela", config.TB_PARCELA),
+    (config.TB_OCCURRENCE_BRYOPHYTE, "id_life_form", config.TB_FORMA_VIDA),
+    (config.TB_OCCURRENCE_BRYOPHYTE, "id_identification_status", config.TB_IDENTIFICACAO),
+    (config.TB_OCCURRENCE_BRYOPHYTE, "id_plot", config.TB_PARCELA),
     (config.TB_OCCURRENCE_ARBORETUM, "id", config.TB_OCCURRENCE),
     (config.TB_OCCURRENCE_ARBORETUM, "id_reproductive_status", config.TB_REPRODUCTIVE_STATUS),
     (config.TB_OCCURRENCE_ARBORETUM, "id_sector", config.TB_SECTOR),
-    (config.TB_COLETA_SUBSTRATO, "id_briofita", config.TB_OCCURRENCE_BRYOPHYTE),
-    (config.TB_COLETA_SUBSTRATO, "id_substrato", config.TB_SUBSTRATO),
-    (config.TB_COLETA_OBSERVACAO, "id_briofita", config.TB_OCCURRENCE_BRYOPHYTE),
-    (config.TB_COLETA_OBSERVACAO, "id_observacao", config.TB_OBSERVACAO),
+    (config.TB_COLETA_SUBSTRATO, "id_occurrence", config.TB_OCCURRENCE_BRYOPHYTE),
+    (config.TB_COLETA_SUBSTRATO, "id_substrate", config.TB_SUBSTRATO),
+    (config.TB_COLETA_OBSERVACAO, "id_occurrence", config.TB_OCCURRENCE_BRYOPHYTE),
+    (config.TB_COLETA_OBSERVACAO, "id_remark", config.TB_OBSERVACAO),
     (config.TB_BIBLIOGRAPHIC_CITATION, "id_species", config.TB_EPITETO_ESPECIFICO),
 ]
 
@@ -170,11 +170,11 @@ class TestPipelineInvariants(unittest.TestCase):
                 ).all()
                 lines.append(f"{table}: parse_status/needs_review = {[tuple(r) for r in rows]}")
             for table in [config.CLN_SPP_TABLE, *FLAGGED_CLEAN_TABLES]:
-                null_author = _scalar(conn, f'SELECT count(*) FROM "{table}" WHERE autor IS NULL')
-                lines.append(f"{table}: autor nulo = {null_author}")
+                null_author = _scalar(conn, f'SELECT count(*) FROM "{table}" WHERE author IS NULL')
+                lines.append(f"{table}: author nulo = {null_author}")
             lines.append(
-                f"{config.TB_EPITETO_ESPECIFICO}: id_autor nulo = "
-                f"{_scalar(conn, f'SELECT count(*) FROM {config.TB_EPITETO_ESPECIFICO} WHERE id_autor IS NULL')}"
+                f"{config.TB_EPITETO_ESPECIFICO}: id_author nulo = "
+                f"{_scalar(conn, f'SELECT count(*) FROM {config.TB_EPITETO_ESPECIFICO} WHERE id_author IS NULL')}"
             )
         print("\n".join(lines), file=sys.stderr)
 
@@ -404,7 +404,7 @@ class TestPipelineInvariants(unittest.TestCase):
             sp = _scalar(
                 conn,
                 f'SELECT count(*) FROM "{config.TB_EPITETO_ESPECIFICO}" '
-                f"WHERE lower(trim(nome)) IN ('sp', 'sp.')",
+                f"WHERE lower(trim(epithet)) IN ('sp', 'sp.')",
             )
         self.assertEqual(sp, 0)
 
@@ -436,7 +436,7 @@ class TestPipelineInvariants(unittest.TestCase):
         with self.engine.connect() as conn:
             duplicates = conn.execute(
                 text(
-                    f'SELECT id_genero, nome, infraespecifico, id_autor, count(*) '
+                    f'SELECT id_genus, epithet, infraspecific, id_author, count(*) '
                     f'FROM "{config.TB_EPITETO_ESPECIFICO}" '
                     f"GROUP BY 1, 2, 3, 4 HAVING count(*) > 1"
                 )

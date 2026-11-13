@@ -46,17 +46,17 @@ def _reorder(columns: dict[str, list], order: list[int]) -> dict[str, list]:
 class CleanSppDuckDBTests(unittest.TestCase):
     def test_transform_normalizes_observations_and_filldown(self) -> None:
         columns = {
-            "parcela": ["4*", None, "5"],
-            "amostra": [None, "A1", None],
-            "substrato": ["  rocha ", None, "  cimento  "],
-            "forma_vida": ["terrestre", None, "epífita"],
-            "observacao": ["c/ esp", "acro [fotos]", None],
-            "identificacao": ["1", "2", None],
-            "filo": [" Bryophyta ", None, "Marchantiophyta"],
-            "familia": [None, "Pottiaceae", None],
-            "genero": ["Barbula", None, "Riccardia"],
-            "epiteto_especifico": ["sp.", None, "latifrons"],
-            "autor": ["Hedw.", None, "L."],
+            "plot": ["4*", None, "5"],
+            "sample": [None, "A1", None],
+            "substrate": ["  rocha ", None, "  cimento  "],
+            "life_form": ["terrestre", None, "epífita"],
+            "remark": ["c/ esp", "acro [fotos]", None],
+            "identification_status": ["1", "2", None],
+            "phylum": [" Bryophyta ", None, "Marchantiophyta"],
+            "family": [None, "Pottiaceae", None],
+            "genus": ["Barbula", None, "Riccardia"],
+            "epithet": ["sp.", None, "latifrons"],
+            "author": ["Hedw.", None, "L."],
             # Lineage como o stage_SPP grava; o clean exige _source_file e _source_row
             "_source_file": ["SPP.xlsx", "SPP.xlsx", "SPP.xlsx"],
             "_source_sheet": ["Planilha1", "Planilha1", "Planilha1"],
@@ -65,29 +65,29 @@ class CleanSppDuckDBTests(unittest.TestCase):
 
         _, result = _transform(columns)
 
-        self.assertEqual(result[0]["parcela"], "4")
-        self.assertEqual(result[1]["parcela"], "4")
-        self.assertEqual(result[0]["observacoes"], "com esporófito")
-        self.assertEqual(result[1]["observacoes"], "acrocárpico")
-        self.assertIsNone(result[2]["observacoes"])
-        self.assertEqual(result[0]["substrato"], "rocha")
-        self.assertEqual(result[1]["amostra"], "A1")
-        self.assertEqual(result[0]["status_identificacao"], 1)
+        self.assertEqual(result[0]["plot"], "4")
+        self.assertEqual(result[1]["plot"], "4")
+        self.assertEqual(result[0]["remarks"], "com esporófito")
+        self.assertEqual(result[1]["remarks"], "acrocárpico")
+        self.assertIsNone(result[2]["remarks"])
+        self.assertEqual(result[0]["substrate"], "rocha")
+        self.assertEqual(result[1]["sample"], "A1")
+        self.assertEqual(result[0]["identification_status"], 1)
 
     def test_blank_forma_vida_stays_null(self) -> None:
         # forma de vida é da coleta: a linha em branco não herda a de cima
         columns = {
-            "parcela": ["4", None, None],
-            "amostra": ["A1", None, None],
-            "substrato": ["rocha", None, None],
-            "forma_vida": [" Tufo ", None, "Tapete"],
-            "observacao": [None, None, None],
-            "identificacao": ["1", "1", "1"],
-            "filo": ["Bryophyta", "Bryophyta", "Bryophyta"],
-            "familia": ["Pottiaceae", "Pottiaceae", "Pottiaceae"],
-            "genero": ["Barbula", "Barbula", "Barbula"],
-            "epiteto_especifico": ["indica", "indica", "indica"],
-            "autor": ["Hedw.", "Hedw.", "Hedw."],
+            "plot": ["4", None, None],
+            "sample": ["A1", None, None],
+            "substrate": ["rocha", None, None],
+            "life_form": [" Tufo ", None, "Tapete"],
+            "remark": [None, None, None],
+            "identification_status": ["1", "1", "1"],
+            "phylum": ["Bryophyta", "Bryophyta", "Bryophyta"],
+            "family": ["Pottiaceae", "Pottiaceae", "Pottiaceae"],
+            "genus": ["Barbula", "Barbula", "Barbula"],
+            "epithet": ["indica", "indica", "indica"],
+            "author": ["Hedw.", "Hedw.", "Hedw."],
             "_source_file": ["SPP.xlsx", "SPP.xlsx", "SPP.xlsx"],
             "_source_sheet": ["Planilha1", "Planilha1", "Planilha1"],
             "_source_row": [2, 3, 4],
@@ -95,27 +95,27 @@ class CleanSppDuckDBTests(unittest.TestCase):
 
         _, result = _transform(columns)
 
-        self.assertEqual(result[0]["forma_vida"], "Tufo")
-        self.assertIsNone(result[1]["forma_vida"])
-        self.assertEqual(result[2]["forma_vida"], "Tapete")
-        # parcela continua com fill-down
-        self.assertEqual(result[1]["parcela"], "4")
+        self.assertEqual(result[0]["life_form"], "Tufo")
+        self.assertIsNone(result[1]["life_form"])
+        self.assertEqual(result[2]["life_form"], "Tapete")
+        # plot continua com fill-down
+        self.assertEqual(result[1]["plot"], "4")
 
     def test_shuffled_input_gives_same_clean(self) -> None:
         # o fill-down segue (arquivo, linha), não a ordem em que o staging chega;
         # _source_row em texto cobre a ordem numérica ('10' < '9' como texto)
         columns = {
-            "parcela": ["4", "5", None],
-            "amostra": ["A1", None, None],
-            "substrato": ["rocha", "cimento", None],
-            "forma_vida": ["terrestre", None, None],
-            "observacao": [None, None, None],
-            "identificacao": ["1", "1", "1"],
-            "filo": ["Bryophyta", "Bryophyta", "Bryophyta"],
-            "familia": ["Pottiaceae", "Pottiaceae", "Pottiaceae"],
-            "genero": ["Barbula", "Barbula", "Barbula"],
-            "epiteto_especifico": ["indica", "indica", "indica"],
-            "autor": ["Hedw.", "Hedw.", "Hedw."],
+            "plot": ["4", "5", None],
+            "sample": ["A1", None, None],
+            "substrate": ["rocha", "cimento", None],
+            "life_form": ["terrestre", None, None],
+            "remark": [None, None, None],
+            "identification_status": ["1", "1", "1"],
+            "phylum": ["Bryophyta", "Bryophyta", "Bryophyta"],
+            "family": ["Pottiaceae", "Pottiaceae", "Pottiaceae"],
+            "genus": ["Barbula", "Barbula", "Barbula"],
+            "epithet": ["indica", "indica", "indica"],
+            "author": ["Hedw.", "Hedw.", "Hedw."],
             "_source_file": ["SPP.xlsx", "SPP.xlsx", "SPP.xlsx"],
             "_source_sheet": ["Planilha1", "Planilha1", "Planilha1"],
             "_source_row": ["8", "9", "10"],
@@ -128,6 +128,6 @@ class CleanSppDuckDBTests(unittest.TestCase):
         # tipos das colunas e linhas, na ordem da saída
         self.assertEqual(expected, actual)
         last = next(row for row in actual[1] if row["_source_row"] == "10")
-        self.assertEqual(last["parcela"], "5")
-        self.assertEqual(last["amostra"], "A1")
-        self.assertEqual(last["substrato"], "cimento")
+        self.assertEqual(last["plot"], "5")
+        self.assertEqual(last["sample"], "A1")
+        self.assertEqual(last["substrate"], "cimento")
