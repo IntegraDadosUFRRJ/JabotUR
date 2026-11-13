@@ -1,10 +1,11 @@
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from urllib.parse import quote_plus
 
 import duckdb
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import Engine, create_engine, text
 
 import scripts.config as config
 
@@ -17,9 +18,32 @@ def get_postgres_url() -> str:
     )
 
 
-def get_connection():
+# Um engine por URL, reaproveitado: cada create_engine() abre um pool próprio, e o
+# engine tem referências cíclicas, então só sai da memória pelo coletor de ciclos do
+# Python; pools esquecidos se acumulavam até esgotar o max_connections do Postgres.
+# A chave é a URL inteira para um teste que troca o POSTGRES_DB receber outro engine.
+_engines: dict[str, Engine] = {}
+_engines_lock = threading.Lock()
+
+
+def get_connection() -> Engine:
     """Retorna o engine do PostgreSQL usado para persistir as tabelas do pipeline."""
-    return create_engine(get_postgres_url(), future=True)
+    url = get_postgres_url()
+    with _engines_lock:
+        engine = _engines.get(url)
+        if engine is None:
+            engine = create_engine(url, future=True)
+            _engines[url] = engine
+        return engine
+
+
+def dispose_connections() -> None:
+    """Fecha as conexões de todos os engines guardados (fim do pipeline e dos testes,
+    ou antes de uma operação que exige o banco sem conexões abertas)."""
+    with _engines_lock:
+        for engine in _engines.values():
+            engine.dispose()
+        _engines.clear()
 
 
 def _none_safe_records(df: pd.DataFrame) -> list[dict]:
