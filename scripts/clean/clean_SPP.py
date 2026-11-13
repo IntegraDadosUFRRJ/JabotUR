@@ -17,24 +17,12 @@ import scripts.config as config
 
 SQL_PATH = Path(__file__).with_name("clean_SPP.sql")
 
-# Nome alternativo no staging -> nome que a query espera
-_INPUT_RENAMES = (
-    (config.COL_OBSERVACOES, config.COL_OBSERVACAO),
-    (config.COL_STATUS_IDENTIFICACAO, config.COL_IDENTIFICACAO),
-)
-
 
 def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
     """Expõe o staging, na ordem da planilha, como a view lida pela query do clean."""
-    staging = read_table(con, config.STG_SPP_TABLE, order_by=config.SPP_STAGING_ORDER)
-    renames = [
-        f"{old} AS {new}"
-        for old, new in _INPUT_RENAMES
-        if new not in staging.columns and old in staging.columns
-    ]
-    if renames:
-        staging = staging.project(f"* RENAME ({', '.join(renames)})")
-    staging.create_view(config.DUCKDB_STAGING_ALIAS)
+    read_table(con, config.STG_SPP_TABLE, order_by=config.SPP_STAGING_ORDER).create_view(
+        config.DUCKDB_STAGING_ALIAS
+    )
 
 
 def _staging_order_sql() -> str:

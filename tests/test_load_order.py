@@ -12,8 +12,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import duckdb
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import scripts.config as config
@@ -65,20 +63,6 @@ class TestReadsUseSheetOrder(unittest.TestCase):
         fake_read.assert_called_once_with(
             mock.ANY, config.STG_SPP_TABLE, order_by=config.SPP_STAGING_ORDER
         )
-
-    def test_clean_spp_view_renames_alternative_columns(self):
-        # Staging com os nomes alternativos: a view expõe os nomes que a query espera
-        con = duckdb.connect()
-        try:
-            staging = con.sql(
-                f"SELECT 'x' AS {config.COL_OBSERVACOES}, '1' AS {config.COL_STATUS_IDENTIFICACAO}"
-            )
-            with mock.patch.object(clean_SPP, "read_table", return_value=staging):
-                clean_SPP.create_staging_view(con)
-            columns = con.sql(f"SELECT * FROM {config.DUCKDB_STAGING_ALIAS}").columns
-        finally:
-            con.close()
-        self.assertEqual(columns, [config.COL_OBSERVACAO, config.COL_IDENTIFICACAO])
 
     def test_clean_citations_reads_staging_by_source_columns(self):
         with mock.patch.object(clean_arboreto_citations, "read_table") as fake_read:
