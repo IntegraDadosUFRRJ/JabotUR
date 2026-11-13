@@ -6,8 +6,8 @@ Cada função devolve um STRUCT com as chaves escritas uma só vez aqui
 (SCIENTIFIC_NAME_FIELDS, REGISTRATION_NUMBER_FIELDS).
 O DuckDB recusa chave a menos ou a mais, mas não percebe uma chave renomeada;
 por isso cada retorno passa por uma checagem explícita, que falha alto.
-Como no serie.map() que os cleans usavam, o NULL também chega ao parser
-(null_handling="special") e uma exceção do parser interrompe o clean.
+O NULL também chega ao parser (null_handling="special"), que decide o que
+devolver para célula vazia, e uma exceção do parser interrompe o clean.
 """
 
 import duckdb

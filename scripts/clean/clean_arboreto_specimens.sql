@@ -14,8 +14,9 @@
 --   SELECT final: morfo-espécie usa o nome normalizado como epíteto e fica sem gênero;
 --             morfo-espécie e unparseable não reconciliam entre fontes (ADR-0003);
 --             needs_review para status de nome fora da lista aceita ou registro
---             unparseable. As comparações com status tratam NULL como "não é", como
---             fazia o pandas.
+--             unparseable. Status NULL não é morfo-espécie nem unparseable (coalesce
+--             com FALSE) e fica fora da lista aceita (coalesce com TRUE): nenhuma
+--             flag sai NULL.
 --
 -- Placeholders, preenchidos pelo Python:
 --   name_function / registration_function: nomes das funções registradas no DuckDB para os parsers;

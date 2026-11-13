@@ -12,9 +12,9 @@
 --   typed:    guarda a família ORIGINAL (family_raw, antes do fill-down), faz o
 --             fill-down de familia, aplica trim em especie/quantidade e faz o
 --             TRY_CAST da quantidade para DOUBLE (inválido vira NULL);
---   checked:  quantidade finita; NaN/inf viram NULL. Divergência deliberada do
---             TRY_CAST puro, que aceita 'nan'/'inf', para manter o mesmo
---             comportamento do antigo pd.to_numeric(errors="coerce") + isna();
+--   checked:  quantidade finita; NaN/inf viram NULL. O TRY_CAST sozinho aceita
+--             'nan'/'inf' como número; numa planilha de contagem eles são texto
+--             inválido, como qualquer outro;
 --   summed:   previous_quantity_sum = soma das quantidades das linhas ANTERIORES
 --             da mesma aba, com ORDER BY explícito por _source_row inteiro
 --             (NULL conta como 0);
@@ -26,8 +26,9 @@
 --   marked:   is_morphospecies, calculado sobre o parse_status final;
 --   SELECT final: morfo-espécie usa o nome normalizado como epíteto e fica sem gênero;
 --             morfo-espécie, unparseable e total_row não reconciliam entre fontes;
---             needs_review para todo status fora da lista aceita. As comparações com
---             parse_status tratam NULL como "não é", como fazia o pandas.
+--             needs_review para todo status fora da lista aceita. parse_status NULL
+--             não é morfo-espécie nem unparseable (coalesce com FALSE) e fica fora da
+--             lista aceita (coalesce com TRUE): nenhuma flag sai NULL.
 --
 -- Placeholders, preenchidos pelo Python a partir do config.py e do parser:
 --   staging_order: lista de colunas da ordem da planilha, com a linha convertida para inteiro;
