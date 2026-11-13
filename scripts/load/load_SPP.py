@@ -1,10 +1,5 @@
 # Lê `cln_spp_briofitas` e povoa as tabelas normalizadas finais do schema no PostgreSQL
 
-
-# Os transforms do SPP (scripts/transforms) recebem pd.Series: o pandas fica só nessa
-# fronteira (_expand_filo e irmãs), e o resto do load trabalha com linhas (list[dict])
-import pandas as pd
-
 import scripts.config as config
 from scripts.db import db_utils
 from scripts.load import taxonomy
@@ -17,27 +12,6 @@ _none_if_nan = taxonomy._none_if_nan
 _load_existing_rows = taxonomy._load_existing_rows
 _distinct_non_null = taxonomy._distinct_non_null
 _merge_ids = taxonomy._merge_ids
-
-
-def _series(values: list) -> pd.Series:
-    # dtype=object: coluna de texto com None para NULL, sem o pandas inferir tipo pelos valores
-    return pd.Series(values, dtype=object)
-
-
-def _expand_filo(values: list) -> list:
-    return [_none_if_nan(v) for v in filo_t.expand(_series(values)).tolist()]
-
-
-def _strip_genero_abbreviation(values: list) -> list:
-    return [_none_if_nan(v) for v in epiteto_t.strip_genero_abbreviation(_series(values)).tolist()]
-
-
-def _expand_multivalued_substrato(values: list) -> list:
-    return substrato_t.expand_multivalued(_series(values)).tolist()
-
-
-def _split_multivalued_observacoes(values: list) -> list:
-    return observacoes_t.split_multivalued(_series(values)).tolist()
 
 
 def load_clean_rows(con) -> list[dict]:
@@ -56,10 +30,10 @@ def prepare(rows: list[dict]) -> list[dict]:
     if not rows:
         return []
     epiteto_column = _resolve_epiteto_column(rows[0])
-    filo_nomes = _expand_filo([row["filo"] for row in rows])
-    epitetos_limpos = _strip_genero_abbreviation([row[epiteto_column] for row in rows])
-    substratos = _expand_multivalued_substrato([row["substrato"] for row in rows])
-    observacoes = _split_multivalued_observacoes([row["observacoes"] for row in rows])
+    filo_nomes = filo_t.expand([row["filo"] for row in rows])
+    epitetos_limpos = epiteto_t.strip_genero_abbreviation([row[epiteto_column] for row in rows])
+    substratos = substrato_t.expand_multivalued([row["substrato"] for row in rows])
+    observacoes = observacoes_t.split_multivalued([row["observacoes"] for row in rows])
 
     out = []
     for row, filo_nome, epiteto_limpo, substrato_lista, observacoes_lista in zip(

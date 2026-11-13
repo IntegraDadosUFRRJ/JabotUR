@@ -4,22 +4,19 @@ Converte as siglaa de entrada (M/H) para o nome completo (Musgos/Hepáticas),
 se encontrar uma sigla não prevista, mantém o valor original e registra um aviso no console
 """
 
-import numpy as np
-import pandas as pd
-
 import scripts.config as config
+from scripts.transforms.missing import is_missing
 
 
-def expand(series: pd.Series) -> pd.Series:
-    mapping = config.FILO_NOME_MAP
+def expand_value(value):
+    if is_missing(value):
+        return None
+    key = str(value).strip().upper()
+    if key not in config.FILO_NOME_MAP:
+        print(f"[transforms.filo] sigla de filo desconhecida: {value!r} (mantendo original)")
+        return str(value).strip()
+    return config.FILO_NOME_MAP[key]
 
-    def _map(value):
-        if pd.isna(value):
-            return np.nan
-        key = str(value).strip().upper()
-        if key not in mapping:
-            print(f"[transforms.filo] sigla de filo desconhecida: {value!r} (mantendo original)")
-            return str(value).strip()
-        return mapping[key]
 
-    return series.map(_map)
+def expand(values: list) -> list:
+    return [expand_value(value) for value in values]

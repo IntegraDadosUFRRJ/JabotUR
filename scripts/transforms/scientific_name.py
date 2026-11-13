@@ -5,7 +5,8 @@ Parser para o campo "Espécie" das planilhas do arboreto, que vem como uma
 """
 
 import re
-import pandas as pd
+
+from scripts.transforms.missing import is_missing
 
 PARSE_STATUS_OK = "ok"
 PARSE_STATUS_GENUS_ONLY = "genus_only"
@@ -33,7 +34,7 @@ _INFRA_RANK_RE = re.compile(r"\b(var\.|subsp\.|f\.|forma)\s+([A-Za-zà-ÿ-]+)")
 
 def _normalize_raw(nome):
     # Normaliza erro de digitação na planilha antes do parsing.
-    if nome is None or (isinstance(nome, float) and pd.isna(nome)):
+    if is_missing(nome):
         return None
     s = str(nome).strip()
     s = re.sub(r"\s+", " ", s)
@@ -143,7 +144,3 @@ def parse_scientific_name(nome_raw):
         autor=rest or None,
         qualifier=qualifier,
     )
-
-
-def parse_scientific_name_series(serie: pd.Series) -> pd.DataFrame:
-    return pd.DataFrame(serie.map(parse_scientific_name).tolist())

@@ -5,9 +5,9 @@ import duckdb
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from scripts.clean import duckdb_parsers
 from scripts.transforms.scientific_name import (
     parse_scientific_name,
-    parse_scientific_name_series,
     PARSE_STATUS_GENUS_ONLY,
     PARSE_STATUS_OK,
     PARSE_STATUS_MORPHOSPECIES,
@@ -35,10 +35,18 @@ class ScientificNameSpTests(unittest.TestCase):
             self.assertEqual(res_sp[k], res_pure[k])
 
     def test_series_processing(self):
-        # A série processa os mesmos casos
-        series = duckdb.sql("SELECT unnest(['Citrus sp.', 'Pinus sp.']) AS nome").df()["nome"]
-        df = parse_scientific_name_series(series)
-        rows = duckdb.sql("SELECT parse_status, genero FROM df").fetchall()
+        # A coluna inteira, pelo parser registrado no DuckDB como no clean, processa os mesmos casos
+        con = duckdb.connect()
+        try:
+            duckdb_parsers.register_scientific_name_parser(con)
+            rows = con.execute(
+                f"SELECT p.parse_status, p.genero FROM ("
+                f"SELECT {duckdb_parsers.SCIENTIFIC_NAME_FUNCTION}(nome) AS p, n "
+                f"FROM unnest(['Citrus sp.', 'Pinus sp.']) WITH ORDINALITY AS t(nome, n)"
+                f") ORDER BY n"
+            ).fetchall()
+        finally:
+            con.close()
         self.assertEqual(len(rows), 2)
         self.assertEqual(
             rows,

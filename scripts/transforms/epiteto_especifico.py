@@ -5,24 +5,17 @@
 
 import re
 
-import numpy as np
-import pandas as pd
+from scripts.transforms.missing import is_missing
 
 _GENERO_ABREVIADO_RE = re.compile(r"^\s*[^\s.]+\.\s*")
 
 
-def strip_genero_abbreviation(series: pd.Series) -> pd.Series:
-    def _clean(value):
-        if pd.isna(value):
-            return np.nan
-        text = str(value).strip()
-        return _GENERO_ABREVIADO_RE.sub("", text).strip()
-
-    return series.map(_clean)
+def strip_genero_abbreviation(values: list) -> list:
+    return [strip_genero_abbreviation_from_value(value) for value in values]
 
 
 def strip_genero_abbreviation_from_value(value):
-    if pd.isna(value):
-        return np.nan
+    if is_missing(value):
+        return None
     text = str(value).strip()
     return _GENERO_ABREVIADO_RE.sub("", text).strip()

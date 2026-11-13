@@ -12,7 +12,8 @@ por ser mais recente ex.: "RBRv90000293 (LACRE AZUL 0015124)" -> guardar só o a
 """
 
 import re
-import pandas as pd
+
+from scripts.transforms.missing import is_missing
 
 STATUS_AZUL = "azul"
 STATUS_AMARELO = "amarelo"
@@ -27,7 +28,7 @@ _NA_RE = re.compile(r"^n/?a$", re.IGNORECASE)
 
 
 def _normalize_raw(valor):
-    if valor is None or (isinstance(valor, float) and pd.isna(valor)):
+    if is_missing(valor):
         return None
     s = str(valor).strip()
     s = re.sub(r"\s+", " ", s)
@@ -68,8 +69,3 @@ def parse_registration_number(valor_raw):
         return _result(valor_raw, norm, status=STATUS_AZUL, numero=f"LACRE AZUL {numero}")
 
     return _result(valor_raw, norm, status=STATUS_UNPARSEABLE, numero=None)
-
-
-def parse_registration_number_series(serie: pd.Series) -> pd.DataFrame:
-    """Vetoriza parse_registration_number sobre uma coluna inteira."""
-    return pd.DataFrame(serie.map(parse_registration_number).tolist())
