@@ -14,9 +14,7 @@ def main() -> None:
     stage_SPP.load_staging(stage_SPP.extract_spp())
 
     print("\n== CLEAN (SPP) ==")
-    clean_SPP.load_clean(
-        clean_SPP.transform(clean_SPP.load_staging_df())
-    )
+    clean_SPP.clean_spp()
 
     print("\n== LOAD (SPP) ==")
     load_SPP.populate_normalized_tables()
@@ -27,11 +25,7 @@ def main() -> None:
     )
 
     print("\n== CLEAN (arboreto - citações) ==")
-    clean_arboreto_citations.load_clean(
-        clean_arboreto_citations.transform(
-            clean_arboreto_citations.load_staging_df()
-        )
-    )
+    clean_arboreto_citations.clean_citations()
 
     print("\n== LOAD (arboreto - citações) ==")
     load_arboreto_citations.populate_normalized_tables()
@@ -40,9 +34,7 @@ def main() -> None:
     stage_arboreto_specimens.load_staging(stage_arboreto_specimens.extract_specimens())
 
     print("\n== CLEAN (arboreto - espécimes) ==")
-    clean_arboreto_specimens.load_clean(
-        clean_arboreto_specimens.transform(clean_arboreto_specimens.load_staging_df())
-    )
+    clean_arboreto_specimens.clean_specimens()
 
     print("\n== LOAD (arboreto - espécimes) ==")
     load_arboreto_specimens.populate_normalized_tables()

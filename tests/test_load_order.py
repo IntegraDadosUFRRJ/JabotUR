@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import duckdb
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -66,6 +67,36 @@ class TestReadsUseSheetOrder(unittest.TestCase):
             read_function()
         fake_read.assert_called_once_with(table_name, order_by=order_by)
 
+    def test_clean_spp_reads_staging_by_source_columns(self):
+        with mock.patch.object(clean_SPP, "read_table") as fake_read:
+            clean_SPP.create_staging_view(mock.Mock())
+        fake_read.assert_called_once_with(
+            mock.ANY, config.STG_SPP_TABLE, order_by=config.SPP_STAGING_ORDER
+        )
+
+    def test_clean_spp_view_renames_alternative_columns(self):
+        # Staging com os nomes alternativos: a view expõe os nomes que a query espera
+        con = duckdb.connect()
+        try:
+            staging = con.sql(
+                f"SELECT 'x' AS {config.COL_OBSERVACOES}, '1' AS {config.COL_STATUS_IDENTIFICACAO}"
+            )
+            with mock.patch.object(clean_SPP, "read_table", return_value=staging):
+                clean_SPP.create_staging_view(con)
+            columns = con.sql(f"SELECT * FROM {config.DUCKDB_STAGING_ALIAS}").columns
+        finally:
+            con.close()
+        self.assertEqual(columns, [config.COL_OBSERVACAO, config.COL_IDENTIFICACAO])
+
+    def test_clean_citations_reads_staging_by_source_columns(self):
+        with mock.patch.object(clean_arboreto_citations, "read_table") as fake_read:
+            clean_arboreto_citations.create_staging_view(mock.Mock())
+        fake_read.assert_called_once_with(
+            mock.ANY,
+            config.STG_ARBORETO_CITATIONS_TABLE,
+            order_by=config.ARBORETO_CITATION_STAGING_ORDER,
+        )
+
     def test_load_spp_orders_by_source_columns(self):
         self._assert_read_order(
             load_SPP, load_SPP.load_clean_df, config.CLN_SPP_TABLE, config.SPP_STAGING_ORDER
@@ -88,31 +119,28 @@ class TestReadsUseSheetOrder(unittest.TestCase):
         )
 
     def test_clean_specimens_reads_staging_by_source_columns(self):
-        self._assert_read_order(
-            clean_arboreto_specimens,
-            clean_arboreto_specimens.load_staging_df,
+        with mock.patch.object(clean_arboreto_specimens, "read_table") as fake_read:
+            clean_arboreto_specimens.create_staging_view(mock.Mock())
+        fake_read.assert_called_once_with(
+            mock.ANY,
             config.STG_ARBORETO_SPECIMENS_TABLE,
-            config.ARBORETO_SPECIMENS_STAGING_ORDER,
+            order_by=config.ARBORETO_SPECIMENS_STAGING_ORDER,
         )
 
 
 def _stage_and_clean_spp() -> None:
     stage_SPP.load_staging(stage_SPP.extract_spp())
-    clean_SPP.load_clean(clean_SPP.transform(clean_SPP.load_staging_df()))
+    clean_SPP.clean_spp()
 
 
 def _stage_and_clean_citations() -> None:
     stage_arboreto_citations.load_staging(stage_arboreto_citations.extract_citations())
-    clean_arboreto_citations.load_clean(
-        clean_arboreto_citations.transform(clean_arboreto_citations.load_staging_df())
-    )
+    clean_arboreto_citations.clean_citations()
 
 
 def _stage_and_clean_specimens() -> None:
     stage_arboreto_specimens.load_staging(stage_arboreto_specimens.extract_specimens())
-    clean_arboreto_specimens.load_clean(
-        clean_arboreto_specimens.transform(clean_arboreto_specimens.load_staging_df())
-    )
+    clean_arboreto_specimens.clean_specimens()
 
 
 def _reverse_clean_table(table_name: str) -> None:

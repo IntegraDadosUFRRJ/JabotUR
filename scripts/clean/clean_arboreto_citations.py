@@ -1,16 +1,17 @@
 """Lê a tabela de staging no PostgreSQL e grava a tabela limpa no PostgreSQL.
 
-A transformação combina:
-  - DuckDB: fill-down de família, trim, cast de quantidade;
-  - Python para o parsing do nome científico;
+Leitura, transformação e gravação acontecem dentro do DuckDB, com o Postgres anexado:
+os dados não passam por DataFrame. A transformação combina:
+  - SQL: fill-down de família, trim, cast de quantidade, linha de totais e flags;
+  - Python para o parsing do nome científico, chamado pelo SQL como função registrada no DuckDB;
 """
 
 from pathlib import Path
 
-import pandas as pd
 import duckdb
 
-from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+from scripts.clean import duckdb_parsers
+from scripts.db.db_utils import postgres_duckdb, read_table, replace_table
 import scripts.config as config
 
 from scripts.transforms.scientific_name import (
@@ -18,16 +19,25 @@ from scripts.transforms.scientific_name import (
     PARSE_STATUS_MORPHOSPECIES,
     PARSE_STATUS_OK,
     PARSE_STATUS_UNPARSEABLE,
-    parse_scientific_name_series,
 )
 
 UNPARSEABLE_QUANTIDADE = "unparseable_quantidade"
 SQL_PATH = Path(__file__).with_name("clean_arboreto_citations.sql")
 
-def load_staging_df() -> pd.DataFrame:
-    return read_dataframe_from_postgres(
-        config.STG_ARBORETO_CITATIONS_TABLE, order_by=config.ARBORETO_CITATION_STAGING_ORDER
-    )
+OUTPUT_COLUMNS = [
+    "_source_file", "_source_sheet", "_source_row",
+    "familia", "genero", "epiteto_especifico", "infraespecifico", "autor",
+    "identification_qualifier",
+    "quantidade", "nome_raw", "nome_normalizado",
+    "parse_status", "reconcile_across_sources", "needs_review",
+]
+
+
+def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
+    """Expõe o staging, na ordem da planilha, como a view lida pela query do clean."""
+    read_table(
+        con, config.STG_ARBORETO_CITATIONS_TABLE, order_by=config.ARBORETO_CITATION_STAGING_ORDER
+    ).create_view(config.DUCKDB_STAGING_ALIAS)
 
 
 def _staging_order_sql() -> str:
@@ -38,40 +48,54 @@ def _staging_order_sql() -> str:
     )
 
 
-def _to_duckdb_table(df: pd.DataFrame) -> duckdb.DuckDBPyConnection:
-    con = duckdb.connect()
-    con.register("df_input", df)
-    return con
+def _sql_literal(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
 
 
-def _fill_down_and_trim(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
+def _full_query() -> str:
     # A query e o comentário-resumo dela estão em clean_arboreto_citations.sql; aqui só
-    # entram os trechos que vêm do config.py
-    sql = SQL_PATH.read_text(encoding="utf-8").format(
+    # entram os trechos que vêm do config.py e do parser. O resultado traz também as
+    # colunas de controle da soma, que o log usa e a tabela limpa não grava.
+    return SQL_PATH.read_text(encoding="utf-8").format(
         staging_order=_staging_order_sql(),
         family_raw_col=config.ARBORETO_CITATION_COL_FAMILY_RAW,
+        parse_function=duckdb_parsers.SCIENTIFIC_NAME_FUNCTION,
+        status_ok=_sql_literal(PARSE_STATUS_OK),
+        status_genus_only=_sql_literal(PARSE_STATUS_GENUS_ONLY),
+        status_morphospecies=_sql_literal(PARSE_STATUS_MORPHOSPECIES),
+        status_unparseable=_sql_literal(PARSE_STATUS_UNPARSEABLE),
+        status_total_row=_sql_literal(config.PARSE_STATUS_TOTAL_ROW),
+        status_unparseable_quantidade=_sql_literal(UNPARSEABLE_QUANTIDADE),
     )
-    return con.execute(sql).df()
 
 
-def _log_control_sums(out: pd.DataFrame) -> None:
+def _clean_query() -> str:
+    columns = ", ".join(OUTPUT_COLUMNS)
+    return f"SELECT {columns}, CURRENT_TIMESTAMP AS _cleaned_at FROM ({_full_query()}) ORDER BY rn"
+
+
+def _log_control_sums(con: duckdb.DuckDBPyConnection) -> None:
     # Registra, por aba, se a soma de controle da linha de totais conferiu.
     # Só filtra e imprime: a soma e o flag is_total_row vêm da query.
     family_raw = config.ARBORETO_CITATION_COL_FAMILY_RAW
-    for (_, sheet), group in out.groupby(["_source_file", "_source_sheet"], sort=False):
-        candidates = group[
-            (group[family_raw] == "")
-            & (group["especie_raw"] == "")
-            & group["quantidade"].notna()
-        ]
-        if candidates.empty:
+    full = _full_query()
+    # abas na ordem em que aparecem na planilha
+    sheets = con.execute(
+        f"SELECT _source_file, _source_sheet FROM ({full}) "
+        "GROUP BY _source_file, _source_sheet ORDER BY min(rn)"
+    ).fetchall()
+    candidates = con.execute(
+        f"SELECT _source_file, _source_sheet, _source_row, quantidade, previous_quantity_sum, "
+        f"is_total_row, parse_status FROM ({full}) "
+        f"WHERE {family_raw} = '' AND especie_raw = '' AND quantidade IS NOT NULL ORDER BY rn"
+    ).fetchall()
+    for source_file, sheet in sheets:
+        rows = [row for row in candidates if row[:2] == (source_file, sheet)]
+        if not rows:
             print(f"[clean_arboreto_citations] aba '{sheet}': sem linha de totais.")
             continue
-        for idx in candidates.index:
-            row_number = out.at[idx, "_source_row"]
-            found = out.at[idx, "quantidade"]
-            expected = out.at[idx, "previous_quantity_sum"]
-            if out.at[idx, "is_total_row"]:
+        for _, _, row_number, found, expected, is_total_row, parse_status in rows:
+            if is_total_row:
                 print(
                     f"[clean_arboreto_citations] aba '{sheet}' linha {row_number}: "
                     f"soma de controle conferiu ({found:g} == {expected:g})."
@@ -80,67 +104,35 @@ def _log_control_sums(out: pd.DataFrame) -> None:
                 print(
                     f"[clean_arboreto_citations] aba '{sheet}' linha {row_number}: "
                     f"soma de controle NÃO conferiu (esperado {expected:g}, achei {found:g}); "
-                    f"mantida como {out.at[idx, 'parse_status']}."
+                    f"mantida como {parse_status}."
                 )
 
 
-def transform(df: pd.DataFrame) -> pd.DataFrame:
-    con = _to_duckdb_table(df)
-    filled = _fill_down_and_trim(con)
-    con.close()
+def _prepare(con: duckdb.DuckDBPyConnection) -> str:
+    """Registra o parser, registra o log da soma de controle e devolve a query do clean.
 
-    parsed = parse_scientific_name_series(filled["especie_raw"])
-    out = pd.concat([filled.reset_index(drop=True), parsed], axis=1)
-
-    # quantidade (DOUBLE, inválido = NULL) já vem da query
-    bad_quantidade = out["quantidade"].isna()
-    out.loc[bad_quantidade, "parse_status"] = UNPARSEABLE_QUANTIDADE
-
-    # linha de totais (ADR-0012): o flag is_total_row é calculado na query
-    is_total_row = out["is_total_row"].astype(bool)
-    out.loc[is_total_row, "parse_status"] = config.PARSE_STATUS_TOTAL_ROW
-    _log_control_sums(out)
-
-    # usa "morfo-espécie" como epiteto_especifico e não possui gênero associado
-    is_morphospecies = out["parse_status"] == PARSE_STATUS_MORPHOSPECIES
-    out.loc[is_morphospecies, "epiteto_especifico"] = out.loc[is_morphospecies, "nome_normalizado"]
-    out.loc[is_morphospecies, "genero"] = None
-
-    # "morfo-espécie", "unparseable" (ADR-0003) e "total_row" não reconciliam entre fontes na carga
-    # Quando só possui genero(sem epiteto) reconcilia normal
-    is_unparseable = out["parse_status"] == PARSE_STATUS_UNPARSEABLE
-    out["reconcile_across_sources"] = ~(is_morphospecies | is_total_row | is_unparseable)
-
-    # sinaliza "erros" a serem alterados
-    out["needs_review"] = ~out["parse_status"].isin(
-        [
-            PARSE_STATUS_OK,
-            PARSE_STATUS_GENUS_ONLY,
-            PARSE_STATUS_MORPHOSPECIES,
-            config.PARSE_STATUS_TOTAL_ROW,
-        ]
-    )
-
-    out["_cleaned_at"] = pd.Timestamp.now(tz="UTC")
-
-    return out[[
-        "_source_file", "_source_sheet", "_source_row",
-        "familia", "genero", "epiteto_especifico", "infraespecifico", "autor",
-        "identification_qualifier",
-        "quantidade", "nome_raw", "nome_normalizado",
-        "parse_status", "reconcile_across_sources", "needs_review",
-        "_cleaned_at",
-    ]]
+    Comum a transform() e clean_citations(), para os testes exercitarem o mesmo
+    caminho do pipeline.
+    """
+    duckdb_parsers.register_scientific_name_parser(con)
+    _log_control_sums(con)
+    return _clean_query()
 
 
-def load_clean(df: pd.DataFrame) -> None:
-    write_dataframe_to_postgres(df, config.CLN_ARBORETO_CITATIONS_TABLE, mode="replace")
-    loaded_df = read_dataframe_from_postgres(config.CLN_ARBORETO_CITATIONS_TABLE)
-    count = len(loaded_df)
+def transform(con: duckdb.DuckDBPyConnection) -> duckdb.DuckDBPyRelation:
+    """Clean das Citações sobre a view config.DUCKDB_STAGING_ALIAS já registrada em con."""
+    return con.sql(_prepare(con))
+
+
+def clean_citations() -> None:
+    with postgres_duckdb() as con:
+        create_staging_view(con)
+        # Passa o texto da query, e não transform(con): a relação do con.sql() é
+        # preguiçosa e não deve ser consumida dentro da transação do replace_table
+        replace_table(con, config.CLN_ARBORETO_CITATIONS_TABLE, _prepare(con))
+        count = read_table(con, config.CLN_ARBORETO_CITATIONS_TABLE).aggregate("count(*)").fetchone()[0]
     print(f"[clean_arboreto_citations] {config.CLN_ARBORETO_CITATIONS_TABLE}: {count} linhas carregadas.")
 
 
 if __name__ == "__main__":
-    staged = load_staging_df()
-    cleaned = transform(staged)
-    load_clean(cleaned)
+    clean_citations()

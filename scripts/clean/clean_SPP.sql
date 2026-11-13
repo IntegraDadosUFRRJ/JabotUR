@@ -74,11 +74,12 @@ WITH numbered AS (
 SELECT
     _source_file,
     _source_row,
-    parcela,
+    -- texto que a normalização deixou vazio vira NULL, não string vazia
+    NULLIF(parcela, '') AS parcela,
     amostra,
     substrato,
     forma_vida,
-    observacoes,
+    NULLIF(observacoes, '') AS observacoes,
     status_identificacao,
     filo,
     familia,

@@ -18,14 +18,24 @@
 --   summed:   previous_quantity_sum = soma das quantidades das linhas ANTERIORES
 --             da mesma aba, com ORDER BY explícito por _source_row inteiro
 --             (NULL conta como 0);
---   SELECT final: is_total_row = família original e espécie vazias, quantidade
---             preenchida e igual à soma anterior da aba (ADR-0012).
+--   flagged:  is_total_row = família original e espécie vazias, quantidade
+--             preenchida e igual à soma anterior da aba (ADR-0012);
+--   parsed:   nome científico pelo parser Python, função registrada no DuckDB que devolve STRUCT;
+--   statused: parse_status final; total_row vence unparseable_quantidade, que vence o
+--             status do parser;
+--   marked:   is_morphospecies, calculado sobre o parse_status final;
+--   SELECT final: morfo-espécie usa o nome normalizado como epíteto e fica sem gênero;
+--             morfo-espécie, unparseable e total_row não reconciliam entre fontes;
+--             needs_review para todo status fora da lista aceita. As comparações com
+--             parse_status tratam NULL como "não é", como fazia o pandas.
 --
--- Placeholders, preenchidos pelo Python a partir do config.py:
+-- Placeholders, preenchidos pelo Python a partir do config.py e do parser:
 --   staging_order: lista de colunas da ordem da planilha, com a linha convertida para inteiro;
 --     aparece no row_number().
 --   family_raw_col: nome da coluna da família original; é constante do config.py porque
 --     o Python lê a mesma coluna ao registrar a soma de controle.
+--   parse_function: nome da função registrada no DuckDB para o parser de nome científico.
+--   status_*: valores de parse_status, já como literais SQL.
 -- Como o arquivo passa por str.format, uma chave literal (ex.: quantificador de regex)
 -- precisa ser escrita dobrada.
 WITH numbered AS (
@@ -67,7 +77,8 @@ summed AS (
             0
         ) AS previous_quantity_sum
     FROM checked
-)
+),
+flagged AS (
 SELECT
     rn,
     _source_file,
@@ -87,4 +98,54 @@ SELECT
         FALSE
     ) AS is_total_row
 FROM summed
+),
+parsed AS (
+    SELECT *, {parse_function}(especie_raw) AS name FROM flagged
+),
+statused AS (
+    SELECT
+        *,
+        CASE
+            WHEN is_total_row THEN {status_total_row}
+            WHEN quantidade IS NULL THEN {status_unparseable_quantidade}
+            ELSE name.parse_status
+        END AS parse_status
+    FROM parsed
+),
+marked AS (
+    SELECT *, coalesce(parse_status = {status_morphospecies}, FALSE) AS is_morphospecies
+    FROM statused
+)
+SELECT
+    rn,
+    _source_file,
+    _source_sheet,
+    _source_row,
+    {family_raw_col},
+    especie_raw,
+    previous_quantity_sum,
+    is_total_row,
+    familia,
+    CASE WHEN is_morphospecies THEN NULL ELSE name.genero END AS genero,
+    CASE WHEN is_morphospecies THEN name.nome_normalizado ELSE name.epiteto_especifico END
+        AS epiteto_especifico,
+    name.infraespecifico AS infraespecifico,
+    name.autor AS autor,
+    name.identification_qualifier AS identification_qualifier,
+    quantidade,
+    name.nome_raw AS nome_raw,
+    name.nome_normalizado AS nome_normalizado,
+    parse_status,
+    NOT (
+        is_morphospecies
+        OR is_total_row
+        OR coalesce(parse_status = {status_unparseable}, FALSE)
+    ) AS reconcile_across_sources,
+    coalesce(
+        parse_status NOT IN (
+            {status_ok}, {status_genus_only}, {status_morphospecies}, {status_total_row}
+        ),
+        TRUE
+    ) AS needs_review
+FROM marked
 ORDER BY rn

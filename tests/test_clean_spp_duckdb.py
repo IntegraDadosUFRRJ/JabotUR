@@ -2,11 +2,23 @@ import sys
 from pathlib import Path
 import unittest
 
+import duckdb
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import scripts.config as config
 from scripts.clean import clean_SPP
+
+
+def _transform(df: pd.DataFrame) -> pd.DataFrame:
+    # Registra o DataFrame no lugar da view do staging, que no pipeline vem do Postgres
+    con = duckdb.connect()
+    try:
+        con.register(config.DUCKDB_STAGING_ALIAS, df)
+        return clean_SPP.transform(con).df()
+    finally:
+        con.close()
 
 
 class CleanSppDuckDBTests(unittest.TestCase):
@@ -31,7 +43,7 @@ class CleanSppDuckDBTests(unittest.TestCase):
             }
         )
 
-        result = clean_SPP.transform(df)
+        result = _transform(df)
 
         self.assertEqual(result.loc[0, "parcela"], "4")
         self.assertEqual(result.loc[1, "parcela"], "4")
@@ -63,7 +75,7 @@ class CleanSppDuckDBTests(unittest.TestCase):
             }
         )
 
-        result = clean_SPP.transform(df)
+        result = _transform(df)
 
         self.assertEqual(result.loc[0, "forma_vida"], "Tufo")
         self.assertTrue(pd.isna(result.loc[1, "forma_vida"]))
@@ -94,8 +106,8 @@ class CleanSppDuckDBTests(unittest.TestCase):
         )
         shuffled = df.iloc[[2, 0, 1]].reset_index(drop=True)
 
-        expected = clean_SPP.transform(df).drop(columns="_cleaned_at")
-        actual = clean_SPP.transform(shuffled).drop(columns="_cleaned_at")
+        expected = _transform(df).drop(columns="_cleaned_at")
+        actual = _transform(shuffled).drop(columns="_cleaned_at")
 
         pd.testing.assert_frame_equal(expected, actual)
         last = actual[actual["_source_row"] == "10"].iloc[0]

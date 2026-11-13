@@ -10,9 +10,10 @@ from openpyxl import Workbook
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import config
-from scripts.clean import clean_arboreto_citations
+from scripts.clean import clean_arboreto_citations, duckdb_parsers
 from scripts.load import load_arboreto_citations
 from scripts.staging import stage_arboreto_citations
+from scripts.transforms.scientific_name import PARSE_STATUS_UNPARSEABLE
 
 CONTROL_COLUMNS = [
     config.ARBORETO_CITATION_COL_FAMILY_RAW,
@@ -48,8 +49,8 @@ def _ordering_rows():
 
 
 def _to_input(rows):
-    # Adaptador temporário: converte a tabela DuckDB em DataFrame porque 
-    # clean.transform() ainda não teve a E/S migrada (previsto na issue #19).
+    # DataFrame no formato do staging; _transform() o registra no lugar da view que,
+    # no pipeline, vem do Postgres
     con = duckdb.connect()
     con.execute(
         """
@@ -67,6 +68,16 @@ def _to_input(rows):
     df = con.table("staging").df()
     con.close()
     return df
+
+
+def _transform(df):
+    # Devolve DataFrame porque load_arboreto_citations.prepare() ainda lê pandas
+    con = duckdb.connect()
+    try:
+        con.register(config.DUCKDB_STAGING_ALIAS, df)
+        return clean_arboreto_citations.transform(con).df()
+    finally:
+        con.close()
 
 
 def _write_mini_xlsx(path):
@@ -113,7 +124,7 @@ def _family_at(result, sheet, row):
 
 class TotalRowTests(unittest.TestCase):
     def test_sheet_with_matching_total(self):
-        result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
+        result = _transform(_to_input(_staging_rows()))
         self.assertEqual(len(result), 7)
 
         total = duckdb.query(
@@ -126,7 +137,7 @@ class TotalRowTests(unittest.TestCase):
         self.assertEqual(total, (config.PARSE_STATUS_TOTAL_ROW, False, False))
 
     def test_sheet_without_total_keeps_last_row(self):
-        result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
+        result = _transform(_to_input(_staging_rows()))
         b_count, total_in_b = duckdb.query(
             """
             SELECT 
@@ -150,7 +161,7 @@ class TotalRowTests(unittest.TestCase):
 
     def test_unparseable_and_total_rows_do_not_reconcile(self):
         # ADR-0003 (unparseable) e ADR-0012 (total_row): nenhuma reconcilia entre fontes
-        result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
+        result = _transform(_to_input(_staging_rows()))
         flags = duckdb.query(
             """
             SELECT _source_sheet, _source_row, parse_status, reconcile_across_sources
@@ -171,7 +182,7 @@ class TotalRowTests(unittest.TestCase):
         )
 
     def test_empty_row_with_mismatching_sum_is_unparseable(self):
-        result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
+        result = _transform(_to_input(_staging_rows()))
 
         mismatch = duckdb.query(
             """
@@ -196,8 +207,8 @@ class TotalRowTests(unittest.TestCase):
         rows = _ordering_rows()
         shuffled = [rows[i] for i in (8, 4, 2, 6, 0, 7, 3, 1, 5)]
 
-        expected = clean_arboreto_citations.transform(_to_input(rows))
-        actual = clean_arboreto_citations.transform(_to_input(shuffled))
+        expected = _transform(_to_input(rows))
+        actual = _transform(_to_input(shuffled))
 
         self.assertEqual(_flags(expected), _flags(actual))
         self.assertEqual(_families(expected), _families(actual))
@@ -210,15 +221,48 @@ class TotalRowTests(unittest.TestCase):
         df = _to_input(shuffled)
         df["_source_row"] = df["_source_row"].astype(str)
 
-        result = clean_arboreto_citations.transform(df)
+        result = _transform(df)
 
         self.assertEqual(_family_at(result, "D", 10), "Malvaceae")
 
     def test_control_columns_not_in_output(self):
-        result = clean_arboreto_citations.transform(_to_input(_staging_rows()))
+        result = _transform(_to_input(_staging_rows()))
         cols = [c[0] for c in duckdb.query("DESCRIBE result").fetchall()]
         for column in CONTROL_COLUMNS:
             self.assertNotIn(column, cols)
+
+
+class RegisteredParserTests(unittest.TestCase):
+    """O parser como função registrada no DuckDB se comporta como no serie.map() anterior."""
+
+    def setUp(self):
+        self.con = duckdb.connect()
+
+    def tearDown(self):
+        self.con.close()
+
+    def test_null_reaches_parser(self):
+        # NULL também é passado ao parser, que devolve unparseable (e não NULL)
+        duckdb_parsers.register_scientific_name_parser(self.con)
+        status = self.con.execute(
+            f"SELECT {duckdb_parsers.SCIENTIFIC_NAME_FUNCTION}(NULL).parse_status"
+        ).fetchone()[0]
+        self.assertEqual(status, PARSE_STATUS_UNPARSEABLE)
+
+    def test_parser_exception_stops_clean(self):
+        def broken_parser(_):
+            raise ValueError("parser quebrou")
+
+        with mock.patch.object(duckdb_parsers, "parse_scientific_name", broken_parser):
+            with self.assertRaisesRegex(duckdb.Error, "parser quebrou"):
+                _transform(_to_input(_staging_rows()))
+
+    def test_return_outside_declared_struct_is_refused(self):
+        with mock.patch.object(
+            duckdb_parsers, "parse_scientific_name", lambda value: {"nome_raw": value}
+        ):
+            with self.assertRaisesRegex(duckdb.Error, "devolveu as chaves"):
+                _transform(_to_input(_staging_rows()))
 
 
 class StagingTests(unittest.TestCase):
@@ -245,7 +289,7 @@ class StagingTests(unittest.TestCase):
 
 class LoadPrepareTests(unittest.TestCase):
     def test_prepare_drops_total_rows_and_logs(self):
-        cleaned = clean_arboreto_citations.transform(
+        cleaned = _transform(
             _to_input(
                 [
                     ("A", 2, "Fabaceae", "Inga edulis Mart.", "2"),
