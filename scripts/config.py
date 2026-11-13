@@ -25,6 +25,11 @@ POSTGRES_DB = os.getenv("POSTGRES_DB", "jabotur")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 
+# Nome do banco Postgres anexado ao DuckDB (ATTACH ... AS <alias>)
+DUCKDB_POSTGRES_ALIAS = "pg"
+# Espera máxima por lock na conexão do DuckDB com o Postgres: um lock preso vira erro
+POSTGRES_LOCK_TIMEOUT = "30s"
+
 DUCKDB_PATH = Path("./jabotur_test.duckdb")
 
 # Nome da tabela registrada no DuckDB durante o transform()
