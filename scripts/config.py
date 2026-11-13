@@ -30,18 +30,14 @@ DUCKDB_POSTGRES_ALIAS = "pg"
 # Espera máxima por lock na conexão do DuckDB com o Postgres: um lock preso vira erro
 POSTGRES_LOCK_TIMEOUT = "30s"
 
-DUCKDB_PATH = Path("./jabotur_test.duckdb")
-
 # Nome da tabela registrada no DuckDB durante o transform()
 DUCKDB_STAGING_ALIAS = "df_input"
 
 # === Briofitas (SPP) ===
 SPP_SHEET_NAME = "SPP - JB"
-SPP_USECOLS = "A:K"  # colunas com dados reais 
 
 # === Arboreto (Especimes) ===
 ARBORETO_SPECIMENS_SHEET_NAME = "Espécimes"
-ARBORETO_SPECIMENS_USECOLS = "A:D,F:G" # colunas com dados reais 
 
 # === Arboreto (Monografia Gabriel, Livro Pesquisas, JABOT) ===
 ARBORETO_CITATION_SHEETS = [
@@ -49,7 +45,6 @@ ARBORETO_CITATION_SHEETS = [
     "Livro Pesquisas no JB",
     "JABOT",
 ]
-ARBORETO_CITATION_USECOLS = "A:C" # colunas com dados reais 
 
 
 # === COLUMN MAPS: Nome na planilha original -> nome da coluna normalizado ===
@@ -67,12 +62,6 @@ SPP_COLUMN_MAP = {
     "Substrato": "substrato",
     "Observações": "observacao",
 }
-
-# === Colunas usadas na camada clean (derivadas de SPP_COLUMN_MAP) ===
-COL_IDENTIFICACAO = SPP_COLUMN_MAP["StatusIdentificacao*"]
-COL_OBSERVACAO = SPP_COLUMN_MAP["Observações"]
-COL_OBSERVACOES = "observacoes"
-COL_STATUS_IDENTIFICACAO = "status_identificacao"
 
 # Nome na planilha original -> nome da coluna normalizado
 ARBORETO_CITATION_COLUMN_MAP = {
@@ -133,11 +122,6 @@ TB_OCCURRENCE_ARBORETUM = "occurrence_arboretum"
 
 # === Constantes de negócio usadas na etapa clean ===
 
-# Correções pontuais de digitação em Parcela (SPP).
-PARCELA_FIXES = {
-    "4*": "4",
-}
-
 # Correções de vocabulário em Observações (SPP)
 OBSERVACAO_REGEX_FIXES = [
     (r"poste de cimento", "cimento"),
@@ -147,8 +131,6 @@ OBSERVACAO_REGEX_FIXES = [
     (r"\bpleuro\b", "pleurocárpico"),
     (r"\bc(?:\s*[\./]\s*|\s+)?esp\b", "com esporófito"),
 ]
-
-OBSERVACOES_REGEX_FIXES = OBSERVACAO_REGEX_FIXES
 
 # === Constantes de negócio usadas no load final ===
  
