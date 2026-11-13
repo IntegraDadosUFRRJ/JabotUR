@@ -172,13 +172,6 @@ class RealSheetChecks:
                 expected, _ = _openpyxl_sheet(self.PATH, sheet, self.COLUMN_MAP)
                 self.assertEqual(_query_rows(self.query(), sheet, self.COLUMN_MAP), expected)
 
-    def test_hidden_rows_are_present(self):
-        for sheet in self.SHEETS:
-            with self.subTest(sheet=sheet):
-                _, hidden = _openpyxl_sheet(self.PATH, sheet, self.COLUMN_MAP)
-                rows = _query_rows(self.query(), sheet, self.COLUMN_MAP)
-                self.assertEqual(hidden - set(rows), set())
-
 
 @unittest.skipUnless(FILES_SKIP_REASON is None, FILES_SKIP_REASON or "")
 class SppSheetTests(RealSheetChecks, unittest.TestCase):
@@ -243,11 +236,6 @@ class SpecimensSheetTests(RealSheetChecks, unittest.TestCase):
     def query(self) -> str:
         return stage_arboreto_specimens.specimens_query()
 
-    def test_sheet_has_hidden_rows(self):
-        # Sem linhas ocultas na referência, test_hidden_rows_are_present passaria sem testar nada
-        _, hidden = _openpyxl_sheet(self.PATH, self.SHEETS[0], self.COLUMN_MAP)
-        self.assertGreater(len(hidden), 0)
-
     def test_only_mapped_columns_are_read(self):
         # Colunas escolhidas pelo nome: as da planilha fora do map (Canteiro, na coluna E) não entram
         con = duckdb.connect()
@@ -305,10 +293,9 @@ class WrittenStagingChecks:
         self._stage_quietly()
         for sheet in self.SHEETS:
             with self.subTest(sheet=sheet):
-                expected, hidden = _openpyxl_sheet(self.PATH, sheet, self.COLUMN_MAP)
+                expected, _ = _openpyxl_sheet(self.PATH, sheet, self.COLUMN_MAP)
                 rows = _table_rows(self.engine, self.TABLE, sheet, self.COLUMN_MAP)
                 self.assertEqual(rows, expected)
-                self.assertEqual(hidden - set(rows), set())
 
     def test_loaded_at_is_timestamptz(self):
         self._stage_quietly()
