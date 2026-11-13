@@ -1,4 +1,4 @@
-# Lê `cln_arboreto_citations` e povoa as tabelas normalizadas finais do schema no PostgreSQL
+# Lê `cln_arboretum_citations` e povoa as tabelas normalizadas finais do schema no PostgreSQL
 
 
 import scripts.config as config
@@ -33,7 +33,7 @@ def prepare(rows: list[dict]) -> list[dict]:
 
         # morfo-espécie e unparseable nunca reconciliam entre fontes (ADR-0003);
         # recebem a origem no nome; epíteto NULL continua NULL
-        epiteto_especifico = row["epiteto_especifico"]
+        epiteto_especifico = row["epithet"]
         if not row["reconcile_across_sources"] and epiteto_especifico is not None:
             epiteto_especifico = f"{epiteto_especifico} [{source_sheet}#{source_row}]"
 
@@ -44,7 +44,7 @@ def prepare(rows: list[dict]) -> list[dict]:
             "source_file": row["_source_file"],
             "source_sheet": source_sheet,
             "source_row": source_row,
-            "epiteto_especifico": epiteto_especifico,
+            "epithet": epiteto_especifico,
             "epiteto": epiteto_especifico,
             "clean_index": clean_index,
         })
@@ -63,7 +63,7 @@ def build_bibliographic_citation(con, rows: list[dict], epiteto_ids: dict) -> li
     for row in rows:
         chave_especie = tuple(
             _none_if_nan(row[column])
-            for column in ("genero", "epiteto", "infraespecifico", "autor")
+            for column in ("genus", "epiteto", "infraspecific", "author")
         )
         id_especie = epiteto_ids.get(chave_especie)
 
@@ -84,7 +84,7 @@ def build_bibliographic_citation(con, rows: list[dict], epiteto_ids: dict) -> li
             existing_keys_to_id[natural_key] = citation_id
             next_id += 1
 
-        quantidade = _none_if_nan(row["quantidade"])
+        quantidade = _none_if_nan(row["quantity"])
         citation_rows.append(
             {
                 "id": citation_id,

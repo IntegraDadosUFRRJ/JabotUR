@@ -1,7 +1,7 @@
 """
-Lê `cln_arboreto_specimens` e povoa:
-  - núcleo taxonômico compartilhado com SPP e citations: filo, familia,
-    genero, autor, epiteto_especifico;
+Lê `cln_arboretum_specimens` e povoa:
+  - núcleo taxonômico compartilhado com SPP e citations: phylum, family,
+    genus, author, species;
   - sector, reproductive_status (dimensões exclusivas desta fonte);
   - occurrence (base, compartilhada) + occurrence_arboretum (satélite);
 
@@ -28,7 +28,7 @@ def prepare(rows: list[dict]) -> list[dict]:
 
         # morfo-espécie e unparseable nunca reconciliam entre fontes (ADR-0003);
         # em unparseable o epíteto é NULL e continua NULL depois do sufixo
-        epiteto_especifico = row["epiteto_especifico"]
+        epiteto_especifico = row["epithet"]
         if not row["reconcile_across_sources"] and epiteto_especifico is not None:
             epiteto_especifico = f"{epiteto_especifico} [{source_sheet}#{source_row}]"
 
@@ -38,7 +38,7 @@ def prepare(rows: list[dict]) -> list[dict]:
             "source_file": row["_source_file"],
             "source_sheet": source_sheet,
             "source_row": source_row,
-            "epiteto_especifico": epiteto_especifico,
+            "epithet": epiteto_especifico,
             "epiteto": epiteto_especifico,
         })
     return out
@@ -46,7 +46,7 @@ def prepare(rows: list[dict]) -> list[dict]:
 
 def build_sector(con, rows: list[dict]):
     existing_ids = {row["name"]: row["id"] for row in taxonomy._load_existing_rows(con, config.TB_SECTOR)}
-    ids = taxonomy._merge_ids(existing_ids, taxonomy._distinct_non_null(row["setor"] for row in rows))
+    ids = taxonomy._merge_ids(existing_ids, taxonomy._distinct_non_null(row["sector"] for row in rows))
     dim = [{"id": i, "name": name} for name, i in ids.items()]
     return dim, ids
 
@@ -55,7 +55,7 @@ def build_reproductive_status(con, rows: list[dict]):
     existing_ids = {
         row["name"]: row["id"] for row in taxonomy._load_existing_rows(con, config.TB_REPRODUCTIVE_STATUS)
     }
-    ids = taxonomy._merge_ids(existing_ids, taxonomy._distinct_non_null(row["estado_reprodutivo"] for row in rows))
+    ids = taxonomy._merge_ids(existing_ids, taxonomy._distinct_non_null(row["reproductive_status"] for row in rows))
     dim = [{"id": i, "name": name} for name, i in ids.items()]
     return dim, ids
 
@@ -73,10 +73,10 @@ def build_occurrence_specimens(con, rows: list[dict], epiteto_ids: dict, sector_
     satellite_rows = []
     for index, row in enumerate(rows):
         chave_especie = (
-            taxonomy._none_if_nan(row["genero"]),
+            taxonomy._none_if_nan(row["genus"]),
             taxonomy._none_if_nan(row["epiteto"]),
-            taxonomy._none_if_nan(row["infraespecifico"]),
-            taxonomy._none_if_nan(row["autor"]),
+            taxonomy._none_if_nan(row["infraspecific"]),
+            taxonomy._none_if_nan(row["author"]),
         )
         # sem gênero e sem epíteto o taxonomy não cria espécie: a ocorrência
         # entra com id_species NULL; o clean já a marca needs_review
@@ -98,8 +98,8 @@ def build_occurrence_specimens(con, rows: list[dict], epiteto_ids: dict, sector_
             existing_keys_to_id[natural_key] = occurrence_id
             next_id += 1
 
-        estado_reprodutivo = taxonomy._none_if_nan(row["estado_reprodutivo"])
-        setor = taxonomy._none_if_nan(row["setor"])
+        estado_reprodutivo = taxonomy._none_if_nan(row["reproductive_status"])
+        setor = taxonomy._none_if_nan(row["sector"])
 
         occurrence_rows.append(
             {
@@ -119,7 +119,7 @@ def build_occurrence_specimens(con, rows: list[dict], epiteto_ids: dict, sector_
                     if estado_reprodutivo is not None else None,
                 "id_sector": sector_ids.get(setor) if setor is not None else None,
                 "registration_number": taxonomy._none_if_nan(row["registration_number"]),
-                "location_description": taxonomy._none_if_nan(row["descricao_localizacao"]),
+                "location_description": taxonomy._none_if_nan(row["location_description"]),
                 "height_m": None,  # não existe em Espécimes -- só entra com Canteiro C
             }
         )

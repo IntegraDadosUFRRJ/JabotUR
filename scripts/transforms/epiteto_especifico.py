@@ -1,4 +1,4 @@
-"""Transforma a coluna de epiteto_especifico para o nome completo usado nas tabelas finais
+"""Transforma a coluna epithet para o nome completo usado nas tabelas finais
 
 - remove o primeiro token da string quando ele termina em "." (para remover a abreviação de gênero)
 """

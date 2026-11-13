@@ -1,4 +1,4 @@
-# Lê `cln_spp_briofitas` e povoa as tabelas normalizadas finais do schema no PostgreSQL
+# Lê `cln_spp_bryophytes` e povoa as tabelas normalizadas finais do schema no PostgreSQL
 
 import scripts.config as config
 from scripts.db import db_utils
@@ -20,20 +20,20 @@ def load_clean_rows(con) -> list[dict]:
 
 
 def _resolve_epiteto_column(columns) -> str:
-    for column_name in ("epiteto_especifico", "especie"):
+    for column_name in ("epithet",):
         if column_name in columns:
             return column_name
-    raise KeyError("Nenhuma coluna de epíteto encontrada em cln_spp_briofitas")
+    raise KeyError("Nenhuma coluna de epíteto encontrada em cln_spp_bryophytes")
 
 
 def prepare(rows: list[dict]) -> list[dict]:
     if not rows:
         return []
     epiteto_column = _resolve_epiteto_column(rows[0])
-    filo_nomes = filo_t.expand([row["filo"] for row in rows])
+    filo_nomes = filo_t.expand([row["phylum"] for row in rows])
     epitetos_limpos = epiteto_t.strip_genero_abbreviation([row[epiteto_column] for row in rows])
-    substratos = substrato_t.expand_multivalued([row["substrato"] for row in rows])
-    observacoes = observacoes_t.split_multivalued([row["observacoes"] for row in rows])
+    substratos = substrato_t.expand_multivalued([row["substrate"] for row in rows])
+    observacoes = observacoes_t.split_multivalued([row["remarks"] for row in rows])
 
     out = []
     for row, filo_nome, epiteto_limpo, substrato_lista, observacoes_lista in zip(
@@ -41,7 +41,7 @@ def prepare(rows: list[dict]) -> list[dict]:
     ):
         out.append({
             **row,
-            "epiteto_especifico": row[epiteto_column],
+            "epithet": row[epiteto_column],
             "filo_nome": filo_nome,
             "epiteto_limpo": epiteto_limpo,
             "substrato_lista": substrato_lista,
@@ -51,23 +51,23 @@ def prepare(rows: list[dict]) -> list[dict]:
             # taxonomy.py espera a chave "epiteto";
             # SPP nunca tem infraespecífico;
             "epiteto": epiteto_limpo,
-            "infraespecifico": None,
+            "infraspecific": None,
         })
     return out
 
 
 def build_forma_vida(con, rows: list[dict]):
-    existing_ids = {row["tipo"]: row["id"] for row in _load_existing_rows(con, config.TB_FORMA_VIDA)}
-    ids = _merge_ids(existing_ids, _distinct_non_null(row["forma_vida"] for row in rows))
-    dim = [{"id": i, "tipo": tipo} for tipo, i in ids.items()]
+    existing_ids = {row["type"]: row["id"] for row in _load_existing_rows(con, config.TB_FORMA_VIDA)}
+    ids = _merge_ids(existing_ids, _distinct_non_null(row["life_form"] for row in rows))
+    dim = [{"id": i, "type": tipo} for tipo, i in ids.items()]
     return dim, ids
 
 
 def build_parcela(con, rows: list[dict]):
-    existing_ids = {row["codigo"]: row["id"] for row in _load_existing_rows(con, config.TB_PARCELA)}
-    ids = _merge_ids(existing_ids, _distinct_non_null(row["parcela"] for row in rows))
+    existing_ids = {row["code"]: row["id"] for row in _load_existing_rows(con, config.TB_PARCELA)}
+    ids = _merge_ids(existing_ids, _distinct_non_null(row["plot"] for row in rows))
     dim = [
-        {"id": i, "codigo": codigo, "coordenada": config.PARCELA_COORDENADAS.get(str(codigo))}
+        {"id": i, "code": codigo, "coordinate": config.PARCELA_COORDENADAS.get(str(codigo))}
         for codigo, i in ids.items()
     ]
     return dim, ids
@@ -75,7 +75,7 @@ def build_parcela(con, rows: list[dict]):
 
 def build_identificacao():
     dim = [
-        {"id": codigo, "descricao": descricao}
+        {"id": codigo, "description": descricao}
         for codigo, descricao in config.IDENTIFICACAO_DESCRICAO_MAP.items()
     ]
     ids = {codigo: codigo for codigo in config.IDENTIFICACAO_DESCRICAO_MAP}
@@ -84,21 +84,21 @@ def build_identificacao():
 
 def build_substrato(con, rows: list[dict]):
     sigla_by_nome = {v: k for k, v in config.SUBSTRATO_NOME_MAP.items()}
-    existing_ids = {row["nome"]: row["id"] for row in _load_existing_rows(con, config.TB_SUBSTRATO)}
+    existing_ids = {row["name"]: row["id"] for row in _load_existing_rows(con, config.TB_SUBSTRATO)}
     # sorted() do Python, não ORDER BY do banco: a ordem alfabética decide os ids novos
     nomes = sorted({nome for row in rows for nome in row["substrato_lista"]})
     ids = _merge_ids(existing_ids, nomes)
-    dim = [{"id": i, "nome": nome, "sigla": sigla_by_nome.get(nome)} for nome, i in ids.items()]
+    dim = [{"id": i, "name": nome, "abbreviation": sigla_by_nome.get(nome)} for nome, i in ids.items()]
     return dim, ids
 
 
 def build_observacao(con, rows: list[dict]):
     existing_ids = {
-        row["comentario"]: row["id"] for row in _load_existing_rows(con, config.TB_OBSERVACAO)
+        row["comment"]: row["id"] for row in _load_existing_rows(con, config.TB_OBSERVACAO)
     }
     comentarios = sorted({c for row in rows for c in row["observacoes_lista"]})
     ids = _merge_ids(existing_ids, comentarios)
-    dim = [{"id": i, "comentario": comentario} for comentario, i in ids.items()]
+    dim = [{"id": i, "comment": comentario} for comentario, i in ids.items()]
     return dim, ids
 
 
@@ -112,12 +112,12 @@ def build_occurrence(con, rows: list[dict], epiteto_ids: dict, forma_ids: dict, 
     occurrence_rows = []
     satellite_rows = []
     for index, row in enumerate(rows):
-        # SPP sempre passa infraespecifico=None
+        # SPP sempre passa infraspecific=None
         chave_especie = (
-            _none_if_nan(row["genero"]),
+            _none_if_nan(row["genus"]),
             _none_if_nan(row["epiteto"]),
-            _none_if_nan(row["infraespecifico"]),
-            _none_if_nan(row["autor"]),
+            _none_if_nan(row["infraspecific"]),
+            _none_if_nan(row["author"]),
         )
         id_especie = epiteto_ids.get(chave_especie)
         if id_especie is None:
@@ -135,10 +135,10 @@ def build_occurrence(con, rows: list[dict], epiteto_ids: dict, forma_ids: dict, 
             existing_keys_to_id[natural_key] = occurrence_id
             next_id += 1
 
-        codigo_status = _none_if_nan(row["status_identificacao"])
-        forma_vida = _none_if_nan(row["forma_vida"])
-        parcela = _none_if_nan(row["parcela"])
-        amostra = _none_if_nan(row["amostra"])
+        codigo_status = _none_if_nan(row["identification_status"])
+        forma_vida = _none_if_nan(row["life_form"])
+        parcela = _none_if_nan(row["plot"])
+        amostra = _none_if_nan(row["sample"])
 
         occurrence_rows.append(
             {
@@ -152,10 +152,10 @@ def build_occurrence(con, rows: list[dict], epiteto_ids: dict, forma_ids: dict, 
         satellite_rows.append(
             {
                 "id": occurrence_id,
-                "id_forma": forma_ids.get(forma_vida) if forma_vida is not None else None,
-                "id_identificacao": identificacao_ids.get(int(codigo_status)) if codigo_status is not None else None,
-                "id_parcela": parcela_ids.get(parcela) if parcela is not None else None,
-                "amostra": int(amostra) if amostra is not None else None,
+                "id_life_form": forma_ids.get(forma_vida) if forma_vida is not None else None,
+                "id_identification_status": identificacao_ids.get(int(codigo_status)) if codigo_status is not None else None,
+                "id_plot": parcela_ids.get(parcela) if parcela is not None else None,
+                "sample": int(amostra) if amostra is not None else None,
             }
         )
     return occurrence_rows, satellite_rows
@@ -176,8 +176,8 @@ def build_bridges(rows: list[dict], occurrence_rows: list[dict], substrato_ids: 
         for comentario in row["observacoes_lista"]:
             obs_pairs[(id_briofita, observacao_ids[comentario])] = None
 
-    subs_rows = [{"id_briofita": b, "id_substrato": s} for b, s in subs_pairs]
-    obs_rows = [{"id_briofita": b, "id_observacao": o} for b, o in obs_pairs]
+    subs_rows = [{"id_occurrence": b, "id_substrate": s} for b, s in subs_pairs]
+    obs_rows = [{"id_occurrence": b, "id_remark": o} for b, o in obs_pairs]
     return subs_rows, obs_rows
 
 
@@ -228,11 +228,11 @@ def populate_normalized_tables() -> None:
             gravadas.append((nome_tabela, len(tabela_rows)))
 
         db_utils.insert_ignore_rows(
-            con, config.TB_COLETA_SUBSTRATO, coleta_substrato_rows, ["id_briofita", "id_substrato"]
+            con, config.TB_COLETA_SUBSTRATO, coleta_substrato_rows, ["id_occurrence", "id_substrate"]
         )
         gravadas.append((config.TB_COLETA_SUBSTRATO, len(coleta_substrato_rows)))
         db_utils.insert_ignore_rows(
-            con, config.TB_COLETA_OBSERVACAO, coleta_observacao_rows, ["id_briofita", "id_observacao"]
+            con, config.TB_COLETA_OBSERVACAO, coleta_observacao_rows, ["id_occurrence", "id_remark"]
         )
         gravadas.append((config.TB_COLETA_OBSERVACAO, len(coleta_observacao_rows)))
 
