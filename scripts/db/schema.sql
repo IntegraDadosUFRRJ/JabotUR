@@ -5,75 +5,75 @@
 -- Tabelas stg_* e cln_* ficam de fora: write_dataframe_to_postgres(mode="replace") as recria.
 
 -- Núcleo taxonômico
-CREATE TABLE IF NOT EXISTS filo (
+CREATE TABLE IF NOT EXISTS phylum (
     id bigint PRIMARY KEY,
-    nome text
+    name text
 );
 
-CREATE TABLE IF NOT EXISTS familia (
+CREATE TABLE IF NOT EXISTS family (
     id bigint PRIMARY KEY,
-    id_filo bigint,
-    nome text,
-    FOREIGN KEY (id_filo) REFERENCES filo (id)
+    id_phylum bigint,
+    name text,
+    FOREIGN KEY (id_phylum) REFERENCES phylum (id)
 );
 
-CREATE TABLE IF NOT EXISTS genero (
+CREATE TABLE IF NOT EXISTS genus (
     id bigint PRIMARY KEY,
-    id_familia bigint,
-    nome text,
-    FOREIGN KEY (id_familia) REFERENCES familia (id)
+    id_family bigint,
+    name text,
+    FOREIGN KEY (id_family) REFERENCES family (id)
 );
 
-CREATE TABLE IF NOT EXISTS autor (
+CREATE TABLE IF NOT EXISTS author (
     id bigint PRIMARY KEY,
-    nome text
+    name text
 );
 
-CREATE TABLE IF NOT EXISTS epiteto_especifico (
+CREATE TABLE IF NOT EXISTS species (
     id bigint PRIMARY KEY,
-    id_genero bigint,
-    id_autor bigint,
-    nome text,
-    infraespecifico text,
-    FOREIGN KEY (id_genero) REFERENCES genero (id),
-    FOREIGN KEY (id_autor) REFERENCES autor (id)
+    id_genus bigint,
+    id_author bigint,
+    epithet text,
+    infraspecific text,
+    FOREIGN KEY (id_genus) REFERENCES genus (id),
+    FOREIGN KEY (id_author) REFERENCES author (id)
 );
 
--- Índices únicos parciais por causa do infraespecifico NULL (ADR-0002)
-CREATE UNIQUE INDEX IF NOT EXISTS epiteto_uniq_com_infra
-ON epiteto_especifico (id_genero, nome, infraespecifico, id_autor)
-WHERE infraespecifico IS NOT NULL;
+-- Índices únicos parciais por causa do infraspecific NULL (ADR-0002)
+CREATE UNIQUE INDEX IF NOT EXISTS species_uniq_with_infra
+ON species (id_genus, epithet, infraspecific, id_author)
+WHERE infraspecific IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS epiteto_uniq_sem_infra
-ON epiteto_especifico (id_genero, nome, id_autor)
-WHERE infraespecifico IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS species_uniq_without_infra
+ON species (id_genus, epithet, id_author)
+WHERE infraspecific IS NULL;
 
 -- Dimensões das fontes
-CREATE TABLE IF NOT EXISTS forma_vida (
+CREATE TABLE IF NOT EXISTS life_form (
     id bigint PRIMARY KEY,
-    tipo text
+    type text
 );
 
-CREATE TABLE IF NOT EXISTS parcela (
+CREATE TABLE IF NOT EXISTS plot (
     id bigint PRIMARY KEY,
-    codigo text,
-    coordenada text
+    code text,
+    coordinate text
 );
 
-CREATE TABLE IF NOT EXISTS identificacao (
+CREATE TABLE IF NOT EXISTS identification_status (
     id bigint PRIMARY KEY,
-    descricao text
+    description text
 );
 
-CREATE TABLE IF NOT EXISTS substrato (
+CREATE TABLE IF NOT EXISTS substrate (
     id bigint PRIMARY KEY,
-    nome text,
-    sigla text
+    name text,
+    abbreviation text
 );
 
-CREATE TABLE IF NOT EXISTS observacao (
+CREATE TABLE IF NOT EXISTS remark (
     id bigint PRIMARY KEY,
-    comentario text
+    comment text
 );
 
 CREATE TABLE IF NOT EXISTS sector (
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS occurrence (
     origin_row bigint,
     origin_sheet text,
     identification_qualifier text,
-    FOREIGN KEY (id_species) REFERENCES epiteto_especifico (id)
+    FOREIGN KEY (id_species) REFERENCES species (id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS occurrence_uniq_origin
@@ -104,14 +104,14 @@ ON occurrence (origin_file, COALESCE(origin_sheet, ''), origin_row);
 
 CREATE TABLE IF NOT EXISTS occurrence_bryophyte (
     id bigint PRIMARY KEY,
-    id_forma bigint,
-    id_identificacao bigint,
-    id_parcela bigint,
-    amostra bigint,
+    id_life_form bigint,
+    id_identification_status bigint,
+    id_plot bigint,
+    sample bigint,
     FOREIGN KEY (id) REFERENCES occurrence (id),
-    FOREIGN KEY (id_forma) REFERENCES forma_vida (id),
-    FOREIGN KEY (id_identificacao) REFERENCES identificacao (id),
-    FOREIGN KEY (id_parcela) REFERENCES parcela (id)
+    FOREIGN KEY (id_life_form) REFERENCES life_form (id),
+    FOREIGN KEY (id_identification_status) REFERENCES identification_status (id),
+    FOREIGN KEY (id_plot) REFERENCES plot (id)
 );
 
 CREATE TABLE IF NOT EXISTS occurrence_arboretum (
@@ -127,20 +127,20 @@ CREATE TABLE IF NOT EXISTS occurrence_arboretum (
 );
 
 -- Associativas (sem id; PK composta)
-CREATE TABLE IF NOT EXISTS coleta_substrato (
-    id_briofita bigint,
-    id_substrato bigint,
-    PRIMARY KEY (id_briofita, id_substrato),
-    FOREIGN KEY (id_briofita) REFERENCES occurrence_bryophyte (id),
-    FOREIGN KEY (id_substrato) REFERENCES substrato (id)
+CREATE TABLE IF NOT EXISTS occurrence_substrate (
+    id_occurrence bigint,
+    id_substrate bigint,
+    PRIMARY KEY (id_occurrence, id_substrate),
+    FOREIGN KEY (id_occurrence) REFERENCES occurrence_bryophyte (id),
+    FOREIGN KEY (id_substrate) REFERENCES substrate (id)
 );
 
-CREATE TABLE IF NOT EXISTS coleta_observacao (
-    id_briofita bigint,
-    id_observacao bigint,
-    PRIMARY KEY (id_briofita, id_observacao),
-    FOREIGN KEY (id_briofita) REFERENCES occurrence_bryophyte (id),
-    FOREIGN KEY (id_observacao) REFERENCES observacao (id)
+CREATE TABLE IF NOT EXISTS occurrence_remark (
+    id_occurrence bigint,
+    id_remark bigint,
+    PRIMARY KEY (id_occurrence, id_remark),
+    FOREIGN KEY (id_occurrence) REFERENCES occurrence_bryophyte (id),
+    FOREIGN KEY (id_remark) REFERENCES remark (id)
 );
 
 -- Citações bibliográficas
@@ -153,5 +153,5 @@ CREATE TABLE IF NOT EXISTS bibliographic_citation (
     origin_file text,
     origin_sheet text,
     origin_row bigint,
-    FOREIGN KEY (id_species) REFERENCES epiteto_especifico (id)
+    FOREIGN KEY (id_species) REFERENCES species (id)
 );
