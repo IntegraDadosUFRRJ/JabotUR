@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, text
 
 import scripts.config as config
-from scripts.db.db_utils import get_connection
+from scripts.db.db_utils import dispose_connections, get_connection
 
 SCHEMA_SQL_PATH = Path(__file__).with_name("schema.sql")
 
@@ -27,16 +27,24 @@ def init_postgres() -> None:
         future=True,
     )
 
-    with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))
-        existing = conn.execute(
-            text("SELECT 1 FROM pg_database WHERE datname = :name"),
-            {"name": config.POSTGRES_DB},
-        ).scalar()
+    # O engine do banco "postgres" só serve aqui; sem dispose(), cada chamada deixava
+    # uma conexão aberta
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            existing = conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": config.POSTGRES_DB},
+            ).scalar()
 
-    if not existing:
-        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-            conn.execute(text(f'CREATE DATABASE "{config.POSTGRES_DB}"'))
+        if not existing:
+            # Precaução: operação de banco sem conexão de engine em cache aberta. Hoje nenhum
+            # engine em cache aponta para um banco que ainda não existe nem para o template1
+            dispose_connections()
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+                conn.execute(text(f'CREATE DATABASE "{config.POSTGRES_DB}"'))
+    finally:
+        engine.dispose()
 
     apply_schema()
     print(f"Banco '{config.POSTGRES_DB}' pronto para uso.")
