@@ -24,6 +24,8 @@ from scripts.db.init_postgres import init_postgres
 from tests import db_test_support
 
 TABLE = "test_duckdb_table"
+# Tabela associativa com FK para TABLE, para os testes de chave composta e de transação
+CHILD_TABLE = "test_duckdb_child"
 SKIP_REASON = (
     None
     if config.POSTGRES_DB.endswith(db_test_support.TEST_DATABASE_SUFFIX)
@@ -96,6 +98,7 @@ class TestPostgresDuckdb(unittest.TestCase):
 
     def _drop_table(self):
         with self.engine.begin() as conn:
+            conn.execute(text(f'DROP TABLE IF EXISTS "{CHILD_TABLE}"'))
             conn.execute(text(f'DROP TABLE IF EXISTS "{TABLE}"'))
 
     def _pg_rows(self, query: str) -> list[tuple]:
@@ -176,6 +179,150 @@ class TestPostgresDuckdb(unittest.TestCase):
         self.assertEqual(
             self._pg_rows(f'SELECT * FROM "{TABLE}" ORDER BY id'), [(1, "a"), (2, "b"), (3, "c")]
         )
+
+    def _assert_no_staged_rows_table(self, con):
+        staged = con.execute("SELECT count(*) FROM duckdb_tables() WHERE table_name = 'rows_input'")
+        self.assertEqual(staged.fetchone()[0], 0)
+
+    def _create_child_table(self):
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                f'CREATE TABLE "{CHILD_TABLE}" (id_pai integer REFERENCES "{TABLE}" (id), '
+                f'codigo integer, PRIMARY KEY (id_pai, codigo))'
+            ))
+
+    def test_read_rows_returns_timestamptz_as_text(self):
+        # Sem a conversão, o fetchall() do DuckDB pede o pytz, que não está no requirements
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                f'CREATE TABLE "{TABLE}" (id integer PRIMARY KEY, nome text, _cleaned_at timestamptz)'
+            ))
+            conn.execute(text(
+                f"INSERT INTO \"{TABLE}\" VALUES (2, 'b', '2026-11-13 10:00:00+00'), (1, 'a', NULL)"
+            ))
+        with db_utils.postgres_duckdb() as con:
+            rows = db_utils.read_rows(con, TABLE)
+            only_name = db_utils.read_rows(con, TABLE, columns=["nome"], order_by=["nome"])
+        self.assertEqual([row["id"] for row in rows], [1, 2])
+        self.assertIsNone(rows[0]["_cleaned_at"])
+        self.assertIsInstance(rows[1]["_cleaned_at"], str)
+        self.assertTrue(rows[1]["_cleaned_at"].startswith("2026-11-13"))
+        self.assertEqual(only_name, [{"nome": "a"}, {"nome": "b"}])
+
+    def test_read_rows_missing_table_or_column_is_an_error(self):
+        self._create_id_table()
+        with db_utils.postgres_duckdb() as con:
+            with self.assertRaises(LookupError):
+                db_utils.read_rows(con, TABLE + "_inexistente")
+            with self.assertRaisesRegex(ValueError, "colunas inexistentes"):
+                db_utils.read_rows(con, TABLE, columns=["nao_existe"])
+
+    def test_upsert_rows_inserts_updates_and_is_idempotent(self):
+        self._create_id_table()
+        rows = [{"id": 2, "nome": "B"}, {"id": 4, "nome": None}]
+        expected = [(1, "a"), (2, "B"), (3, "c"), (4, None)]
+        for _ in range(2):
+            with db_utils.postgres_duckdb() as con:
+                db_utils.upsert_rows(con, TABLE, rows)
+                db_utils.upsert_rows(con, TABLE, [])
+            self.assertEqual(self._pg_rows(f'SELECT * FROM "{TABLE}" ORDER BY id'), expected)
+
+    def test_upsert_rows_updates_only_given_columns(self):
+        with self.engine.begin() as conn:
+            conn.execute(text(f'CREATE TABLE "{TABLE}" (id integer PRIMARY KEY, nome text, extra text)'))
+            conn.execute(text(f"INSERT INTO \"{TABLE}\" VALUES (1, 'a', 'mantido')"))
+        with db_utils.postgres_duckdb() as con:
+            db_utils.upsert_rows(con, TABLE, [{"id": 1, "nome": "A"}, {"id": 2, "nome": "b"}])
+        self.assertEqual(
+            self._pg_rows(f'SELECT * FROM "{TABLE}" ORDER BY id'), [(1, "A", "mantido"), (2, "b", None)]
+        )
+
+    def test_upsert_rows_round_trips_values_and_nulls(self):
+        # Uma coluna só com NULL e colunas com NULL no meio: os valores chegam iguais
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                f'CREATE TABLE "{TABLE}" (id bigint PRIMARY KEY, n integer, valor double precision, '
+                f'nome text, ativo boolean, vazio bigint)'
+            ))
+        rows = [
+            {"id": 1, "n": 7, "valor": 1.5, "nome": "a", "ativo": True, "vazio": None},
+            {"id": 2, "n": None, "valor": None, "nome": None, "ativo": None, "vazio": None},
+            {"id": 9_000_000_000, "n": -3, "valor": 2.0, "nome": "ç'é", "ativo": False, "vazio": None},
+        ]
+        with db_utils.postgres_duckdb() as con:
+            db_utils.upsert_rows(con, TABLE, rows)
+        self.assertEqual(
+            self._pg_rows(f'SELECT * FROM "{TABLE}" ORDER BY id'),
+            [(1, 7, 1.5, "a", True, None), (2, None, None, None, None, None),
+             (9_000_000_000, -3, 2.0, "ç'é", False, None)],
+        )
+
+    def test_nan_is_an_error_not_null(self):
+        # O DuckDB trocaria o NaN de uma lista por NULL em silêncio
+        self._create_id_table()
+        with db_utils.postgres_duckdb() as con:
+            with self.assertRaisesRegex(ValueError, r"NaN em \['nome'\]"):
+                db_utils.upsert_rows(con, TABLE, [{"id": 5, "nome": "e"}, {"id": 6, "nome": float("nan")}])
+            self._assert_no_staged_rows_table(con)
+        self.assertEqual(
+            self._pg_rows(f'SELECT * FROM "{TABLE}" ORDER BY id'), [(1, "a"), (2, "b"), (3, "c")]
+        )
+
+    def test_upsert_rows_with_repeated_id_fails_and_keeps_table(self):
+        self._create_id_table()
+        with db_utils.postgres_duckdb() as con:
+            with self.assertRaisesRegex(ValueError, "id repetido.*: 2"):
+                db_utils.upsert_rows(con, TABLE, [{"id": 2, "nome": "x"}, {"id": 2, "nome": "y"}])
+            self._assert_no_staged_rows_table(con)
+        self.assertEqual(
+            self._pg_rows(f'SELECT * FROM "{TABLE}" ORDER BY id'), [(1, "a"), (2, "b"), (3, "c")]
+        )
+
+    def test_rows_with_different_columns_are_an_error(self):
+        self._create_id_table()
+        with db_utils.postgres_duckdb() as con:
+            with self.assertRaisesRegex(ValueError, "colunas diferentes"):
+                db_utils.upsert_rows(con, TABLE, [{"id": 5, "nome": "e"}, {"nome": "f", "id": 6}])
+
+    def test_insert_ignore_rows_skips_existing_and_repeated(self):
+        self._create_id_table()
+        self._create_child_table()
+        rows = [{"id_pai": 1, "codigo": 10}, {"id_pai": 1, "codigo": 10}, {"id_pai": 2, "codigo": 20}]
+        for _ in range(2):
+            with db_utils.postgres_duckdb() as con:
+                db_utils.insert_ignore_rows(con, CHILD_TABLE, rows, ["id_pai", "codigo"])
+            self.assertEqual(
+                self._pg_rows(f'SELECT * FROM "{CHILD_TABLE}" ORDER BY 1, 2'), [(1, 10), (2, 20)]
+            )
+
+    def test_transaction_rolls_back_every_table_and_keeps_original_error(self):
+        # A FK inválida na segunda tabela desfaz também o upsert da primeira; o erro que
+        # sobe é o do Postgres, não o do DROP da tabela temporária na transação abortada
+        self._create_id_table()
+        self._create_child_table()
+        with db_utils.postgres_duckdb() as con:
+            with self.assertRaisesRegex(duckdb.Error, "foreign key"):
+                with db_utils.transaction(con):
+                    db_utils.upsert_rows(con, TABLE, [{"id": 1, "nome": "mudou"}, {"id": 9, "nome": "novo"}])
+                    db_utils.insert_ignore_rows(con, CHILD_TABLE, [{"id_pai": 99, "codigo": 1}], ["id_pai", "codigo"])
+            # a conexão continua usável depois do ROLLBACK, que desfez também a tabela temporária
+            self.assertEqual(len(db_utils.read_rows(con, TABLE)), 3)
+            self._assert_no_staged_rows_table(con)
+        self.assertEqual(
+            self._pg_rows(f'SELECT * FROM "{TABLE}" ORDER BY id'), [(1, "a"), (2, "b"), (3, "c")]
+        )
+        self.assertEqual(self._pg_rows(f'SELECT count(*) FROM "{CHILD_TABLE}"'), [(0,)])
+
+    def test_transaction_commits_every_table(self):
+        self._create_id_table()
+        self._create_child_table()
+        with db_utils.postgres_duckdb() as con:
+            with db_utils.transaction(con):
+                db_utils.upsert_rows(con, TABLE, [{"id": 9, "nome": "novo"}])
+                # dentro da transação, a leitura já vê o que foi gravado
+                self.assertEqual(len(db_utils.read_rows(con, TABLE)), 4)
+                db_utils.insert_ignore_rows(con, CHILD_TABLE, [{"id_pai": 9, "codigo": 1}], ["id_pai", "codigo"])
+        self.assertEqual(self._pg_rows(f'SELECT * FROM "{CHILD_TABLE}"'), [(9, 1)])
 
     def test_lock_held_elsewhere_raises_after_lock_timeout(self):
         self._create_id_table()
