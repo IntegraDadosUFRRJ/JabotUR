@@ -98,8 +98,10 @@ class TestReadsUseSheetOrder(unittest.TestCase):
         )
 
     def test_load_spp_orders_by_source_columns(self):
-        self._assert_read_order(
-            load_SPP, load_SPP.load_clean_df, config.CLN_SPP_TABLE, config.SPP_STAGING_ORDER
+        with mock.patch.object(db_utils, "read_rows", return_value=[]) as fake_read:
+            load_SPP.load_clean_rows(mock.Mock())
+        fake_read.assert_called_once_with(
+            mock.ANY, config.CLN_SPP_TABLE, order_by=config.SPP_STAGING_ORDER
         )
 
     def test_load_citations_orders_by_source_columns(self):
