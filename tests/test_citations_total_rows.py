@@ -48,43 +48,43 @@ def _ordering_rows():
     ]
 
 
-def _to_input(rows):
-    # DataFrame no formato do staging; _transform() o registra no lugar da view que,
-    # no pipeline, vem do Postgres
-    con = duckdb.connect()
+def _load_staging(con, rows, source_row_type="BIGINT"):
+    """Tabela no formato do staging no lugar da view que, no pipeline, vem do Postgres."""
     con.execute(
-        """
-        CREATE TABLE staging (
+        f"""
+        CREATE TABLE {config.DUCKDB_STAGING_ALIAS} (
             _source_file VARCHAR,
             _source_sheet VARCHAR,
-            _source_row BIGINT,
+            _source_row {source_row_type},
             familia VARCHAR,
             especie VARCHAR,
             quantidade VARCHAR
         )
         """
     )
-    con.executemany("INSERT INTO staging VALUES ('teste.xlsx', ?, ?, ?, ?, ?)", rows)
-    df = con.table("staging").df()
-    con.close()
-    return df
+    con.executemany(
+        f"INSERT INTO {config.DUCKDB_STAGING_ALIAS} VALUES ('teste.xlsx', ?, ?, ?, ?, ?)", rows
+    )
 
 
-def _transform(df):
+def _transform(rows, source_row_type="BIGINT"):
+    """Conexão com a saída do clean gravada na tabela "result"; quem chama a fecha."""
     con = duckdb.connect()
     try:
-        con.register(config.DUCKDB_STAGING_ALIAS, df)
-        return clean_arboreto_citations.transform(con).df()
-    finally:
+        _load_staging(con, rows, source_row_type)
+        clean_arboreto_citations.transform(con).create("result")
+    except BaseException:
         con.close()
+        raise
+    return con
 
 
-def _transform_rows(df):
+def _transform_rows(rows):
     """Saída do clean como as linhas que o load lê com db_utils.read_rows
     (timestamptz como texto, porque o pytz não está instalado)."""
     con = duckdb.connect()
     try:
-        con.register(config.DUCKDB_STAGING_ALIAS, df)
+        _load_staging(con, rows)
         result = clean_arboreto_citations.transform(con)
         select = ", ".join(
             f'CAST("{col}" AS VARCHAR) AS "{col}"' if str(col_type) == "TIMESTAMP WITH TIME ZONE" else f'"{col}"'
@@ -107,9 +107,9 @@ def _write_mini_xlsx(path):
     wb.save(path)
 
 
-def _flags(result):
+def _flags(con):
     """Colunas independentes da ordem de entrada, ordenadas por (aba, linha)."""
-    return duckdb.query(
+    return con.execute(
         """
         SELECT _source_sheet, _source_row, parse_status, needs_review, reconcile_across_sources
         FROM result
@@ -118,9 +118,9 @@ def _flags(result):
     ).fetchall()
 
 
-def _families(result):
+def _families(con):
     """Família após o fill-down, ordenada por (aba, linha)."""
-    return duckdb.query(
+    return con.execute(
         """
         SELECT _source_sheet, _source_row, familia
         FROM result
@@ -129,8 +129,8 @@ def _families(result):
     ).fetchall()
 
 
-def _family_at(result, sheet, row):
-    return duckdb.query(
+def _family_at(con, sheet, row):
+    return con.execute(
         f"""
         SELECT familia FROM result
         WHERE _source_sheet = '{sheet}' AND CAST(_source_row AS INTEGER) = {row}
@@ -139,11 +139,16 @@ def _family_at(result, sheet, row):
 
 
 class TotalRowTests(unittest.TestCase):
-    def test_sheet_with_matching_total(self):
-        result = _transform(_to_input(_staging_rows()))
-        self.assertEqual(len(result), 7)
+    def _clean(self, rows, source_row_type="BIGINT"):
+        con = _transform(rows, source_row_type)
+        self.addCleanup(con.close)
+        return con
 
-        total = duckdb.query(
+    def test_sheet_with_matching_total(self):
+        cleaned = self._clean(_staging_rows())
+        self.assertEqual(cleaned.execute("SELECT count(*) FROM result").fetchone()[0], 7)
+
+        total = cleaned.execute(
             """
             SELECT parse_status, needs_review, reconcile_across_sources
             FROM result
@@ -153,8 +158,8 @@ class TotalRowTests(unittest.TestCase):
         self.assertEqual(total, (config.PARSE_STATUS_TOTAL_ROW, False, False))
 
     def test_sheet_without_total_keeps_last_row(self):
-        result = _transform(_to_input(_staging_rows()))
-        b_count, total_in_b = duckdb.query(
+        cleaned = self._clean(_staging_rows())
+        b_count, total_in_b = cleaned.execute(
             """
             SELECT 
                 count(*),
@@ -166,7 +171,7 @@ class TotalRowTests(unittest.TestCase):
 
         self.assertEqual(b_count, 2)
         self.assertEqual(total_in_b, 0)
-        last = duckdb.query(
+        last = cleaned.execute(
             """
             SELECT genero, parse_status
             FROM result
@@ -177,8 +182,8 @@ class TotalRowTests(unittest.TestCase):
 
     def test_unparseable_and_total_rows_do_not_reconcile(self):
         # ADR-0003 (unparseable) e ADR-0012 (total_row): nenhuma reconcilia entre fontes
-        result = _transform(_to_input(_staging_rows()))
-        flags = duckdb.query(
+        cleaned = self._clean(_staging_rows())
+        flags = cleaned.execute(
             """
             SELECT _source_sheet, _source_row, parse_status, reconcile_across_sources
             FROM result
@@ -198,9 +203,9 @@ class TotalRowTests(unittest.TestCase):
         )
 
     def test_empty_row_with_mismatching_sum_is_unparseable(self):
-        result = _transform(_to_input(_staging_rows()))
+        cleaned = self._clean(_staging_rows())
 
-        mismatch = duckdb.query(
+        mismatch = cleaned.execute(
             """
             SELECT parse_status, needs_review
             FROM result
@@ -209,7 +214,7 @@ class TotalRowTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual(mismatch, ("unparseable", True))
 
-        total_rows_count = duckdb.query(
+        total_rows_count = cleaned.execute(
             f"""
             SELECT count(*)
             FROM result
@@ -223,8 +228,8 @@ class TotalRowTests(unittest.TestCase):
         rows = _ordering_rows()
         shuffled = [rows[i] for i in (8, 4, 2, 6, 0, 7, 3, 1, 5)]
 
-        expected = _transform(_to_input(rows))
-        actual = _transform(_to_input(shuffled))
+        expected = self._clean(rows)
+        actual = self._clean(shuffled)
 
         self.assertEqual(_flags(expected), _flags(actual))
         self.assertEqual(_families(expected), _families(actual))
@@ -234,16 +239,13 @@ class TotalRowTests(unittest.TestCase):
         # com _source_row em texto, '10' < '9' e a linha 10 herdaria da aba C (Fabaceae)
         rows = _ordering_rows()
         shuffled = [rows[i] for i in (8, 7, 0, 1, 2, 3, 4, 5, 6)]
-        df = _to_input(shuffled)
-        df["_source_row"] = df["_source_row"].astype(str)
+        cleaned = self._clean(shuffled, source_row_type="VARCHAR")
 
-        result = _transform(df)
-
-        self.assertEqual(_family_at(result, "D", 10), "Malvaceae")
+        self.assertEqual(_family_at(cleaned, "D", 10), "Malvaceae")
 
     def test_control_columns_not_in_output(self):
-        result = _transform(_to_input(_staging_rows()))
-        cols = [c[0] for c in duckdb.query("DESCRIBE result").fetchall()]
+        cleaned = self._clean(_staging_rows())
+        cols = [c[0] for c in cleaned.execute("DESCRIBE result").fetchall()]
         for column in CONTROL_COLUMNS:
             self.assertNotIn(column, cols)
 
@@ -272,14 +274,14 @@ class RegisteredParserTests(unittest.TestCase):
 
         with mock.patch.object(duckdb_parsers, "parse_scientific_name", broken_parser):
             with self.assertRaisesRegex(duckdb.Error, "parser quebrou"):
-                _transform(_to_input(_staging_rows()))
+                _transform(_staging_rows()).close()
 
     def test_return_outside_declared_struct_is_refused(self):
         with mock.patch.object(
             duckdb_parsers, "parse_scientific_name", lambda value: {"nome_raw": value}
         ):
             with self.assertRaisesRegex(duckdb.Error, "devolveu as chaves"):
-                _transform(_to_input(_staging_rows()))
+                _transform(_staging_rows()).close()
 
 
 class StagingTests(unittest.TestCase):
@@ -311,15 +313,13 @@ class LoadPrepareTests(unittest.TestCase):
         # A linha de totais (A#4) fica no meio da leitura: as linhas da aba C provam que o
         # índice não é renumerado depois do filtro
         cleaned = _transform_rows(
-            _to_input(
-                [
-                    ("A", 2, "Fabaceae", "Inga edulis Mart.", "2"),
-                    ("A", 3, None, "Morfo-Espécie 1", "3"),
-                    ("A", 4, None, None, "5"),
-                    ("C", 2, "Fabaceae", "Inga edulis Mart.", "2"),
-                    ("C", 3, None, None, "99"),
-                ]
-            )
+            [
+                ("A", 2, "Fabaceae", "Inga edulis Mart.", "2"),
+                ("A", 3, None, "Morfo-Espécie 1", "3"),
+                ("A", 4, None, None, "5"),
+                ("C", 2, "Fabaceae", "Inga edulis Mart.", "2"),
+                ("C", 3, None, None, "99"),
+            ]
         )
         with mock.patch("builtins.print") as fake_print:
             prepared = load_arboreto_citations.prepare(cleaned)

@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest import mock
 
 import duckdb
-import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -19,8 +18,13 @@ from scripts.transforms.scientific_name import (
 )
 from scripts.transforms.registration_number import STATUS_AZUL, STATUS_UNPARSEABLE
 
+STAGING_COLUMNS = [
+    "_source_file", "_source_sheet", "_source_row", "familia", "especie", "numero_registro",
+    "setor", "descricao_localizacao", "estado_reprodutivo",
+]
 
-def _staging_df():
+
+def _staging_rows():
     """Linhas no formato do staging (tudo texto, como vem do Postgres), fora de ordem."""
     rows = [
         # (_source_row, especie, numero_registro)
@@ -29,37 +33,22 @@ def _staging_df():
         ("3", "Morfo-Espécie 1", "LACRE AZUL 0015131"),
         ("4", "Inga vera Willd.", "lacre ilegível"),
     ]
-    return pd.DataFrame(
-        {
-            "_source_file": "teste.xlsx",
-            "_source_sheet": "Espécimes",
-            "_source_row": [r[0] for r in rows],
-            "familia": "Fabaceae",
-            "especie": [r[1] for r in rows],
-            "numero_registro": [r[2] for r in rows],
-            "setor": None,
-            "descricao_localizacao": None,
-            "estado_reprodutivo": None,
-        }
-    )
+    return [
+        ("teste.xlsx", "Espécimes", source_row, "Fabaceae", especie, numero_registro, None, None, None)
+        for source_row, especie, numero_registro in rows
+    ]
 
 
-def _transform(df):
-    # Registra o DataFrame no lugar da view do staging, que no pipeline vem do Postgres
-    con = duckdb.connect()
-    try:
-        con.register(config.DUCKDB_STAGING_ALIAS, df)
-        return clean_arboreto_specimens.transform(con).df()
-    finally:
-        con.close()
-
-
-def _transform_rows(df):
+def _transform_rows(rows):
     """Saída do clean como as linhas que o load lê com db_utils.read_rows
     (timestamptz como texto, porque o pytz não está instalado)."""
+    # A tabela ocupa o lugar da view do staging, que no pipeline vem do Postgres
     con = duckdb.connect()
     try:
-        con.register(config.DUCKDB_STAGING_ALIAS, df)
+        column_defs = ", ".join(f'"{col}" VARCHAR' for col in STAGING_COLUMNS)
+        con.execute(f"CREATE TABLE {config.DUCKDB_STAGING_ALIAS} ({column_defs})")
+        placeholders = ", ".join("?" for _ in STAGING_COLUMNS)
+        con.executemany(f"INSERT INTO {config.DUCKDB_STAGING_ALIAS} VALUES ({placeholders})", rows)
         result = clean_arboreto_specimens.transform(con)
         select = ", ".join(
             f'CAST("{col}" AS VARCHAR) AS "{col}"' if str(col_type) == "TIMESTAMP WITH TIME ZONE" else f'"{col}"'
@@ -73,42 +62,41 @@ def _transform_rows(df):
 
 class CleanSpecimensFlagsTests(unittest.TestCase):
     def setUp(self):
-        out = _transform(_staging_df())
-        self.by_row = out.set_index("_source_row")
-        self.out = out
+        self.out = _transform_rows(_staging_rows())
+        self.by_row = {row["_source_row"]: row for row in self.out}
 
     def test_rows_are_numbered_by_numeric_source_row(self):
         # sem o CAST, "10" ordenaria antes de "2"
-        self.assertEqual(self.out["_source_row"].tolist(), ["2", "3", "4", "10"])
+        self.assertEqual([row["_source_row"] for row in self.out], ["2", "3", "4", "10"])
 
     def test_no_row_is_dropped(self):
-        self.assertEqual(len(self.out), len(_staging_df()))
+        self.assertEqual(len(self.out), len(_staging_rows()))
 
     def test_unparseable_does_not_reconcile_and_needs_review(self):
-        row = self.by_row.loc["10"]
+        row = self.by_row["10"]
         self.assertEqual(row["parse_status"], PARSE_STATUS_UNPARSEABLE)
         self.assertFalse(row["reconcile_across_sources"])
         self.assertTrue(row["needs_review"])
 
     def test_morphospecies_does_not_reconcile_and_needs_no_review(self):
-        row = self.by_row.loc["3"]
+        row = self.by_row["3"]
         self.assertEqual(row["parse_status"], PARSE_STATUS_MORPHOSPECIES)
         self.assertFalse(row["reconcile_across_sources"])
         self.assertFalse(row["needs_review"])
 
     def test_ok_reconciles(self):
-        row = self.by_row.loc["2"]
+        row = self.by_row["2"]
         self.assertEqual(row["parse_status"], PARSE_STATUS_OK)
         self.assertTrue(row["reconcile_across_sources"])
         self.assertFalse(row["needs_review"])
 
     def test_bare_registration_number_is_blue(self):
-        row = self.by_row.loc["2"]
+        row = self.by_row["2"]
         self.assertEqual(row["registration_status"], STATUS_AZUL)
         self.assertEqual(row["registration_number"], "LACRE AZUL 0015130")
 
     def test_unparseable_registration_needs_review(self):
-        row = self.by_row.loc["4"]
+        row = self.by_row["4"]
         self.assertEqual(row["parse_status"], PARSE_STATUS_OK)
         self.assertEqual(row["registration_status"], STATUS_UNPARSEABLE)
         self.assertTrue(row["needs_review"])
@@ -117,7 +105,7 @@ class CleanSpecimensFlagsTests(unittest.TestCase):
         # reconcile_across_sources=False em unparseable não muda a carga:
         # prepare() só anexa [aba#linha] ao epíteto, que aqui é NULL
         prepared = {
-            row["_source_row"]: row for row in load_arboreto_specimens.prepare(_transform_rows(_staging_df()))
+            row["_source_row"]: row for row in load_arboreto_specimens.prepare(_transform_rows(_staging_rows()))
         }
         self.assertIsNone(prepared["10"]["epiteto"])
         self.assertIsNone(prepared["10"]["genero"])
@@ -131,7 +119,7 @@ class RegisteredParserTests(unittest.TestCase):
     def _assert_parser_failure_stops_clean(self, parser_name, parser, message):
         with mock.patch.object(duckdb_parsers, parser_name, parser):
             with self.assertRaisesRegex(duckdb.Error, message):
-                _transform(_staging_df())
+                _transform_rows(_staging_rows())
 
     def test_scientific_name_exception_stops_clean(self):
         def broken_parser(_):
