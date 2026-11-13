@@ -27,7 +27,7 @@ except ImportError:
 
 
 def _none_if_nan(value):
-    # NaN também é ausência de valor: os transforms do SPP devolvem NaN para célula vazia
+    # NaN do tipo float também é ausência de valor, a mesma regra de transforms.missing.is_missing
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return None
     return value
