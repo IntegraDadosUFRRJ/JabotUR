@@ -105,11 +105,12 @@ class TestReadsUseSheetOrder(unittest.TestCase):
         )
 
     def test_load_citations_orders_by_source_columns(self):
-        self._assert_read_order(
-            load_arboreto_citations,
-            load_arboreto_citations.load_clean_df,
+        with mock.patch.object(db_utils, "read_rows", return_value=[]) as fake_read:
+            load_arboreto_citations.load_clean_rows(mock.Mock())
+        fake_read.assert_called_once_with(
+            mock.ANY,
             config.CLN_ARBORETO_CITATIONS_TABLE,
-            config.ARBORETO_CITATION_STAGING_ORDER,
+            order_by=config.ARBORETO_CITATION_STAGING_ORDER,
         )
 
     def test_load_specimens_orders_by_source_columns(self):

@@ -22,7 +22,7 @@ CONTROL_COLUMNS = [
 ]
 
 
-# --- dados de entrada (isolados aqui para facilitar a migração da fronteira) ---
+# --- dados de entrada (num lugar só, compartilhados pelos testes) ---
 
 def _staging_rows():
     """(aba, linha, familia, especie, quantidade) no formato do staging."""
@@ -71,11 +71,27 @@ def _to_input(rows):
 
 
 def _transform(df):
-    # Devolve DataFrame porque load_arboreto_citations.prepare() ainda lê pandas
     con = duckdb.connect()
     try:
         con.register(config.DUCKDB_STAGING_ALIAS, df)
         return clean_arboreto_citations.transform(con).df()
+    finally:
+        con.close()
+
+
+def _transform_rows(df):
+    """Saída do clean como as linhas que o load lê com db_utils.read_rows
+    (timestamptz como texto, porque o pytz não está instalado)."""
+    con = duckdb.connect()
+    try:
+        con.register(config.DUCKDB_STAGING_ALIAS, df)
+        result = clean_arboreto_citations.transform(con)
+        select = ", ".join(
+            f'CAST("{col}" AS VARCHAR) AS "{col}"' if str(col_type) == "TIMESTAMP WITH TIME ZONE" else f'"{col}"'
+            for col, col_type in zip(result.columns, result.types)
+        )
+        projected = result.project(select)
+        return [dict(zip(projected.columns, row)) for row in projected.fetchall()]
     finally:
         con.close()
 
@@ -233,7 +249,8 @@ class TotalRowTests(unittest.TestCase):
 
 
 class RegisteredParserTests(unittest.TestCase):
-    """O parser como função registrada no DuckDB se comporta como no serie.map() anterior."""
+    """Parser registrado no DuckDB: recebe NULL, uma exceção interrompe o clean e um
+    retorno fora do STRUCT declarado é recusado."""
 
     def setUp(self):
         self.con = duckdb.connect()
@@ -291,29 +308,36 @@ class StagingTests(unittest.TestCase):
 
 class LoadPrepareTests(unittest.TestCase):
     def test_prepare_drops_total_rows_and_logs(self):
-        cleaned = _transform(
+        # A linha de totais (A#4) fica no meio da leitura: as linhas da aba C provam que o
+        # índice não é renumerado depois do filtro
+        cleaned = _transform_rows(
             _to_input(
                 [
                     ("A", 2, "Fabaceae", "Inga edulis Mart.", "2"),
                     ("A", 3, None, "Morfo-Espécie 1", "3"),
                     ("A", 4, None, None, "5"),
+                    ("C", 2, "Fabaceae", "Inga edulis Mart.", "2"),
+                    ("C", 3, None, None, "99"),
                 ]
             )
         )
         with mock.patch("builtins.print") as fake_print:
             prepared = load_arboreto_citations.prepare(cleaned)
 
-        self.assertEqual(len(prepared), 2)
-        total_in_prepared = duckdb.query(
-            f"""
-            SELECT count(*)
-            FROM prepared
-            WHERE parse_status = '{config.PARSE_STATUS_TOTAL_ROW}'
-            """
-        ).fetchone()[0]
-        self.assertEqual(total_in_prepared, 0)
-        logged = " ".join(str(call.args[0]) for call in fake_print.call_args_list)
-        self.assertIn("linha de totais, ignorada", logged)
+        self.assertEqual([(row["source_sheet"], row["source_row"]) for row in prepared],
+                         [("A", 2), ("A", 3), ("C", 2), ("C", 3)])
+        # o índice dos logs conta a linha de totais descartada (posição na leitura do clean)
+        self.assertEqual([row["clean_index"] for row in prepared], [0, 1, 3, 4])
+        by_origin = {(row["source_sheet"], row["source_row"]): row for row in prepared}
+        # morfo-espécie não reconcilia: recebe a origem no nome
+        self.assertFalse(by_origin[("A", 3)]["reconcile_across_sources"])
+        self.assertTrue(by_origin[("A", 3)]["epiteto"].endswith(" [A#3]"))
+        # unparseable sem espécie também não reconcilia, e o epíteto NULL continua NULL
+        self.assertEqual(by_origin[("C", 3)]["parse_status"], PARSE_STATUS_UNPARSEABLE)
+        self.assertFalse(by_origin[("C", 3)]["reconcile_across_sources"])
+        self.assertIsNone(by_origin[("C", 3)]["epiteto"])
+        logged = [str(call.args[0]) for call in fake_print.call_args_list]
+        self.assertEqual(logged, ["[load_arboreto_citations] linha 2 (A#4): linha de totais, ignorada"])
 
 
 if __name__ == "__main__":
