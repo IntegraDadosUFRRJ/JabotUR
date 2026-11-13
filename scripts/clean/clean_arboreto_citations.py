@@ -26,9 +26,9 @@ SQL_PATH = Path(__file__).with_name("clean_arboreto_citations.sql")
 
 OUTPUT_COLUMNS = [
     "_source_file", "_source_sheet", "_source_row",
-    "familia", "genero", "epiteto_especifico", "infraespecifico", "autor",
+    "family", "genus", "epithet", "infraspecific", "author",
     "identification_qualifier",
-    "quantidade", "nome_raw", "nome_normalizado",
+    "quantity", "name_raw", "name_normalized",
     "parse_status", "reconcile_across_sources", "needs_review",
 ]
 
@@ -85,9 +85,9 @@ def _log_control_sums(con: duckdb.DuckDBPyConnection) -> None:
         "GROUP BY _source_file, _source_sheet ORDER BY min(rn)"
     ).fetchall()
     candidates = con.execute(
-        f"SELECT _source_file, _source_sheet, _source_row, quantidade, previous_quantity_sum, "
+        f"SELECT _source_file, _source_sheet, _source_row, quantity, previous_quantity_sum, "
         f"is_total_row, parse_status FROM ({full}) "
-        f"WHERE {family_raw} = '' AND especie_raw = '' AND quantidade IS NOT NULL ORDER BY rn"
+        f"WHERE {family_raw} = '' AND species_input = '' AND quantity IS NOT NULL ORDER BY rn"
     ).fetchall()
     for source_file, sheet in sheets:
         rows = [row for row in candidates if row[:2] == (source_file, sheet)]

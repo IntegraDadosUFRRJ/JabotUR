@@ -1,10 +1,10 @@
 -- Clean dos Espécimes do arboreto, lido e preenchido por clean_arboreto_specimens.py com str.format.
 --
 -- Numera as linhas de staging e normaliza os campos mecânicos
---   - familia: trim; " - " placeholder usado nas linhas "sem identificação" e vira NULL
---   - setor: trim; normaliza os casos onde a planilha trouxe só o
+--   - family: trim; " - " placeholder usado nas linhas "sem identificação" e vira NULL
+--   - sector: trim; normaliza os casos onde a planilha trouxe só o
 --     número solto para o formato de código igual ao resto da coluna
---   - descricao_localizacao / estado_reprodutivo: trim, string vazia vira NULL
+--   - location_description / reproductive_status: trim, string vazia vira NULL
 --
 -- Resumo da query (CTEs encadeadas, cada passo lê só o anterior):
 --   numbered/normalized: numeração e campos mecânicos acima;
@@ -33,32 +33,32 @@ SELECT
     _source_sheet,
     _source_row,
     CASE
-        WHEN trim(coalesce(familia, '')) IN ('', '-') THEN NULL
-        ELSE regexp_replace(trim(coalesce(familia, '')), '^\s+|\s+$', '', 'g')
-    END AS familia,
-    trim(coalesce(especie, '')) AS especie_raw,
-    trim(coalesce(numero_registro, '')) AS numero_registro_raw,
+        WHEN trim(coalesce(family, '')) IN ('', '-') THEN NULL
+        ELSE regexp_replace(trim(coalesce(family, '')), '^\s+|\s+$', '', 'g')
+    END AS family,
+    trim(coalesce(species_raw, '')) AS species_input,
+    trim(coalesce(registration_number, '')) AS registration_number_input,
     CASE
-        WHEN trim(coalesce(setor, '')) = '' THEN NULL
-        WHEN regexp_matches(trim(coalesce(setor, '')), '^[0-9]+\.0$')
-            THEN regexp_replace(trim(setor), '\.0$', '')
-        ELSE trim(coalesce(setor, ''))
-    END AS setor,
+        WHEN trim(coalesce(sector, '')) = '' THEN NULL
+        WHEN regexp_matches(trim(coalesce(sector, '')), '^[0-9]+\.0$')
+            THEN regexp_replace(trim(sector), '\.0$', '')
+        ELSE trim(coalesce(sector, ''))
+    END AS sector,
     CASE
-        WHEN trim(coalesce(descricao_localizacao, '')) = '' THEN NULL
-        ELSE trim(coalesce(descricao_localizacao, ''))
-    END AS descricao_localizacao,
+        WHEN trim(coalesce(location_description, '')) = '' THEN NULL
+        ELSE trim(coalesce(location_description, ''))
+    END AS location_description,
     CASE
-        WHEN trim(coalesce(estado_reprodutivo, '')) = '' THEN NULL
-        ELSE trim(coalesce(estado_reprodutivo, ''))
-    END AS estado_reprodutivo
+        WHEN trim(coalesce(reproductive_status, '')) = '' THEN NULL
+        ELSE trim(coalesce(reproductive_status, ''))
+    END AS reproductive_status
 FROM numbered
 ),
 parsed AS (
     SELECT
         *,
-        {name_function}(especie_raw) AS name,
-        {registration_function}(numero_registro_raw) AS registration
+        {name_function}(species_input) AS name,
+        {registration_function}(registration_number_input) AS registration
     FROM normalized
 ),
 marked AS (
@@ -70,19 +70,19 @@ SELECT
     _source_file,
     _source_sheet,
     _source_row,
-    familia,
-    CASE WHEN is_morphospecies THEN NULL ELSE name.genero END AS genero,
-    CASE WHEN is_morphospecies THEN name.nome_normalizado ELSE name.epiteto_especifico END
-        AS epiteto_especifico,
-    name.infraespecifico AS infraespecifico,
-    name.autor AS autor,
+    family,
+    CASE WHEN is_morphospecies THEN NULL ELSE name.genus END AS genus,
+    CASE WHEN is_morphospecies THEN name.name_normalized ELSE name.epithet END
+        AS epithet,
+    name.infraspecific AS infraspecific,
+    name.author AS author,
     name.identification_qualifier AS identification_qualifier,
-    name.nome_raw AS nome_raw,
-    name.nome_normalizado AS nome_normalizado,
+    name.name_raw AS name_raw,
+    name.name_normalized AS name_normalized,
     name.parse_status AS parse_status,
-    setor,
-    descricao_localizacao,
-    estado_reprodutivo,
+    sector,
+    location_description,
+    reproductive_status,
     registration.registration_number AS registration_number,
     registration.registration_number_raw AS registration_number_raw,
     registration.registration_status AS registration_status,

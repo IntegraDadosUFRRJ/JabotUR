@@ -20,8 +20,8 @@ SCIENTIFIC_NAME_FUNCTION = "parse_scientific_name"
 REGISTRATION_NUMBER_FUNCTION = "parse_registration_number"
 
 SCIENTIFIC_NAME_FIELDS = (
-    "nome_raw", "nome_normalizado", "genero", "epiteto_especifico",
-    "infraespecifico", "autor", "identification_qualifier", "parse_status",
+    "name_raw", "name_normalized", "genus", "epithet",
+    "infraspecific", "author", "identification_qualifier", "parse_status",
 )
 REGISTRATION_NUMBER_FIELDS = (
     "registration_number_raw", "registration_number", "registration_status",

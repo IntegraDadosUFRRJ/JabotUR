@@ -1,11 +1,11 @@
 -- Clean do SPP (briófitas), lido e preenchido por clean_SPP.py com str.format.
 --
 -- Numera as linhas de staging na ordem da planilha (arquivo, linha) e aplica fill-down com
--- last_value() IGNORE NULLS em parcela/amostra/substrato, que valem para um bloco de linhas
+-- last_value() IGNORE NULLS em plot/sample/substrate, que valem para um bloco de linhas
 -- (linhas em branco recebem o último valor, não-nulo, anterior).
 -- A ordem vem do ORDER BY, não da entrada: o Postgres devolve as linhas em ordem física.
 -- Normaliza (trim + regex) os campos taxonômicos/metadados, converte
--- status_identificacao pra INT e monta a coluna de observações.
+-- identification_status pra INT e monta a coluna de observações.
 --
 -- Placeholders, preenchidos pelo Python a partir do config.py:
 --   staging_order: lista de colunas da ordem da planilha, com a linha convertida para inteiro;
@@ -23,69 +23,69 @@ WITH numbered AS (
         _source_row,
         last_value(
             CASE
-                WHEN trim(coalesce(parcela, '')) = '' THEN NULL
-                ELSE regexp_replace(regexp_replace(trim(coalesce(parcela, '')), '^\s+|\s+$', '', 'g'), '4\*', '4')
+                WHEN trim(coalesce(plot, '')) = '' THEN NULL
+                ELSE regexp_replace(regexp_replace(trim(coalesce(plot, '')), '^\s+|\s+$', '', 'g'), '4\*', '4')
             END IGNORE NULLS
-        ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS parcela,
+        ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS plot,
         last_value(
             CASE
-                WHEN trim(coalesce(amostra, '')) = '' THEN NULL
-                ELSE regexp_replace(trim(coalesce(amostra, '')), '^\s+|\s+$', '', 'g')
+                WHEN trim(coalesce(sample, '')) = '' THEN NULL
+                ELSE regexp_replace(trim(coalesce(sample, '')), '^\s+|\s+$', '', 'g')
             END IGNORE NULLS
-        ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS amostra,
+        ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS sample,
         last_value(
             CASE
-                WHEN trim(coalesce(substrato, '')) = '' THEN NULL
-                ELSE regexp_replace(regexp_replace(trim(coalesce(substrato, '')), '\s+', ' ', 'g'), '^\s+|\s+$', '', 'g')
+                WHEN trim(coalesce(substrate, '')) = '' THEN NULL
+                ELSE regexp_replace(regexp_replace(trim(coalesce(substrate, '')), '\s+', ' ', 'g'), '^\s+|\s+$', '', 'g')
             END IGNORE NULLS
-        ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS substrato,
+        ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS substrate,
         -- forma de vida é da coleta, não do bloco: sem fill-down, vazio fica NULL
         CASE
-            WHEN trim(coalesce(forma_vida, '')) = '' THEN NULL
-            ELSE regexp_replace(trim(coalesce(forma_vida, '')), '^\s+|\s+$', '', 'g')
-        END AS forma_vida,
-        {observation_expression} AS observacoes,
+            WHEN trim(coalesce(life_form, '')) = '' THEN NULL
+            ELSE regexp_replace(trim(coalesce(life_form, '')), '^\s+|\s+$', '', 'g')
+        END AS life_form,
+        {observation_expression} AS remarks,
         CASE
-            WHEN trim(coalesce(identificacao, '')) = '' THEN NULL
-            ELSE CAST(trim(coalesce(identificacao, '')) AS INTEGER)
-        END AS status_identificacao,
+            WHEN trim(coalesce(identification_status, '')) = '' THEN NULL
+            ELSE CAST(trim(coalesce(identification_status, '')) AS INTEGER)
+        END AS identification_status,
         CASE
-            WHEN trim(coalesce(filo, '')) = '' THEN NULL
-            ELSE regexp_replace(trim(coalesce(filo, '')), '^\s+|\s+$', '', 'g')
-        END AS filo,
+            WHEN trim(coalesce(phylum, '')) = '' THEN NULL
+            ELSE regexp_replace(trim(coalesce(phylum, '')), '^\s+|\s+$', '', 'g')
+        END AS phylum,
         CASE
-            WHEN trim(coalesce(familia, '')) = '' THEN NULL
-            ELSE regexp_replace(trim(coalesce(familia, '')), '^\s+|\s+$', '', 'g')
-        END AS familia,
+            WHEN trim(coalesce(family, '')) = '' THEN NULL
+            ELSE regexp_replace(trim(coalesce(family, '')), '^\s+|\s+$', '', 'g')
+        END AS family,
         CASE
-            WHEN trim(coalesce(genero, '')) = '' THEN NULL
-            ELSE regexp_replace(trim(coalesce(genero, '')), '^\s+|\s+$', '', 'g')
-        END AS genero,
+            WHEN trim(coalesce(genus, '')) = '' THEN NULL
+            ELSE regexp_replace(trim(coalesce(genus, '')), '^\s+|\s+$', '', 'g')
+        END AS genus,
         CASE
-            WHEN trim(coalesce(epiteto_especifico, '')) = '' THEN NULL
-            ELSE regexp_replace(trim(coalesce(epiteto_especifico, '')), '^\s+|\s+$', '', 'g')
-        END AS especie,
+            WHEN trim(coalesce(epithet, '')) = '' THEN NULL
+            ELSE regexp_replace(trim(coalesce(epithet, '')), '^\s+|\s+$', '', 'g')
+        END AS epithet,
         CASE
-            WHEN trim(coalesce(autor, '')) = '' THEN NULL
-            ELSE regexp_replace(trim(coalesce(autor, '')), '^\s+|\s+$', '', 'g')
-        END AS autor
+            WHEN trim(coalesce(author, '')) = '' THEN NULL
+            ELSE regexp_replace(trim(coalesce(author, '')), '^\s+|\s+$', '', 'g')
+        END AS author
     FROM numbered
 )
 SELECT
     _source_file,
     _source_row,
     -- texto que a normalização deixou vazio vira NULL, não string vazia
-    NULLIF(parcela, '') AS parcela,
-    amostra,
-    substrato,
-    forma_vida,
-    NULLIF(observacoes, '') AS observacoes,
-    status_identificacao,
-    filo,
-    familia,
-    genero,
-    especie,
-    autor,
+    NULLIF(plot, '') AS plot,
+    sample,
+    substrate,
+    life_form,
+    NULLIF(remarks, '') AS remarks,
+    identification_status,
+    phylum,
+    family,
+    genus,
+    epithet,
+    author,
     CURRENT_TIMESTAMP AS _cleaned_at
 FROM filled
 ORDER BY {staging_order}

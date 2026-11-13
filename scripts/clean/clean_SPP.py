@@ -2,7 +2,7 @@
 
 Leitura, transformação e gravação acontecem dentro do DuckDB, com o Postgres anexado:
 os dados não passam por DataFrame. A transformação aplica:
-  - preenchimento de campos como parcela, amostra e substrato;
+  - preenchimento de campos como plot, sample e substrate;
   - limpeza e normalização textual em observações;
   - conversão de status de identificação para inteiro;
   - trimming em campos textuais de metadados taxonômicos.
@@ -38,14 +38,14 @@ def _sql_literal(value: str) -> str:
 
 
 def _build_observation_expression() -> str:
-    expression = "trim(coalesce(observacao, ''))"
+    expression = "trim(coalesce(remark, ''))"
     for pattern, replacement in config.OBSERVACAO_REGEX_FIXES:
         expression = (
             f"regexp_replace({expression}, {_sql_literal(pattern)}, {_sql_literal(replacement)}, 'gi')"
         )
     # Célula vazia é ausência de observação: NULL, não texto de preenchimento
     return (
-        f"CASE WHEN trim(coalesce(observacao, '')) = '' THEN NULL "
+        f"CASE WHEN trim(coalesce(remark, '')) = '' THEN NULL "
         f"ELSE trim({expression}) END"
     )
 

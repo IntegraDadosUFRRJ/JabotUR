@@ -54,12 +54,12 @@ def _normalize_qualifier(raw_qualifier):
 def _result(nome_raw, nome_normalizado, status, genero=None, epiteto=None,
             infra=None, autor=None, qualifier=None):
     return {
-        "nome_raw": nome_raw,
-        "nome_normalizado": nome_normalizado,
-        "genero": genero,
-        "epiteto_especifico": epiteto,
-        "infraespecifico": infra,
-        "autor": autor,
+        "name_raw": nome_raw,
+        "name_normalized": nome_normalizado,
+        "genus": genero,
+        "epithet": epiteto,
+        "infraspecific": infra,
+        "author": autor,
         "identification_qualifier": qualifier,
         "parse_status": status,
     }

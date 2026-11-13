@@ -1,16 +1,16 @@
 -- Clean das Citações do arboreto, lido e preenchido por clean_arboreto_citations.py com str.format.
 --
 -- Numera as linhas de staging na ordem da planilha (arquivo, aba, linha) e aplica
--- fill-down de familia com last_value() IGNORE NULLS
--- (linhas sem familia recebem o último valor, não-nulo, anterior).
+-- fill-down de family com last_value() IGNORE NULLS
+-- (linhas sem family recebem o último valor, não-nulo, anterior).
 -- A ordem vem do ORDER BY, não da entrada: o Postgres devolve as linhas em ordem física.
--- Normaliza familia com trim + regex e prepara especie/quantidade como
--- campos *_raw, aplicando trim e substituindo valores nulos por strings vazias
+-- Normaliza family com trim + regex e prepara species_raw/quantity como
+-- species_input/quantity_raw, aplicando trim e substituindo valores nulos por strings vazias
 --
 -- Resumo da query (CTEs encadeadas, cada passo lê só o anterior):
 --   numbered: numera as linhas do staging (rn) na ordem da planilha;
 --   typed:    guarda a família ORIGINAL (family_raw, antes do fill-down), faz o
---             fill-down de familia, aplica trim em especie/quantidade e faz o
+--             fill-down de family, aplica trim em species_raw/quantity e faz o
 --             TRY_CAST da quantidade para DOUBLE (inválido vira NULL);
 --   checked:  quantidade finita; NaN/inf viram NULL. O TRY_CAST sozinho aceita
 --             'nan'/'inf' como número; numa planilha de contagem eles são texto
@@ -48,29 +48,29 @@ typed AS (
         _source_file,
         _source_sheet,
         _source_row,
-        trim(coalesce(familia, '')) AS {family_raw_col},
+        trim(coalesce(family, '')) AS {family_raw_col},
         last_value(
             CASE
-                WHEN trim(coalesce(familia, '')) = '' THEN NULL
-                ELSE regexp_replace(trim(coalesce(familia, '')), '^\s+|\s+$', '', 'g')
+                WHEN trim(coalesce(family, '')) = '' THEN NULL
+                ELSE regexp_replace(trim(coalesce(family, '')), '^\s+|\s+$', '', 'g')
             END IGNORE NULLS
-        ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS familia,
-        trim(coalesce(especie, '')) AS especie_raw,
-        trim(coalesce(quantidade, '')) AS quantidade_raw,
-        TRY_CAST(NULLIF(trim(coalesce(quantidade, '')), '') AS DOUBLE) AS quantidade_cast
+        ) OVER (ORDER BY rn ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS family,
+        trim(coalesce(species_raw, '')) AS species_input,
+        trim(coalesce(quantity, '')) AS quantity_raw,
+        TRY_CAST(NULLIF(trim(coalesce(quantity, '')), '') AS DOUBLE) AS quantity_cast
     FROM numbered
 ),
 checked AS (
     SELECT
         *,
-        CASE WHEN isfinite(quantidade_cast) THEN quantidade_cast END AS quantidade
+        CASE WHEN isfinite(quantity_cast) THEN quantity_cast END AS quantity
     FROM typed
 ),
 summed AS (
     SELECT
         *,
         coalesce(
-            sum(quantidade) OVER (
+            sum(quantity) OVER (
                 PARTITION BY _source_file, _source_sheet
                 ORDER BY CAST(_source_row AS INTEGER)
                 ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
@@ -86,29 +86,29 @@ SELECT
     _source_sheet,
     _source_row,
     {family_raw_col},
-    familia,
-    especie_raw,
-    quantidade_raw,
-    quantidade,
+    family,
+    species_input,
+    quantity_raw,
+    quantity,
     previous_quantity_sum,
     coalesce(
         {family_raw_col} = ''
-        AND especie_raw = ''
-        AND quantidade IS NOT NULL
-        AND quantidade = previous_quantity_sum,
+        AND species_input = ''
+        AND quantity IS NOT NULL
+        AND quantity = previous_quantity_sum,
         FALSE
     ) AS is_total_row
 FROM summed
 ),
 parsed AS (
-    SELECT *, {parse_function}(especie_raw) AS name FROM flagged
+    SELECT *, {parse_function}(species_input) AS name FROM flagged
 ),
 statused AS (
     SELECT
         *,
         CASE
             WHEN is_total_row THEN {status_total_row}
-            WHEN quantidade IS NULL THEN {status_unparseable_quantidade}
+            WHEN quantity IS NULL THEN {status_unparseable_quantidade}
             ELSE name.parse_status
         END AS parse_status
     FROM parsed
@@ -123,19 +123,19 @@ SELECT
     _source_sheet,
     _source_row,
     {family_raw_col},
-    especie_raw,
+    species_input,
     previous_quantity_sum,
     is_total_row,
-    familia,
-    CASE WHEN is_morphospecies THEN NULL ELSE name.genero END AS genero,
-    CASE WHEN is_morphospecies THEN name.nome_normalizado ELSE name.epiteto_especifico END
-        AS epiteto_especifico,
-    name.infraespecifico AS infraespecifico,
-    name.autor AS autor,
+    family,
+    CASE WHEN is_morphospecies THEN NULL ELSE name.genus END AS genus,
+    CASE WHEN is_morphospecies THEN name.name_normalized ELSE name.epithet END
+        AS epithet,
+    name.infraspecific AS infraspecific,
+    name.author AS author,
     name.identification_qualifier AS identification_qualifier,
-    quantidade,
-    name.nome_raw AS nome_raw,
-    name.nome_normalizado AS nome_normalizado,
+    quantity,
+    name.name_raw AS name_raw,
+    name.name_normalized AS name_normalized,
     parse_status,
     NOT (
         is_morphospecies

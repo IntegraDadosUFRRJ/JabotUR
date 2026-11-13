@@ -4,7 +4,7 @@ Leitura, transformação e gravação acontecem dentro do DuckDB, com o Postgres
 os dados não passam por DataFrame. Mesma divisão de responsabilidade de
 clean_arboreto_citations.py:
   - DuckDB (SQL) pro mecânico: trim e normalização pontual de
-    familia/setor/descrição/estado reprodutivo, e as flags;
+    family/sector/location_description/reproductive_status, e as flags;
   - Python puro pros dois parsers especializados, chamados pelo SQL como funções
     registradas no DuckDB (scripts.clean.duckdb_parsers): nome científico (transforms.scientific_name, o mesmo
     de citations) e número de registro/lacre (transforms.registration_number,
@@ -34,10 +34,10 @@ SQL_PATH = Path(__file__).with_name("clean_arboreto_specimens.sql")
 
 OUTPUT_COLUMNS = [
     "_source_file", "_source_sheet", "_source_row",
-    "familia", "genero", "epiteto_especifico", "infraespecifico", "autor",
+    "family", "genus", "epithet", "infraspecific", "author",
     "identification_qualifier",
-    "nome_raw", "nome_normalizado", "parse_status",
-    "setor", "descricao_localizacao", "estado_reprodutivo",
+    "name_raw", "name_normalized", "parse_status",
+    "sector", "location_description", "reproductive_status",
     "registration_number", "registration_number_raw", "registration_status",
     "reconcile_across_sources", "needs_review",
 ]
