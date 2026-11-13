@@ -74,17 +74,6 @@ COL_OBSERVACAO = SPP_COLUMN_MAP["Observações"]
 COL_OBSERVACOES = "observacoes"
 COL_STATUS_IDENTIFICACAO = "status_identificacao"
 
-STG_SPP_TABLE = "stg_spp_briofitas"
-CLN_SPP_TABLE = "cln_spp_briofitas"
-
-# Arboreto (Monografia Gabriel, Livro Pesquisas, JABOT) 
-ARBORETO_CITATION_SHEETS = [
-    "Monografia Gabriel",
-    "Livro Pesquisas no JB",
-    "JABOT",
-]
-ARBORETO_CITATION_USECOLS = "A:C"
-
 # Nome na planilha original -> nome da coluna normalizado
 ARBORETO_CITATION_COLUMN_MAP = {
     "Família": "familia",
