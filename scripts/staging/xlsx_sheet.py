@@ -12,12 +12,15 @@ fiquem num lugar só:
 
 from pathlib import Path
 
+import duckdb
+
 from scripts.db import db_utils
 import scripts.config as config
 
 # O export do Google Sheets grava número inteiro como float (<v>1.0</v>) e o all_varchar
-# devolve '1.0'; o pandas convertia float inteiro em int e o staging guardava '1'.
-# A regex reproduz isso para o staging não mudar. Como o all_varchar não distingue célula
+# devolve '1.0'; a regex grava '1', o número como aparece na planilha. Os passos seguintes
+# dependem desse texto: as chaves de PARCELA_COORDENADAS são '1', '2'... e o load converte
+# a amostra com int(), que recusa '1.0'. Como o all_varchar não distingue célula
 # numérica de célula de texto, um texto digitado '3.0' também viraria '3': o teste
 # test_staging_duckdb garante que nenhuma célula de texto lida tem esse formato.
 INTEGER_FLOAT_PATTERN = r"^(-?\d+)\.0$"
@@ -43,7 +46,7 @@ def _sheet_query(path: Path, sheet: str, column_map: dict[str, str]) -> str:
     # da planilha. row_number() OVER () não serviria: sem ORDER BY, a ordem não é garantida.
     # O read_xlsx tira o espaço final do cabeçalho ('Quant '), por isso as chaves do
     # column_map, já sem espaço, batem com ele.
-    # Linhas 100% vazias (fim da aba, linhas em branco) não entram, como no staging com pandas.
+    # Linhas 100% vazias (fim da aba, linhas em branco) não entram: não são registros.
     return f"""
         SELECT
             {_sql_literal(path.name)} AS {config.SOURCE_FILE_COL},
@@ -65,12 +68,48 @@ def _sheet_query(path: Path, sheet: str, column_map: dict[str, str]) -> str:
     """
 
 
+def _column_letter(index: int) -> str:
+    # 1 -> A, 26 -> Z, 27 -> AA
+    letters = ""
+    while index > 0:
+        index, rest = divmod(index - 1, 26)
+        letters = chr(ord("A") + rest) + letters
+    return letters
+
+
+def _check_header_in_first_row(con: duckdb.DuckDBPyConnection, path: Path, sheet: str) -> None:
+    # O read_xlsx pula linhas vazias antes do cabeçalho sem avisar, e o _source_row
+    # (ordinalidade + 1) sairia deslocado. Com range explícito ele não pula: a linha 1
+    # vazia denuncia o caso. A faixa vai só até a largura que o read_xlsx achou, porque
+    # range='1:1' traz as 16384 colunas da planilha e custa memória e tempo por aba; se o
+    # cabeçalho começar depois de tantas colunas vazias quanto a sua largura, a checagem
+    # também falha (erro alto, nunca deslocamento silencioso).
+    source = f"read_xlsx({_sql_literal(str(path))}, sheet = {_sql_literal(sheet)}, all_varchar = true"
+    width = len(con.execute(f"DESCRIBE SELECT * FROM {source})").fetchall())
+    first_row_range = f"A1:{_column_letter(width)}1"
+    first_cell = con.execute(
+        f"SELECT coalesce(*COLUMNS(*)) FROM {source}, header = false, "
+        f"range = {_sql_literal(first_row_range)})"
+    ).fetchone()[0]
+    if first_cell is None:
+        raise ValueError(
+            f"{path.name}, aba {sheet!r}: nenhuma célula preenchida em {first_row_range}; o "
+            f"cabeçalho tem de estar na linha 1, a partir da coluna A, para o "
+            f"{config.SOURCE_ROW_COL} bater com a planilha"
+        )
+
+
 def sheets_query(path: Path, sheets: list[str], column_map: dict[str, str]) -> str:
     """SELECT com as abas empilhadas na ordem de `sheets`, colunas renomeadas pelo
     column_map e as colunas de linhagem; não grava nada.
 
-    Exige a extensão excel carregada na conexão que executar a query.
+    Antes de montar a query, lê o início de cada aba e falha se o cabeçalho não está
+    na linha 1. Exige a extensão excel carregada na conexão que executar a query.
     """
+    with duckdb.connect() as con:
+        con.execute("LOAD excel")
+        for sheet in sheets:
+            _check_header_in_first_row(con, path, sheet)
     union = "\nUNION ALL BY NAME\n".join(
         f"({_sheet_query(path, sheet, column_map)})" for sheet in sheets
     )

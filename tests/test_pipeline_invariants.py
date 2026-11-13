@@ -148,6 +148,16 @@ class TestPipelineInvariants(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        try:
+            cls._print_flag_report()
+        finally:
+            # O run_pipeline tira cls.engine do cache de db_utils ao terminar; o
+            # dispose_connections() não o alcança mais, então ele é fechado aqui
+            cls.engine.dispose()
+            db_utils.dispose_connections()
+
+    @classmethod
+    def _print_flag_report(cls):
         # Relatório informativo: não falha, só deixa a mudança de número visível na revisão
         lines = ["", "== Relatório de sinalização (informativo) =="]
         with cls.engine.connect() as conn:
@@ -167,7 +177,6 @@ class TestPipelineInvariants(unittest.TestCase):
                 f"{_scalar(conn, f'SELECT count(*) FROM {config.TB_EPITETO_ESPECIFICO} WHERE id_autor IS NULL')}"
             )
         print("\n".join(lines), file=sys.stderr)
-        db_utils.dispose_connections()
 
     # --- Contagens por fonte: nenhuma linha some entre as camadas ---
 

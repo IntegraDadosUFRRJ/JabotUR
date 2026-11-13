@@ -140,6 +140,20 @@ class SyntheticSheetTests(unittest.TestCase):
                 xlsx_sheet.sheets_query(self.path, ["Aba1"], {"Gênero": "genero"}), "Aba1", {"Gênero": "genero"}
             )
 
+    def test_blank_row_before_header_is_an_error(self):
+        # Sem a checagem, o read_xlsx acharia o cabeçalho na linha 2 e o _source_row
+        # sairia uma linha antes da real, sem erro
+        path = Path(self.tmp.name) / "linha_vazia_antes.xlsx"
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Aba1"
+        ws.append([None, None])
+        ws.append(["Família", "Quant"])
+        ws.append(["Fabaceae", 2])
+        wb.save(path)
+        with self.assertRaisesRegex(ValueError, "nenhuma célula preenchida em A1:B1"):
+            xlsx_sheet.sheets_query(path, ["Aba1"], self.COLUMN_MAP)
+
 
 class RealSheetChecks:
     """Comparação com o openpyxl nos arquivos de data/; a subclasse define a fonte."""
