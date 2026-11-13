@@ -50,41 +50,41 @@ ARBORETO_CITATION_SHEETS = [
 # === COLUMN MAPS: Nome na planilha original -> nome da coluna normalizado ===
 
 SPP_COLUMN_MAP = {
-    "Parcela": "parcela",
-    "Amostra": "amostra",
-    "StatusIdentificacao*": "identificacao",
-    "Filo": "filo",
-    "Família": "familia",
-    "Gênero": "genero",
-    "Espécie": "epiteto_especifico",
-    "Autor": "autor",
-    "Forma de Vida": "forma_vida",
-    "Substrato": "substrato",
-    "Observações": "observacao",
+    "Parcela": "plot",
+    "Amostra": "sample",
+    "StatusIdentificacao*": "identification_status",
+    "Filo": "phylum",
+    "Família": "family",
+    "Gênero": "genus",
+    "Espécie": "epithet",
+    "Autor": "author",
+    "Forma de Vida": "life_form",
+    "Substrato": "substrate",
+    "Observações": "remark",
 }
 
 # Nome na planilha original -> nome da coluna normalizado
 ARBORETO_CITATION_COLUMN_MAP = {
-    "Família": "familia",
-    "Espécie": "especie",
-    "Quant": "quantidade",
+    "Família": "family",
+    "Espécie": "species_raw",
+    "Quant": "quantity",
 }
 
 ARBORETO_SPECIMENS_COLUMN_MAP = {
-    "Família": "familia",
-    "Espécie": "especie",
-    "N° de registro": "numero_registro",
-    "Setor": "setor",
-    "Descrição da localização": "descricao_localizacao",
-    "Estado reprodutivo": "estado_reprodutivo",
+    "Família": "family",
+    "Espécie": "species_raw",
+    "N° de registro": "registration_number",
+    "Setor": "sector",
+    "Descrição da localização": "location_description",
+    "Estado reprodutivo": "reproductive_status",
 }
 
-STG_SPP_TABLE = "stg_spp_briofitas"
-CLN_SPP_TABLE = "cln_spp_briofitas"
-STG_ARBORETO_CITATIONS_TABLE = "stg_arboreto_citations"
-CLN_ARBORETO_CITATIONS_TABLE = "cln_arboreto_citations"
-STG_ARBORETO_SPECIMENS_TABLE = "stg_arboreto_specimens"
-CLN_ARBORETO_SPECIMENS_TABLE = "cln_arboreto_specimens"
+STG_SPP_TABLE = "stg_spp_bryophytes"
+CLN_SPP_TABLE = "cln_spp_bryophytes"
+STG_ARBORETO_CITATIONS_TABLE = "stg_arboretum_citations"
+CLN_ARBORETO_CITATIONS_TABLE = "cln_arboretum_citations"
+STG_ARBORETO_SPECIMENS_TABLE = "stg_arboretum_specimens"
+CLN_ARBORETO_SPECIMENS_TABLE = "cln_arboretum_specimens"
 
 # Citações do arboreto: linhas de totais
 PARSE_STATUS_TOTAL_ROW = "total_row"
@@ -101,20 +101,20 @@ ARBORETO_SPECIMENS_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_RO
 SPP_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_ROW_COL]
 
 # === Nomes das tabelas finais normalizadas ===
-TB_FILO = "filo"
-TB_FAMILIA = "familia"
-TB_GENERO = "genero"
-TB_AUTOR = "autor"
-TB_EPITETO_ESPECIFICO = "epiteto_especifico"
-TB_FORMA_VIDA = "forma_vida"
-TB_PARCELA = "parcela"
-TB_SUBSTRATO = "substrato"
-TB_IDENTIFICACAO = "identificacao"
+TB_FILO = "phylum"
+TB_FAMILIA = "family"
+TB_GENERO = "genus"
+TB_AUTOR = "author"
+TB_EPITETO_ESPECIFICO = "species"
+TB_FORMA_VIDA = "life_form"
+TB_PARCELA = "plot"
+TB_SUBSTRATO = "substrate"
+TB_IDENTIFICACAO = "identification_status"
 TB_OCCURRENCE = "occurrence"
 TB_OCCURRENCE_BRYOPHYTE = "occurrence_bryophyte"
-TB_COLETA_SUBSTRATO = "coleta_substrato"
-TB_COLETA_OBSERVACAO = "coleta_observacao"
-TB_OBSERVACAO = "observacao"
+TB_COLETA_SUBSTRATO = "occurrence_substrate"
+TB_COLETA_OBSERVACAO = "occurrence_remark"
+TB_OBSERVACAO = "remark"
 TB_BIBLIOGRAPHIC_CITATION = "bibliographic_citation"
 TB_SECTOR = "sector"
 TB_REPRODUCTIVE_STATUS = "reproductive_status"
