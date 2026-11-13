@@ -44,6 +44,36 @@ class TestPostgresDsn(unittest.TestCase):
             self.assertIn("options='-c lock_timeout=7s'", db_utils._postgres_dsn())
 
 
+class TestEngineCache(unittest.TestCase):
+    """Roda sempre, sem banco: create_engine() não abre conexão."""
+
+    def tearDown(self):
+        db_utils.dispose_connections()
+
+    def test_same_url_reuses_engine(self):
+        self.assertIs(db_utils.get_connection(), db_utils.get_connection())
+
+    def test_other_database_gets_other_engine(self):
+        engine = db_utils.get_connection()
+        with mock.patch.object(config, "POSTGRES_DB", config.POSTGRES_DB + "_outro"):
+            self.assertIsNot(db_utils.get_connection(), engine)
+
+    def test_concurrent_calls_create_one_engine(self):
+        db_utils.dispose_connections()
+        engines = []
+        threads = [threading.Thread(target=lambda: engines.append(db_utils.get_connection())) for _ in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(len({id(engine) for engine in engines}), 1)
+
+    def test_dispose_connections_forgets_engines(self):
+        engine = db_utils.get_connection()
+        db_utils.dispose_connections()
+        self.assertIsNot(db_utils.get_connection(), engine)
+
+
 @unittest.skipUnless(SKIP_REASON is None, SKIP_REASON or "")
 class TestPostgresDuckdb(unittest.TestCase):
     @classmethod
@@ -52,6 +82,10 @@ class TestPostgresDuckdb(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             init_postgres()
         cls.engine = db_utils.get_connection()
+
+    @classmethod
+    def tearDownClass(cls):
+        db_utils.dispose_connections()
 
     def setUp(self):
         db_test_support.require_test_database()

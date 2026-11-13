@@ -167,7 +167,7 @@ class TestPipelineInvariants(unittest.TestCase):
                 f"{_scalar(conn, f'SELECT count(*) FROM {config.TB_EPITETO_ESPECIFICO} WHERE id_autor IS NULL')}"
             )
         print("\n".join(lines), file=sys.stderr)
-        cls.engine.dispose()
+        db_utils.dispose_connections()
 
     # --- Contagens por fonte: nenhuma linha some entre as camadas ---
 

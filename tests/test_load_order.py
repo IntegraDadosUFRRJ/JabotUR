@@ -129,17 +129,17 @@ class TestReadsUseSheetOrder(unittest.TestCase):
 
 
 def _stage_and_clean_spp() -> None:
-    stage_SPP.load_staging(stage_SPP.extract_spp())
+    stage_SPP.stage_spp()
     clean_SPP.clean_spp()
 
 
 def _stage_and_clean_citations() -> None:
-    stage_arboreto_citations.load_staging(stage_arboreto_citations.extract_citations())
+    stage_arboreto_citations.stage_citations()
     clean_arboreto_citations.clean_citations()
 
 
 def _stage_and_clean_specimens() -> None:
-    stage_arboreto_specimens.load_staging(stage_arboreto_specimens.extract_specimens())
+    stage_arboreto_specimens.stage_specimens()
     clean_arboreto_specimens.clean_specimens()
 
 
@@ -152,6 +152,10 @@ def _reverse_clean_table(table_name: str) -> None:
 
 @unittest.skipUnless(SKIP_REASON is None, SKIP_REASON or "")
 class TestLoadsIgnorePhysicalOrder(unittest.TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        db_utils.dispose_connections()
+
     def _load_from_scratch(self, stage_and_clean, clean_table, populate, tables, reverse_clean):
         db_test_support.reset_schema()
         with contextlib.redirect_stdout(io.StringIO()):

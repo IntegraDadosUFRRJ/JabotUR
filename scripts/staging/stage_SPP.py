@@ -4,53 +4,21 @@ O módulo é responsável por:
   - renomear cabeçalhos para o padrão snake_case via config.SPP_COLUMN_MAP;
   - registrar a linhagem dos dados (arquivo, planilha e linha de origem);
   - persistir os dados brutos na tabela de staging.
+
+A leitura e a gravação são feitas pelo DuckDB (scripts.staging.xlsx_sheet), sem DataFrame.
 """
 
-from datetime import datetime, timezone
-
-import pandas as pd
-
-from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+from scripts.staging import xlsx_sheet
 import scripts.config as config
 
 
-def extract_spp() -> pd.DataFrame:
-    df = pd.read_excel(
-        config.SPP_XLSX_PATH,
-        sheet_name=config.SPP_SHEET_NAME,
-        header=0,
-        dtype=str,
-        usecols=config.SPP_USECOLS,
-    )
-
-    # linha 0 do DataFrame == linha 2 da planilha (linha 1 é o cabeçalho)
-    df.insert(0, "_source_row", range(2, 2 + len(df)))
-
-    # descarta linhas 100% vazias (fim da planilha / linhas em branco)
-    data_cols = list(config.SPP_COLUMN_MAP.keys())
-    df = df[df[data_cols].notna().any(axis=1)].copy()
-
-    df = df.rename(columns=config.SPP_COLUMN_MAP)
-
-    df["_source_file"] = str(config.SPP_XLSX_PATH.name)
-    df["_source_sheet"] = config.SPP_SHEET_NAME
-    df["_loaded_at"] = datetime.now(timezone.utc)
-
-    ordered_cols = (
-        ["_source_file", "_source_sheet", "_source_row"]
-        + list(config.SPP_COLUMN_MAP.values())
-        + ["_loaded_at"]
-    )
-    return df[ordered_cols]
+def spp_query() -> str:
+    return xlsx_sheet.sheets_query(config.SPP_XLSX_PATH, [config.SPP_SHEET_NAME], config.SPP_COLUMN_MAP)
 
 
-def load_staging(df: pd.DataFrame) -> None:
-    write_dataframe_to_postgres(df, config.STG_SPP_TABLE, mode="replace")
-    loaded_df = read_dataframe_from_postgres(config.STG_SPP_TABLE)
-    count = len(loaded_df)
-    print(f"[stage_spp] {config.STG_SPP_TABLE}: {count} linhas carregadas.")
+def stage_spp() -> None:
+    xlsx_sheet.write_staging(config.STG_SPP_TABLE, spp_query(), "stage_spp")
 
 
 if __name__ == "__main__":
-    df = extract_spp()
-    load_staging(df)
+    stage_spp()

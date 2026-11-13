@@ -273,15 +273,17 @@ class StagingTests(unittest.TestCase):
 
             with mock.patch.object(config, "ARBORETO_XLSX_PATH", path), \
                  mock.patch.object(config, "ARBORETO_CITATION_SHEETS", ["Aba1"]):
-                df = stage_arboreto_citations.extract_citations()
+                query = stage_arboreto_citations.citations_query()
 
-        rows = duckdb.query(
-            """
-            SELECT _source_row, quantidade
-            FROM df
-            ORDER BY _source_row
-            """
-        ).fetchall()
+            con = duckdb.connect()
+            con.execute("LOAD excel")
+            rows = con.execute(
+                f"""
+                SELECT _source_row, quantidade
+                FROM ({query})
+                ORDER BY _source_row
+                """
+            ).fetchall()
         self.assertEqual(len(rows), 3)
         self.assertEqual([r[0] for r in rows], [2, 3, 4])
         self.assertEqual(rows[-1][1], "5")

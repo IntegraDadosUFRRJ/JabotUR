@@ -1,65 +1,28 @@
-"""Carrega as abas de registro do arboreto (Monografia Gabriel, Livro Pesquisas no JB, JABOT) 
+"""Carrega as abas de registro do arboreto (Monografia Gabriel, Livro Pesquisas no JB, JABOT)
 para a tabela de staging no PostgreSQL.
 
 O módulo é responsável por:
-  - normalizar cabeçalhos com espaço em branco inconsistente entre abas;
   - renomear cabeçalhos para o padrão snake_case via config.ARBORETO_CITATION_COLUMN_MAP;
   - registrar a linhagem dos dados (arquivo, aba e linha de origem);
   - persistir os dados brutos na tabela de staging.
+
+A leitura e a gravação são feitas pelo DuckDB (scripts.staging.xlsx_sheet), sem DataFrame.
+As três abas entram numa única query, na ordem de config.ARBORETO_CITATION_SHEETS.
 """
 
-from datetime import datetime, timezone
-
-import pandas as pd
-
-from scripts.db.db_utils import read_dataframe_from_postgres, write_dataframe_to_postgres
+from scripts.staging import xlsx_sheet
 import scripts.config as config
 
 
-def _extract_one_sheet(sheet_name: str) -> pd.DataFrame:
-    df = pd.read_excel(
-        config.ARBORETO_XLSX_PATH,
-        sheet_name=sheet_name,
-        header=0,
-        dtype=str,
-        usecols=config.ARBORETO_CITATION_USECOLS,
+def citations_query() -> str:
+    return xlsx_sheet.sheets_query(
+        config.ARBORETO_XLSX_PATH, config.ARBORETO_CITATION_SHEETS, config.ARBORETO_CITATION_COLUMN_MAP
     )
 
-    df.columns = [str(c).strip() for c in df.columns]
 
-    # linha 0 do DataFrame == linha 2 da planilha (linha 1 é o cabeçalho)
-    df.insert(0, "_source_row", range(2, 2 + len(df)))
-
-    # descarta linhas 100% vazias (fim da planilha / linhas em branco)
-    data_cols = list(config.ARBORETO_CITATION_COLUMN_MAP.keys())
-    df = df[df[data_cols].notna().any(axis=1)].copy()
-
-    df = df.rename(columns=config.ARBORETO_CITATION_COLUMN_MAP)
-
-    df["_source_file"] = str(config.ARBORETO_XLSX_PATH.name)
-    df["_source_sheet"] = sheet_name
-    df["_loaded_at"] = datetime.now(timezone.utc)
-
-    ordered_cols = (
-        ["_source_file", "_source_sheet", "_source_row"]
-        + list(config.ARBORETO_CITATION_COLUMN_MAP.values())
-        + ["_loaded_at"]
-    )
-    return df[ordered_cols]
-
-
-def extract_citations() -> pd.DataFrame:
-    frames = [_extract_one_sheet(sheet_name) for sheet_name in config.ARBORETO_CITATION_SHEETS]
-    return pd.concat(frames, ignore_index=True)
-
-
-def load_staging(df: pd.DataFrame) -> None:
-    write_dataframe_to_postgres(df, config.STG_ARBORETO_CITATIONS_TABLE, mode="replace")
-    loaded_df = read_dataframe_from_postgres(config.STG_ARBORETO_CITATIONS_TABLE)
-    count = len(loaded_df)
-    print(f"[stage_arboreto_citations] {config.STG_ARBORETO_CITATIONS_TABLE}: {count} linhas carregadas.")
+def stage_citations() -> None:
+    xlsx_sheet.write_staging(config.STG_ARBORETO_CITATIONS_TABLE, citations_query(), "stage_arboreto_citations")
 
 
 if __name__ == "__main__":
-    df = extract_citations()
-    load_staging(df)
+    stage_citations()
