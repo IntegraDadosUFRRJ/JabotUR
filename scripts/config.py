@@ -13,10 +13,10 @@ from pathlib import Path
 # === Caminhos ===
 
 # Planilha de origem — SPP (briófitas)
-SPP_XLSX_PATH = Path("data/briofitas-coletas.xlsx")
+SPP_XLSX_PATH = Path("data/bryophyte_collections.xlsx")
 
 # Planilha de origem — arboreto
-ARBORETO_XLSX_PATH = Path("data/diversidade-floristica-do-arboreto-do-JB.xlsx")
+ARBORETO_XLSX_PATH = Path("data/arboretum_floristic_diversity.xlsx")
 
 # Configuração de conexão com o PostgreSQL
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
