@@ -13,7 +13,6 @@ from pathlib import Path
 from unittest import mock
 
 import duckdb
-import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -59,13 +58,6 @@ SKIP_REASON = db_test_support.invariants_skip_reason()
 
 class TestReadsUseSheetOrder(unittest.TestCase):
     """Roda sempre, sem banco: confere a ordem pedida em cada leitura."""
-
-    def _assert_read_order(self, module, read_function, table_name, order_by):
-        with mock.patch.object(
-            module, "read_dataframe_from_postgres", return_value=pd.DataFrame()
-        ) as fake_read:
-            read_function()
-        fake_read.assert_called_once_with(table_name, order_by=order_by)
 
     def test_clean_spp_reads_staging_by_source_columns(self):
         with mock.patch.object(clean_SPP, "read_table") as fake_read:
@@ -114,11 +106,12 @@ class TestReadsUseSheetOrder(unittest.TestCase):
         )
 
     def test_load_specimens_orders_by_source_columns(self):
-        self._assert_read_order(
-            load_arboreto_specimens,
-            load_arboreto_specimens.load_clean_df,
+        with mock.patch.object(db_utils, "read_rows", return_value=[]) as fake_read:
+            load_arboreto_specimens.load_clean_rows(mock.Mock())
+        fake_read.assert_called_once_with(
+            mock.ANY,
             config.CLN_ARBORETO_SPECIMENS_TABLE,
-            config.ARBORETO_SPECIMENS_STAGING_ORDER,
+            order_by=config.ARBORETO_SPECIMENS_STAGING_ORDER,
         )
 
     def test_clean_specimens_reads_staging_by_source_columns(self):
