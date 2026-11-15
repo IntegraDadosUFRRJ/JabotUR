@@ -22,7 +22,7 @@ from scripts.transforms.scientific_name import (
 )
 
 UNPARSEABLE_QUANTIDADE = "unparseable_quantidade"
-SQL_PATH = Path(__file__).with_name("clean_arboreto_citations.sql")
+SQL_PATH = Path(__file__).with_name("clean_arboretum_citations.sql")
 
 OUTPUT_COLUMNS = [
     "_source_file", "_source_sheet", "_source_row",

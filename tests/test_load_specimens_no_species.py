@@ -5,7 +5,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.load import load_arboreto_specimens, taxonomy
+from scripts.load import load_arboretum_specimens, taxonomy
 
 
 def _prepared_rows(genero, epiteto):
@@ -36,7 +36,7 @@ class OccurrenceWithoutSpeciesTest(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def test_row_without_genus_and_epithet_loads_with_null_species(self):
-        occurrence, satellite = load_arboreto_specimens.build_occurrence_specimens(
+        occurrence, satellite = load_arboretum_specimens.build_occurrence_specimens(
             mock.Mock(), _prepared_rows(None, None), epiteto_ids={}, sector_ids={}, reproductive_status_ids={}
         )
         self.assertEqual(1, len(occurrence))
@@ -47,7 +47,7 @@ class OccurrenceWithoutSpeciesTest(unittest.TestCase):
 
     def test_row_with_key_not_found_is_still_skipped(self):
         with mock.patch("builtins.print") as fake_print:
-            occurrence, satellite = load_arboreto_specimens.build_occurrence_specimens(
+            occurrence, satellite = load_arboretum_specimens.build_occurrence_specimens(
                 mock.Mock(), _prepared_rows("Inga", "vera"), epiteto_ids={}, sector_ids={}, reproductive_status_ids={}
             )
         self.assertEqual(occurrence, [])

@@ -7,7 +7,7 @@ import duckdb
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import scripts.config as config
-from scripts.clean import clean_SPP
+from scripts.clean import clean_spp_bryophytes
 
 
 def _transform(columns: dict[str, list], source_row_type: str = "BIGINT") -> tuple[dict, list[dict]]:
@@ -30,7 +30,7 @@ def _transform(columns: dict[str, list], source_row_type: str = "BIGINT") -> tup
             f"INSERT INTO {config.DUCKDB_STAGING_ALIAS} VALUES ({placeholders})",
             [list(row) for row in zip(*columns.values())],
         )
-        result = clean_SPP.transform(con)
+        result = clean_spp_bryophytes.transform(con)
         kept = [(col, str(col_type)) for col, col_type in zip(result.columns, result.types) if col != "_cleaned_at"]
         projected = result.project(", ".join(f'"{col}"' for col, _ in kept))
         rows = [dict(zip(projected.columns, row)) for row in projected.fetchall()]

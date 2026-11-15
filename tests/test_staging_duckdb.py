@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import scripts.config as config
 from scripts.db import db_utils
 from scripts.db.init_postgres import init_postgres
-from scripts.staging import stage_SPP, stage_arboreto_citations, stage_arboreto_specimens, xlsx_sheet
+from scripts.staging import stage_spp_bryophytes, stage_arboretum_citations, stage_arboretum_specimens, xlsx_sheet
 from tests import db_test_support
 
 DB_SKIP_REASON = db_test_support.invariants_skip_reason()
@@ -180,7 +180,7 @@ class SppSheetTests(RealSheetChecks, unittest.TestCase):
     COLUMN_MAP = config.SPP_COLUMN_MAP
 
     def query(self) -> str:
-        return stage_SPP.spp_query()
+        return stage_spp_bryophytes.spp_query()
 
 
 @unittest.skipUnless(FILES_SKIP_REASON is None, FILES_SKIP_REASON or "")
@@ -217,7 +217,7 @@ class CitationsSheetTests(RealSheetChecks, unittest.TestCase):
     COLUMN_MAP = config.ARBORETO_CITATION_COLUMN_MAP
 
     def query(self) -> str:
-        return stage_arboreto_citations.citations_query()
+        return stage_arboretum_citations.citations_query()
 
     def test_sheets_follow_config_order(self):
         con = duckdb.connect()
@@ -234,7 +234,7 @@ class SpecimensSheetTests(RealSheetChecks, unittest.TestCase):
     COLUMN_MAP = config.ARBORETO_SPECIMENS_COLUMN_MAP
 
     def query(self) -> str:
-        return stage_arboreto_specimens.specimens_query()
+        return stage_arboretum_specimens.specimens_query()
 
     def test_only_mapped_columns_are_read(self):
         # Colunas escolhidas pelo nome: as da planilha fora do map (Canteiro, na coluna E) não entram
@@ -333,7 +333,7 @@ class SppWrittenStagingTests(WrittenStagingChecks, unittest.TestCase):
     COLUMN_MAP = config.SPP_COLUMN_MAP
 
     def stage(self) -> None:
-        stage_SPP.stage_spp()
+        stage_spp_bryophytes.stage_spp()
 
 
 @unittest.skipUnless(DB_SKIP_REASON is None, DB_SKIP_REASON or "")
@@ -346,7 +346,7 @@ class CitationsWrittenStagingTests(WrittenStagingChecks, unittest.TestCase):
     COLUMN_MAP = config.ARBORETO_CITATION_COLUMN_MAP
 
     def stage(self) -> None:
-        stage_arboreto_citations.stage_citations()
+        stage_arboretum_citations.stage_citations()
 
     def _missing_sheet_value(self):
         # Só a última aba falha: o erro no meio da UNION também não pode gravar as outras
@@ -364,7 +364,7 @@ class SpecimensWrittenStagingTests(WrittenStagingChecks, unittest.TestCase):
     COLUMN_MAP = config.ARBORETO_SPECIMENS_COLUMN_MAP
 
     def stage(self) -> None:
-        stage_arboreto_specimens.stage_specimens()
+        stage_arboretum_specimens.stage_specimens()
 
 
 if __name__ == "__main__":

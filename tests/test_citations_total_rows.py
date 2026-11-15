@@ -10,9 +10,9 @@ from openpyxl import Workbook
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import config
-from scripts.clean import clean_arboreto_citations, duckdb_parsers
-from scripts.load import load_arboreto_citations
-from scripts.staging import stage_arboreto_citations
+from scripts.clean import clean_arboretum_citations, duckdb_parsers
+from scripts.load import load_arboretum_citations
+from scripts.staging import stage_arboretum_citations
 from scripts.transforms.scientific_name import PARSE_STATUS_UNPARSEABLE
 
 CONTROL_COLUMNS = [
@@ -72,7 +72,7 @@ def _transform(rows, source_row_type="BIGINT"):
     con = duckdb.connect()
     try:
         _load_staging(con, rows, source_row_type)
-        clean_arboreto_citations.transform(con).create("result")
+        clean_arboretum_citations.transform(con).create("result")
     except BaseException:
         con.close()
         raise
@@ -85,7 +85,7 @@ def _transform_rows(rows):
     con = duckdb.connect()
     try:
         _load_staging(con, rows)
-        result = clean_arboreto_citations.transform(con)
+        result = clean_arboretum_citations.transform(con)
         select = ", ".join(
             f'CAST("{col}" AS VARCHAR) AS "{col}"' if str(col_type) == "TIMESTAMP WITH TIME ZONE" else f'"{col}"'
             for col, col_type in zip(result.columns, result.types)
@@ -292,7 +292,7 @@ class StagingTests(unittest.TestCase):
 
             with mock.patch.object(config, "ARBORETO_XLSX_PATH", path), \
                  mock.patch.object(config, "ARBORETO_CITATION_SHEETS", ["Aba1"]):
-                query = stage_arboreto_citations.citations_query()
+                query = stage_arboretum_citations.citations_query()
 
             con = duckdb.connect()
             con.execute("LOAD excel")
@@ -322,7 +322,7 @@ class LoadPrepareTests(unittest.TestCase):
             ]
         )
         with mock.patch("builtins.print") as fake_print:
-            prepared = load_arboreto_citations.prepare(cleaned)
+            prepared = load_arboretum_citations.prepare(cleaned)
 
         self.assertEqual([(row["source_sheet"], row["source_row"]) for row in prepared],
                          [("A", 2), ("A", 3), ("C", 2), ("C", 3)])

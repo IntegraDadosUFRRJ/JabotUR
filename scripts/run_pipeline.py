@@ -1,8 +1,8 @@
 """Executa o pipeline ETL completo"""
 
-from scripts.clean import clean_SPP, clean_arboreto_citations, clean_arboreto_specimens
-from scripts.staging import stage_SPP, stage_arboreto_citations, stage_arboreto_specimens
-from scripts.load import load_SPP, load_arboreto_citations, load_arboreto_specimens
+from scripts.clean import clean_spp_bryophytes, clean_arboretum_citations, clean_arboretum_specimens
+from scripts.staging import stage_spp_bryophytes, stage_arboretum_citations, stage_arboretum_specimens
+from scripts.load import load_spp_bryophytes, load_arboretum_citations, load_arboretum_specimens
 from scripts.db import db_utils
 from scripts.db.init_postgres import init_postgres
 
@@ -13,31 +13,31 @@ def main() -> None:
         init_postgres()
 
         print("\n== STAGING (SPP) ==")
-        stage_SPP.stage_spp()
+        stage_spp_bryophytes.stage_spp()
 
         print("\n== CLEAN (SPP) ==")
-        clean_SPP.clean_spp()
+        clean_spp_bryophytes.clean_spp()
 
         print("\n== LOAD (SPP) ==")
-        load_SPP.populate_normalized_tables()
+        load_spp_bryophytes.populate_normalized_tables()
 
         print("\n== STAGING (arboreto - citações) ==")
-        stage_arboreto_citations.stage_citations()
+        stage_arboretum_citations.stage_citations()
 
         print("\n== CLEAN (arboreto - citações) ==")
-        clean_arboreto_citations.clean_citations()
+        clean_arboretum_citations.clean_citations()
 
         print("\n== LOAD (arboreto - citações) ==")
-        load_arboreto_citations.populate_normalized_tables()
+        load_arboretum_citations.populate_normalized_tables()
 
         print("\n== STAGING (arboreto - espécimes) ==")
-        stage_arboreto_specimens.stage_specimens()
+        stage_arboretum_specimens.stage_specimens()
 
         print("\n== CLEAN (arboreto - espécimes) ==")
-        clean_arboreto_specimens.clean_specimens()
+        clean_arboretum_specimens.clean_specimens()
 
         print("\n== LOAD (arboreto - espécimes) ==")
-        load_arboreto_specimens.populate_normalized_tables()
+        load_arboretum_specimens.populate_normalized_tables()
     finally:
         # Os engines ficam em cache em db_utils; o pipeline fecha as conexões ao terminar
         db_utils.dispose_connections()

@@ -30,7 +30,7 @@ from scripts.transforms.scientific_name import (
 )
 from scripts.transforms.registration_number import STATUS_UNPARSEABLE as REG_STATUS_UNPARSEABLE
 
-SQL_PATH = Path(__file__).with_name("clean_arboreto_specimens.sql")
+SQL_PATH = Path(__file__).with_name("clean_arboretum_specimens.sql")
 
 OUTPUT_COLUMNS = [
     "_source_file", "_source_sheet", "_source_row",

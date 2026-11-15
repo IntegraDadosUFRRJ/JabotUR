@@ -9,8 +9,8 @@ import duckdb
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import scripts.config as config
-from scripts.clean import clean_arboreto_specimens, duckdb_parsers
-from scripts.load import load_arboreto_specimens
+from scripts.clean import clean_arboretum_specimens, duckdb_parsers
+from scripts.load import load_arboretum_specimens
 from scripts.transforms.scientific_name import (
     PARSE_STATUS_MORPHOSPECIES,
     PARSE_STATUS_OK,
@@ -49,7 +49,7 @@ def _transform_rows(rows):
         con.execute(f"CREATE TABLE {config.DUCKDB_STAGING_ALIAS} ({column_defs})")
         placeholders = ", ".join("?" for _ in STAGING_COLUMNS)
         con.executemany(f"INSERT INTO {config.DUCKDB_STAGING_ALIAS} VALUES ({placeholders})", rows)
-        result = clean_arboreto_specimens.transform(con)
+        result = clean_arboretum_specimens.transform(con)
         select = ", ".join(
             f'CAST("{col}" AS VARCHAR) AS "{col}"' if str(col_type) == "TIMESTAMP WITH TIME ZONE" else f'"{col}"'
             for col, col_type in zip(result.columns, result.types)
@@ -105,7 +105,7 @@ class CleanSpecimensFlagsTests(unittest.TestCase):
         # reconcile_across_sources=False em unparseable não muda a carga:
         # prepare() só anexa [aba#linha] ao epíteto, que aqui é NULL
         prepared = {
-            row["_source_row"]: row for row in load_arboreto_specimens.prepare(_transform_rows(_staging_rows()))
+            row["_source_row"]: row for row in load_arboretum_specimens.prepare(_transform_rows(_staging_rows()))
         }
         self.assertIsNone(prepared["10"]["epiteto"])
         self.assertIsNone(prepared["10"]["genus"])

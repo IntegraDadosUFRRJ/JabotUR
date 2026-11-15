@@ -15,7 +15,7 @@ import duckdb
 from scripts.db.db_utils import postgres_duckdb, read_table, replace_table
 import scripts.config as config
 
-SQL_PATH = Path(__file__).with_name("clean_SPP.sql")
+SQL_PATH = Path(__file__).with_name("clean_spp_bryophytes.sql")
 
 
 def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
