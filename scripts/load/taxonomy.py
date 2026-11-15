@@ -3,16 +3,16 @@ Get-or-create compartilhado do núcleo taxonômico (phylum, family, genus,
 author, species), sobre linhas (list[dict]) lidas e gravadas pelo DuckDB.
 
 Chaves esperadas em cada linha de entrada:
-  filo_nome (pode ser None em todas)
+  phylum_name (pode ser None em todas)
   family
   genus (pode ser None)
-  epiteto (pode ser None)
+  epithet (pode ser None)
   infraspecific (opcional)
   author (pode ser None)
 
 Os ids existentes entram ordenados por id e as chaves novas na ordem de primeira aparição
 em `rows`: mudar essa ordem muda os ids gravados.
-Os mapas por nome (familia_by_nome, genero_by_nome) ficam com o último id quando o mesmo
+Os mapas por nome (family_by_name, genus_by_name) ficam com o último id quando o mesmo
 nome aparece sob pais diferentes.
 """
 
@@ -57,99 +57,99 @@ def _distinct_non_null(values) -> list:
     return list(dict.fromkeys(v for v in map(_none_if_nan, values) if v is not None))
 
 
-def build_filo_rows(con, rows: list[dict]):
-    existing = _load_existing_rows(con, config.TB_FILO)
+def build_phylum_rows(con, rows: list[dict]):
+    existing = _load_existing_rows(con, config.TB_PHYLUM)
     existing_ids = {row["name"]: row["id"] for row in existing}
-    ids = _merge_ids(existing_ids, _distinct_non_null(row["filo_nome"] for row in rows))
-    dim = [{"id": i, "name": nome} for nome, i in ids.items()]
+    ids = _merge_ids(existing_ids, _distinct_non_null(row["phylum_name"] for row in rows))
+    dim = [{"id": i, "name": name} for name, i in ids.items()]
     return dim, ids
 
 
-def build_familia_rows(con, rows: list[dict], filo_ids: dict, filo_dim: list[dict]):
-    filo_id_to_nome = {row["id"]: row["name"] for row in filo_dim}
+def build_family_rows(con, rows: list[dict], phylum_ids: dict, phylum_dim: list[dict]):
+    phylum_id_to_name = {row["id"]: row["name"] for row in phylum_dim}
     existing_keys = {
         (
-            _none_if_nan(filo_id_to_nome.get(row["id_phylum"])),
+            _none_if_nan(phylum_id_to_name.get(row["id_phylum"])),
             _none_if_nan(row["name"]),
         ): row["id"]
-        for row in _load_existing_rows(con, config.TB_FAMILIA)
+        for row in _load_existing_rows(con, config.TB_FAMILY)
     }
-    pares = [
-        (_none_if_nan(row["filo_nome"]), _none_if_nan(row["family"]))
+    pairs = [
+        (_none_if_nan(row["phylum_name"]), _none_if_nan(row["family"]))
         for row in rows
         if _none_if_nan(row["family"]) is not None
     ]
-    ids = _merge_ids(existing_keys, pares)
-    dim = [{"id": i, "id_phylum": filo_ids.get(filo_nome), "name": nome} for (filo_nome, nome), i in ids.items()]
-    familia_by_nome = {nome: i for (filo_nome, nome), i in ids.items()}
-    return dim, familia_by_nome
+    ids = _merge_ids(existing_keys, pairs)
+    dim = [{"id": i, "id_phylum": phylum_ids.get(phylum_name), "name": name} for (phylum_name, name), i in ids.items()]
+    family_by_name = {name: i for (phylum_name, name), i in ids.items()}
+    return dim, family_by_name
 
 
-def build_genero_rows(con, rows: list[dict], familia_by_nome: dict, familia_dim: list[dict]):
-    familia_id_to_nome = {row["id"]: row["name"] for row in familia_dim}
+def build_genus_rows(con, rows: list[dict], family_by_name: dict, family_dim: list[dict]):
+    family_id_to_name = {row["id"]: row["name"] for row in family_dim}
     existing_keys = {
         (
-            _none_if_nan(familia_id_to_nome.get(row["id_family"])),
+            _none_if_nan(family_id_to_name.get(row["id_family"])),
             _none_if_nan(row["name"]),
         ): row["id"]
-        for row in _load_existing_rows(con, config.TB_GENERO)
+        for row in _load_existing_rows(con, config.TB_GENUS)
     }
-    pares = [
+    pairs = [
         (_none_if_nan(row["family"]), _none_if_nan(row["genus"]))
         for row in rows
         if _none_if_nan(row["genus"]) is not None
     ]
-    ids = _merge_ids(existing_keys, pares)
+    ids = _merge_ids(existing_keys, pairs)
     dim = [
-        {"id": i, "id_family": familia_by_nome.get(familia_nome), "name": nome}
-        for (familia_nome, nome), i in ids.items()
+        {"id": i, "id_family": family_by_name.get(family_name), "name": name}
+        for (family_name, name), i in ids.items()
     ]
-    genero_by_nome = {nome: i for (familia_nome, nome), i in ids.items()}
-    return dim, genero_by_nome
+    genus_by_name = {name: i for (family_name, name), i in ids.items()}
+    return dim, genus_by_name
 
 
-def build_autor_rows(con, rows: list[dict]):
-    existing = _load_existing_rows(con, config.TB_AUTOR)
+def build_author_rows(con, rows: list[dict]):
+    existing = _load_existing_rows(con, config.TB_AUTHOR)
     existing_ids = {row["name"]: row["id"] for row in existing}
     ids = _merge_ids(existing_ids, _distinct_non_null(row["author"] for row in rows))
-    dim = [{"id": i, "name": nome} for nome, i in ids.items()]
+    dim = [{"id": i, "name": name} for name, i in ids.items()]
     return dim, ids
 
 
-def build_epiteto_especifico_rows(
-    con, rows: list[dict], genero_by_nome: dict, autor_ids: dict, genero_dim: list[dict]
+def build_species_rows(
+    con, rows: list[dict], genus_by_name: dict, author_ids: dict, genus_dim: list[dict]
 ):
-    genero_id_to_nome = {row["id"]: row["name"] for row in genero_dim}
-    autor_id_to_nome = {v: k for k, v in autor_ids.items()}
+    genus_id_to_name = {row["id"]: row["name"] for row in genus_dim}
+    author_id_to_name = {v: k for k, v in author_ids.items()}
     existing_keys = {
         (
-            _none_if_nan(genero_id_to_nome.get(row["id_genus"])),
+            _none_if_nan(genus_id_to_name.get(row["id_genus"])),
             _none_if_nan(row["epithet"]),
             _none_if_nan(row.get("infraspecific")),
-            _none_if_nan(autor_id_to_nome.get(row["id_author"])),
+            _none_if_nan(author_id_to_name.get(row["id_author"])),
         ): row["id"]
-        for row in _load_existing_rows(con, config.TB_EPITETO_ESPECIFICO)
+        for row in _load_existing_rows(con, config.TB_SPECIES)
     }
-    chave = [
+    species_keys = [
         (
             _none_if_nan(row["genus"]),
-            _none_if_nan(row["epiteto"]),
+            _none_if_nan(row["epithet"]),
             _none_if_nan(row.get("infraspecific")),
             _none_if_nan(row["author"]),
         )
         for row in rows
         # mantém a linha se tiver gênero ou epíteto (pelo menos)
-        if _none_if_nan(row["genus"]) is not None or _none_if_nan(row["epiteto"]) is not None
+        if _none_if_nan(row["genus"]) is not None or _none_if_nan(row["epithet"]) is not None
     ]
-    ids = _merge_ids(existing_keys, chave)
+    ids = _merge_ids(existing_keys, species_keys)
     dim = [
         {
             "id": i,
-            "id_genus": genero_by_nome.get(genero_nome),
-            "id_author": autor_ids.get(autor_nome),
-            "epithet": epiteto_nome,
+            "id_genus": genus_by_name.get(genus_name),
+            "id_author": author_ids.get(author_name),
+            "epithet": epithet,
             "infraspecific": infra_val,
         }
-        for (genero_nome, epiteto_nome, infra_val, autor_nome), i in ids.items()
+        for (genus_name, epithet, infra_val, author_name), i in ids.items()
     ]
     return dim, ids
