@@ -3,10 +3,10 @@
 import scripts.config as config
 from scripts.db import db_utils
 from scripts.load import taxonomy
-import scripts.transforms.filo as filo_t
-import scripts.transforms.epiteto_especifico as epiteto_t
-import scripts.transforms.substrato as substrato_t
-import scripts.transforms.observacoes as observacoes_t
+import scripts.transforms.phylum as filo_t
+import scripts.transforms.epithet as epiteto_t
+import scripts.transforms.substrate as substrato_t
+import scripts.transforms.remarks as observacoes_t
 
 _none_if_nan = taxonomy._none_if_nan
 _load_existing_rows = taxonomy._load_existing_rows
