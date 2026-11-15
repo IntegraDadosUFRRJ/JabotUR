@@ -16,7 +16,7 @@ from scripts.load import taxonomy
 def load_clean_rows(con) -> list[dict]:
     # Os ids saem na ordem das linhas lidas; cln_* não tem id, então a ordem vem da planilha
     return db_utils.read_rows(
-        con, config.CLN_ARBORETO_SPECIMENS_TABLE, order_by=config.ARBORETO_SPECIMENS_STAGING_ORDER
+        con, config.CLN_ARBORETUM_SPECIMENS_TABLE, order_by=config.ARBORETUM_SPECIMENS_STAGING_ORDER
     )
 
 
@@ -28,18 +28,17 @@ def prepare(rows: list[dict]) -> list[dict]:
 
         # morfo-espécie e unparseable nunca reconciliam entre fontes (ADR-0003);
         # em unparseable o epíteto é NULL e continua NULL depois do sufixo
-        epiteto_especifico = row["epithet"]
-        if not row["reconcile_across_sources"] and epiteto_especifico is not None:
-            epiteto_especifico = f"{epiteto_especifico} [{source_sheet}#{source_row}]"
+        epithet = row["epithet"]
+        if not row["reconcile_across_sources"] and epithet is not None:
+            epithet = f"{epithet} [{source_sheet}#{source_row}]"
 
         out.append({
             **row,
-            "filo_nome": None,
+            "phylum_name": None,
             "source_file": row["_source_file"],
             "source_sheet": source_sheet,
             "source_row": source_row,
-            "epithet": epiteto_especifico,
-            "epiteto": epiteto_especifico,
+            "epithet": epithet,
         })
     return out
 
@@ -60,7 +59,7 @@ def build_reproductive_status(con, rows: list[dict]):
     return dim, ids
 
 
-def build_occurrence_specimens(con, rows: list[dict], epiteto_ids: dict, sector_ids: dict, reproductive_status_ids: dict):
+def build_occurrence_specimens(con, rows: list[dict], species_ids: dict, sector_ids: dict, reproductive_status_ids: dict):
     # A occurrence é compartilhada com o SPP: as linhas dele (origin_sheet NULL) entram no
     # mapa e no próximo id, mas nunca casam com a chave de três partes desta fonte
     existing_keys_to_id = {
@@ -72,21 +71,21 @@ def build_occurrence_specimens(con, rows: list[dict], epiteto_ids: dict, sector_
     occurrence_rows = []
     satellite_rows = []
     for index, row in enumerate(rows):
-        chave_especie = (
+        species_key = (
             taxonomy._none_if_nan(row["genus"]),
-            taxonomy._none_if_nan(row["epiteto"]),
+            taxonomy._none_if_nan(row["epithet"]),
             taxonomy._none_if_nan(row["infraspecific"]),
             taxonomy._none_if_nan(row["author"]),
         )
         # sem gênero e sem epíteto o taxonomy não cria espécie: a ocorrência
         # entra com id_species NULL; o clean já a marca needs_review
-        sem_identificacao = chave_especie[0] is None and chave_especie[1] is None
-        id_species = epiteto_ids.get(chave_especie)
-        if id_species is None and not sem_identificacao:
+        unidentified = species_key[0] is None and species_key[1] is None
+        id_species = species_ids.get(species_key)
+        if id_species is None and not unidentified:
             print(
-                f"[load_arboreto_specimens] linha {index} "
+                f"[load_arboretum_specimens] linha {index} "
                 f"({row['source_sheet']}#{row['source_row']}): não encontrei "
-                f"epíteto para {chave_especie!r}, pulando occurrence"
+                f"epíteto para {species_key!r}, pulando occurrence"
             )
             continue
 
@@ -98,14 +97,14 @@ def build_occurrence_specimens(con, rows: list[dict], epiteto_ids: dict, sector_
             existing_keys_to_id[natural_key] = occurrence_id
             next_id += 1
 
-        estado_reprodutivo = taxonomy._none_if_nan(row["reproductive_status"])
-        setor = taxonomy._none_if_nan(row["sector"])
+        reproductive_status = taxonomy._none_if_nan(row["reproductive_status"])
+        sector = taxonomy._none_if_nan(row["sector"])
 
         occurrence_rows.append(
             {
                 "id": occurrence_id,
                 "id_species": id_species,
-                "basis_of_record": config.ARBORETO_SPECIMENS_BASIS_OF_RECORD,
+                "basis_of_record": config.ARBORETUM_SPECIMENS_BASIS_OF_RECORD,
                 "identification_qualifier": row["identification_qualifier"],
                 "origin_file": row["source_file"],
                 "origin_sheet": row["source_sheet"],
@@ -115,9 +114,9 @@ def build_occurrence_specimens(con, rows: list[dict], epiteto_ids: dict, sector_
         satellite_rows.append(
             {
                 "id": occurrence_id,
-                "id_reproductive_status": reproductive_status_ids.get(estado_reprodutivo)
-                    if estado_reprodutivo is not None else None,
-                "id_sector": sector_ids.get(setor) if setor is not None else None,
+                "id_reproductive_status": reproductive_status_ids.get(reproductive_status)
+                    if reproductive_status is not None else None,
+                "id_sector": sector_ids.get(sector) if sector is not None else None,
                 "registration_number": taxonomy._none_if_nan(row["registration_number"]),
                 "location_description": taxonomy._none_if_nan(row["location_description"]),
                 "height_m": None,  # não existe em Espécimes -- só entra com Canteiro C
@@ -129,44 +128,44 @@ def build_occurrence_specimens(con, rows: list[dict], epiteto_ids: dict, sector_
 def populate_normalized_tables() -> None:
     # Uma transação para o load inteiro: leitura dos ids existentes e gravação veem o mesmo
     # estado, e um erro no meio desfaz todas as tabelas deste load (os loads anteriores ficam)
-    gravadas = []
+    written = []
     with db_utils.postgres_duckdb() as con, db_utils.transaction(con):
         rows = prepare(load_clean_rows(con))
 
-        filo_dim, filo_ids = taxonomy.build_filo_rows(con, rows)
-        familia_dim, familia_by_nome = taxonomy.build_familia_rows(con, rows, filo_ids, filo_dim)
-        genero_dim, genero_by_nome = taxonomy.build_genero_rows(con, rows, familia_by_nome, familia_dim)
-        autor_dim, autor_ids = taxonomy.build_autor_rows(con, rows)
-        epiteto_dim, epiteto_ids = taxonomy.build_epiteto_especifico_rows(
-            con, rows, genero_by_nome, autor_ids, genero_dim
+        phylum_dim, phylum_ids = taxonomy.build_phylum_rows(con, rows)
+        family_dim, family_by_name = taxonomy.build_family_rows(con, rows, phylum_ids, phylum_dim)
+        genus_dim, genus_by_name = taxonomy.build_genus_rows(con, rows, family_by_name, family_dim)
+        author_dim, author_ids = taxonomy.build_author_rows(con, rows)
+        species_dim, species_ids = taxonomy.build_species_rows(
+            con, rows, genus_by_name, author_ids, genus_dim
         )
 
         sector_dim, sector_ids = build_sector(con, rows)
         reproductive_status_dim, reproductive_status_ids = build_reproductive_status(con, rows)
 
         occurrence_rows, occurrence_arboretum_rows = build_occurrence_specimens(
-            con, rows, epiteto_ids, sector_ids, reproductive_status_ids
+            con, rows, species_ids, sector_ids, reproductive_status_ids
         )
 
         # A ordem respeita as chaves estrangeiras: o Postgres as confere a cada comando
-        tabelas_upsert = {
-            config.TB_FILO: filo_dim,
-            config.TB_FAMILIA: familia_dim,
-            config.TB_GENERO: genero_dim,
-            config.TB_AUTOR: autor_dim,
-            config.TB_EPITETO_ESPECIFICO: epiteto_dim,
+        upsert_tables = {
+            config.TB_PHYLUM: phylum_dim,
+            config.TB_FAMILY: family_dim,
+            config.TB_GENUS: genus_dim,
+            config.TB_AUTHOR: author_dim,
+            config.TB_SPECIES: species_dim,
             config.TB_SECTOR: sector_dim,
             config.TB_REPRODUCTIVE_STATUS: reproductive_status_dim,
             config.TB_OCCURRENCE: occurrence_rows,
             config.TB_OCCURRENCE_ARBORETUM: occurrence_arboretum_rows,
         }
-        for nome_tabela, tabela_rows in tabelas_upsert.items():
-            db_utils.upsert_rows(con, nome_tabela, tabela_rows)
-            gravadas.append((nome_tabela, len(tabela_rows)))
+        for table_name, table_rows in upsert_tables.items():
+            db_utils.upsert_rows(con, table_name, table_rows)
+            written.append((table_name, len(table_rows)))
 
     # Só depois do COMMIT: com erro no meio, nenhuma tabela foi gravada
-    for nome_tabela, total in gravadas:
-        print(f"[load_arboreto_specimens] {nome_tabela}: {total} linhas gravadas.")
+    for table_name, total in written:
+        print(f"[load_arboretum_specimens] {table_name}: {total} linhas gravadas.")
 
 
 if __name__ == "__main__":

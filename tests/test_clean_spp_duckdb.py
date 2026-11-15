@@ -57,7 +57,7 @@ class CleanSppDuckDBTests(unittest.TestCase):
             "genus": ["Barbula", None, "Riccardia"],
             "epithet": ["sp.", None, "latifrons"],
             "author": ["Hedw.", None, "L."],
-            # Lineage como o stage_SPP grava; o clean exige _source_file e _source_row
+            # Lineage como o stage_spp_bryophytes grava; o clean exige _source_file e _source_row
             "_source_file": ["SPP.xlsx", "SPP.xlsx", "SPP.xlsx"],
             "_source_sheet": ["Planilha1", "Planilha1", "Planilha1"],
             "_source_row": [2, 3, 4],
@@ -74,7 +74,7 @@ class CleanSppDuckDBTests(unittest.TestCase):
         self.assertEqual(result[1]["sample"], "A1")
         self.assertEqual(result[0]["identification_status"], 1)
 
-    def test_blank_forma_vida_stays_null(self) -> None:
+    def test_blank_life_form_stays_null(self) -> None:
         # forma de vida é da coleta: a linha em branco não herda a de cima
         columns = {
             "plot": ["4", None, None],

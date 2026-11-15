@@ -190,8 +190,8 @@ class NoTextIntegerFloatCellsTests(unittest.TestCase):
 
     SOURCES = [
         (config.SPP_XLSX_PATH, [config.SPP_SHEET_NAME], config.SPP_COLUMN_MAP),
-        (config.ARBORETO_XLSX_PATH, config.ARBORETO_CITATION_SHEETS, config.ARBORETO_CITATION_COLUMN_MAP),
-        (config.ARBORETO_XLSX_PATH, [config.ARBORETO_SPECIMENS_SHEET_NAME], config.ARBORETO_SPECIMENS_COLUMN_MAP),
+        (config.ARBORETO_XLSX_PATH, config.ARBORETUM_CITATION_SHEETS, config.ARBORETUM_CITATION_COLUMN_MAP),
+        (config.ARBORETO_XLSX_PATH, [config.ARBORETUM_SPECIMENS_SHEET_NAME], config.ARBORETUM_SPECIMENS_COLUMN_MAP),
     ]
 
     def test_no_text_cell_looks_like_integer_float(self):
@@ -213,8 +213,8 @@ class NoTextIntegerFloatCellsTests(unittest.TestCase):
 @unittest.skipUnless(FILES_SKIP_REASON is None, FILES_SKIP_REASON or "")
 class CitationsSheetTests(RealSheetChecks, unittest.TestCase):
     PATH = config.ARBORETO_XLSX_PATH
-    SHEETS = config.ARBORETO_CITATION_SHEETS
-    COLUMN_MAP = config.ARBORETO_CITATION_COLUMN_MAP
+    SHEETS = config.ARBORETUM_CITATION_SHEETS
+    COLUMN_MAP = config.ARBORETUM_CITATION_COLUMN_MAP
 
     def query(self) -> str:
         return stage_arboretum_citations.citations_query()
@@ -224,14 +224,14 @@ class CitationsSheetTests(RealSheetChecks, unittest.TestCase):
         con.execute("LOAD excel")
         rows = con.execute(f"SELECT {config.SOURCE_SHEET_COL} FROM ({self.query()})").fetchall()
         order = list(dict.fromkeys(row[0] for row in rows))
-        self.assertEqual(order, config.ARBORETO_CITATION_SHEETS)
+        self.assertEqual(order, config.ARBORETUM_CITATION_SHEETS)
 
 
 @unittest.skipUnless(FILES_SKIP_REASON is None, FILES_SKIP_REASON or "")
 class SpecimensSheetTests(RealSheetChecks, unittest.TestCase):
     PATH = config.ARBORETO_XLSX_PATH
-    SHEETS = [config.ARBORETO_SPECIMENS_SHEET_NAME]
-    COLUMN_MAP = config.ARBORETO_SPECIMENS_COLUMN_MAP
+    SHEETS = [config.ARBORETUM_SPECIMENS_SHEET_NAME]
+    COLUMN_MAP = config.ARBORETUM_SPECIMENS_COLUMN_MAP
 
     def query(self) -> str:
         return stage_arboretum_specimens.specimens_query()
@@ -339,11 +339,11 @@ class SppWrittenStagingTests(WrittenStagingChecks, unittest.TestCase):
 @unittest.skipUnless(DB_SKIP_REASON is None, DB_SKIP_REASON or "")
 class CitationsWrittenStagingTests(WrittenStagingChecks, unittest.TestCase):
     TABLE = "test_staging_citations"
-    TABLE_CONFIG_NAME = "STG_ARBORETO_CITATIONS_TABLE"
-    SHEET_CONFIG_NAME = "ARBORETO_CITATION_SHEETS"
+    TABLE_CONFIG_NAME = "STG_ARBORETUM_CITATIONS_TABLE"
+    SHEET_CONFIG_NAME = "ARBORETUM_CITATION_SHEETS"
     PATH = config.ARBORETO_XLSX_PATH
-    SHEETS = config.ARBORETO_CITATION_SHEETS
-    COLUMN_MAP = config.ARBORETO_CITATION_COLUMN_MAP
+    SHEETS = config.ARBORETUM_CITATION_SHEETS
+    COLUMN_MAP = config.ARBORETUM_CITATION_COLUMN_MAP
 
     def stage(self) -> None:
         stage_arboretum_citations.stage_citations()
@@ -357,11 +357,11 @@ class CitationsWrittenStagingTests(WrittenStagingChecks, unittest.TestCase):
 @unittest.skipUnless(DB_SKIP_REASON is None, DB_SKIP_REASON or "")
 class SpecimensWrittenStagingTests(WrittenStagingChecks, unittest.TestCase):
     TABLE = "test_staging_specimens"
-    TABLE_CONFIG_NAME = "STG_ARBORETO_SPECIMENS_TABLE"
-    SHEET_CONFIG_NAME = "ARBORETO_SPECIMENS_SHEET_NAME"
+    TABLE_CONFIG_NAME = "STG_ARBORETUM_SPECIMENS_TABLE"
+    SHEET_CONFIG_NAME = "ARBORETUM_SPECIMENS_SHEET_NAME"
     PATH = config.ARBORETO_XLSX_PATH
-    SHEETS = [config.ARBORETO_SPECIMENS_SHEET_NAME]
-    COLUMN_MAP = config.ARBORETO_SPECIMENS_COLUMN_MAP
+    SHEETS = [config.ARBORETUM_SPECIMENS_SHEET_NAME]
+    COLUMN_MAP = config.ARBORETUM_SPECIMENS_COLUMN_MAP
 
     def stage(self) -> None:
         stage_arboretum_specimens.stage_specimens()

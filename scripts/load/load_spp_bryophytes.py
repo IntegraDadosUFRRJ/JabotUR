@@ -3,10 +3,10 @@
 import scripts.config as config
 from scripts.db import db_utils
 from scripts.load import taxonomy
-import scripts.transforms.phylum as filo_t
-import scripts.transforms.epithet as epiteto_t
-import scripts.transforms.substrate as substrato_t
-import scripts.transforms.remarks as observacoes_t
+import scripts.transforms.phylum as phylum_t
+import scripts.transforms.epithet as epithet_t
+import scripts.transforms.substrate as substrate_t
+import scripts.transforms.remarks as remarks_t
 
 _none_if_nan = taxonomy._none_if_nan
 _load_existing_rows = taxonomy._load_existing_rows
@@ -19,90 +19,81 @@ def load_clean_rows(con) -> list[dict]:
     return db_utils.read_rows(con, config.CLN_SPP_TABLE, order_by=config.SPP_STAGING_ORDER)
 
 
-def _resolve_epiteto_column(columns) -> str:
-    for column_name in ("epithet",):
-        if column_name in columns:
-            return column_name
-    raise KeyError("Nenhuma coluna de epíteto encontrada em cln_spp_bryophytes")
-
-
 def prepare(rows: list[dict]) -> list[dict]:
     if not rows:
         return []
-    epiteto_column = _resolve_epiteto_column(rows[0])
-    filo_nomes = filo_t.expand([row["phylum"] for row in rows])
-    epitetos_limpos = epiteto_t.strip_genero_abbreviation([row[epiteto_column] for row in rows])
-    substratos = substrato_t.expand_multivalued([row["substrate"] for row in rows])
-    observacoes = observacoes_t.split_multivalued([row["remarks"] for row in rows])
+    phylum_names = phylum_t.expand([row["phylum"] for row in rows])
+    clean_epithets = epithet_t.strip_genus_abbreviation([row["epithet"] for row in rows])
+    substrates = substrate_t.expand_multivalued([row["substrate"] for row in rows])
+    remarks = remarks_t.split_multivalued([row["remarks"] for row in rows])
 
     out = []
-    for row, filo_nome, epiteto_limpo, substrato_lista, observacoes_lista in zip(
-        rows, filo_nomes, epitetos_limpos, substratos, observacoes
+    for row, phylum_name, clean_epithet, substrate_list, remarks_list in zip(
+        rows, phylum_names, clean_epithets, substrates, remarks
     ):
         out.append({
             **row,
-            "epithet": row[epiteto_column],
-            "filo_nome": filo_nome,
-            "epiteto_limpo": epiteto_limpo,
-            "substrato_lista": substrato_lista,
-            "observacoes_lista": observacoes_lista,
+            "phylum_name": phylum_name,
+            "clean_epithet": clean_epithet,
+            "substrate_list": substrate_list,
+            "remarks_list": remarks_list,
             "source_file": row["_source_file"],
             "source_row": row["_source_row"],
-            # taxonomy.py espera a chave "epiteto";
+            # epithet sem a abreviação do gênero, que é a chave lida pelo taxonomy.py;
             # SPP nunca tem infraespecífico;
-            "epiteto": epiteto_limpo,
+            "epithet": clean_epithet,
             "infraspecific": None,
         })
     return out
 
 
-def build_forma_vida(con, rows: list[dict]):
-    existing_ids = {row["type"]: row["id"] for row in _load_existing_rows(con, config.TB_FORMA_VIDA)}
+def build_life_form(con, rows: list[dict]):
+    existing_ids = {row["type"]: row["id"] for row in _load_existing_rows(con, config.TB_LIFE_FORM)}
     ids = _merge_ids(existing_ids, _distinct_non_null(row["life_form"] for row in rows))
-    dim = [{"id": i, "type": tipo} for tipo, i in ids.items()]
+    dim = [{"id": i, "type": life_form_type} for life_form_type, i in ids.items()]
     return dim, ids
 
 
-def build_parcela(con, rows: list[dict]):
-    existing_ids = {row["code"]: row["id"] for row in _load_existing_rows(con, config.TB_PARCELA)}
+def build_plot(con, rows: list[dict]):
+    existing_ids = {row["code"]: row["id"] for row in _load_existing_rows(con, config.TB_PLOT)}
     ids = _merge_ids(existing_ids, _distinct_non_null(row["plot"] for row in rows))
     dim = [
-        {"id": i, "code": codigo, "coordinate": config.PARCELA_COORDENADAS.get(str(codigo))}
-        for codigo, i in ids.items()
+        {"id": i, "code": code, "coordinate": config.PLOT_COORDINATES.get(str(code))}
+        for code, i in ids.items()
     ]
     return dim, ids
 
 
-def build_identificacao():
+def build_identification_status():
     dim = [
-        {"id": codigo, "description": descricao}
-        for codigo, descricao in config.IDENTIFICACAO_DESCRICAO_MAP.items()
+        {"id": code, "description": description}
+        for code, description in config.IDENTIFICATION_STATUS_DESCRIPTION_MAP.items()
     ]
-    ids = {codigo: codigo for codigo in config.IDENTIFICACAO_DESCRICAO_MAP}
+    ids = {code: code for code in config.IDENTIFICATION_STATUS_DESCRIPTION_MAP}
     return dim, ids
 
 
-def build_substrato(con, rows: list[dict]):
-    sigla_by_nome = {v: k for k, v in config.SUBSTRATO_NOME_MAP.items()}
-    existing_ids = {row["name"]: row["id"] for row in _load_existing_rows(con, config.TB_SUBSTRATO)}
+def build_substrate(con, rows: list[dict]):
+    abbreviation_by_name = {v: k for k, v in config.SUBSTRATE_NAME_MAP.items()}
+    existing_ids = {row["name"]: row["id"] for row in _load_existing_rows(con, config.TB_SUBSTRATE)}
     # sorted() do Python, não ORDER BY do banco: a ordem alfabética decide os ids novos
-    nomes = sorted({nome for row in rows for nome in row["substrato_lista"]})
-    ids = _merge_ids(existing_ids, nomes)
-    dim = [{"id": i, "name": nome, "abbreviation": sigla_by_nome.get(nome)} for nome, i in ids.items()]
+    names = sorted({name for row in rows for name in row["substrate_list"]})
+    ids = _merge_ids(existing_ids, names)
+    dim = [{"id": i, "name": name, "abbreviation": abbreviation_by_name.get(name)} for name, i in ids.items()]
     return dim, ids
 
 
-def build_observacao(con, rows: list[dict]):
+def build_remark(con, rows: list[dict]):
     existing_ids = {
-        row["comment"]: row["id"] for row in _load_existing_rows(con, config.TB_OBSERVACAO)
+        row["comment"]: row["id"] for row in _load_existing_rows(con, config.TB_REMARK)
     }
-    comentarios = sorted({c for row in rows for c in row["observacoes_lista"]})
-    ids = _merge_ids(existing_ids, comentarios)
-    dim = [{"id": i, "comment": comentario} for comentario, i in ids.items()]
+    comments = sorted({c for row in rows for c in row["remarks_list"]})
+    ids = _merge_ids(existing_ids, comments)
+    dim = [{"id": i, "comment": comment} for comment, i in ids.items()]
     return dim, ids
 
 
-def build_occurrence(con, rows: list[dict], epiteto_ids: dict, forma_ids: dict, identificacao_ids: dict, parcela_ids: dict):
+def build_occurrence(con, rows: list[dict], species_ids: dict, life_form_ids: dict, identification_status_ids: dict, plot_ids: dict):
     existing_keys_to_id = {
         (row["origin_file"], row["origin_row"]): row["id"]
         for row in _load_existing_rows(con, config.TB_OCCURRENCE)
@@ -113,17 +104,17 @@ def build_occurrence(con, rows: list[dict], epiteto_ids: dict, forma_ids: dict, 
     satellite_rows = []
     for index, row in enumerate(rows):
         # SPP sempre passa infraspecific=None
-        chave_especie = (
+        species_key = (
             _none_if_nan(row["genus"]),
-            _none_if_nan(row["epiteto"]),
+            _none_if_nan(row["epithet"]),
             _none_if_nan(row["infraspecific"]),
             _none_if_nan(row["author"]),
         )
-        id_especie = epiteto_ids.get(chave_especie)
-        if id_especie is None:
+        id_species = species_ids.get(species_key)
+        if id_species is None:
             print(
-                f"[load_SPP] linha {index} ({row['source_file']}#{row['source_row']}): "
-                f"não encontrei epíteto para {chave_especie!r}, pulando occurrence"
+                f"[load_spp_bryophytes] linha {index} ({row['source_file']}#{row['source_row']}): "
+                f"não encontrei epíteto para {species_key!r}, pulando occurrence"
             )
             continue
 
@@ -135,15 +126,15 @@ def build_occurrence(con, rows: list[dict], epiteto_ids: dict, forma_ids: dict, 
             existing_keys_to_id[natural_key] = occurrence_id
             next_id += 1
 
-        codigo_status = _none_if_nan(row["identification_status"])
-        forma_vida = _none_if_nan(row["life_form"])
-        parcela = _none_if_nan(row["plot"])
-        amostra = _none_if_nan(row["sample"])
+        identification_status_code = _none_if_nan(row["identification_status"])
+        life_form = _none_if_nan(row["life_form"])
+        plot = _none_if_nan(row["plot"])
+        sample = _none_if_nan(row["sample"])
 
         occurrence_rows.append(
             {
                 "id": occurrence_id,
-                "id_species": id_especie,
+                "id_species": id_species,
                 "basis_of_record": config.SPP_BASIS_OF_RECORD,
                 "origin_file": row["source_file"],
                 "origin_row": row["source_row"],
@@ -152,29 +143,29 @@ def build_occurrence(con, rows: list[dict], epiteto_ids: dict, forma_ids: dict, 
         satellite_rows.append(
             {
                 "id": occurrence_id,
-                "id_life_form": forma_ids.get(forma_vida) if forma_vida is not None else None,
-                "id_identification_status": identificacao_ids.get(int(codigo_status)) if codigo_status is not None else None,
-                "id_plot": parcela_ids.get(parcela) if parcela is not None else None,
-                "sample": int(amostra) if amostra is not None else None,
+                "id_life_form": life_form_ids.get(life_form) if life_form is not None else None,
+                "id_identification_status": identification_status_ids.get(int(identification_status_code)) if identification_status_code is not None else None,
+                "id_plot": plot_ids.get(plot) if plot is not None else None,
+                "sample": int(sample) if sample is not None else None,
             }
         )
     return occurrence_rows, satellite_rows
 
 
-def build_bridges(rows: list[dict], occurrence_rows: list[dict], substrato_ids: dict, observacao_ids: dict):
+def build_bridges(rows: list[dict], occurrence_rows: list[dict], substrate_ids: dict, remark_ids: dict):
     occurrence_id_by_key = {(row["origin_file"], row["origin_row"]): row["id"] for row in occurrence_rows}
 
     # Pares como chaves de dict: o repetido some e fica a ordem da primeira ocorrência
     subs_pairs = {}
     obs_pairs = {}
     for row in rows:
-        id_briofita = occurrence_id_by_key.get((row["source_file"], row["source_row"]))
-        if id_briofita is None:
+        id_occurrence = occurrence_id_by_key.get((row["source_file"], row["source_row"]))
+        if id_occurrence is None:
             continue
-        for nome in row["substrato_lista"]:
-            subs_pairs[(id_briofita, substrato_ids[nome])] = None
-        for comentario in row["observacoes_lista"]:
-            obs_pairs[(id_briofita, observacao_ids[comentario])] = None
+        for name in row["substrate_list"]:
+            subs_pairs[(id_occurrence, substrate_ids[name])] = None
+        for comment in row["remarks_list"]:
+            obs_pairs[(id_occurrence, remark_ids[comment])] = None
 
     subs_rows = [{"id_occurrence": b, "id_substrate": s} for b, s in subs_pairs]
     obs_rows = [{"id_occurrence": b, "id_remark": o} for b, o in obs_pairs]
@@ -184,61 +175,61 @@ def build_bridges(rows: list[dict], occurrence_rows: list[dict], substrato_ids: 
 def populate_normalized_tables() -> None:
     # Uma transação para o load inteiro: leitura dos ids existentes e gravação veem o mesmo
     # estado, e um erro no meio desfaz todas as tabelas deste load (os loads anteriores ficam)
-    gravadas = []
+    written = []
     with db_utils.postgres_duckdb() as con, db_utils.transaction(con):
         rows = prepare(load_clean_rows(con))
 
-        filo_dim, filo_ids = taxonomy.build_filo_rows(con, rows)
-        familia_dim, familia_by_nome = taxonomy.build_familia_rows(con, rows, filo_ids, filo_dim)
-        genero_dim, genero_by_nome = taxonomy.build_genero_rows(con, rows, familia_by_nome, familia_dim)
-        autor_dim, autor_ids = taxonomy.build_autor_rows(con, rows)
-        epiteto_dim, epiteto_ids = taxonomy.build_epiteto_especifico_rows(
-            con, rows, genero_by_nome, autor_ids, genero_dim
+        phylum_dim, phylum_ids = taxonomy.build_phylum_rows(con, rows)
+        family_dim, family_by_name = taxonomy.build_family_rows(con, rows, phylum_ids, phylum_dim)
+        genus_dim, genus_by_name = taxonomy.build_genus_rows(con, rows, family_by_name, family_dim)
+        author_dim, author_ids = taxonomy.build_author_rows(con, rows)
+        species_dim, species_ids = taxonomy.build_species_rows(
+            con, rows, genus_by_name, author_ids, genus_dim
         )
-        forma_dim, forma_ids = build_forma_vida(con, rows)
-        parcela_dim, parcela_ids = build_parcela(con, rows)
-        identificacao_dim, identificacao_ids = build_identificacao()
-        substrato_dim, substrato_ids = build_substrato(con, rows)
-        observacao_dim, observacao_ids = build_observacao(con, rows)
+        life_form_dim, life_form_ids = build_life_form(con, rows)
+        plot_dim, plot_ids = build_plot(con, rows)
+        identification_status_dim, identification_status_ids = build_identification_status()
+        substrate_dim, substrate_ids = build_substrate(con, rows)
+        remark_dim, remark_ids = build_remark(con, rows)
 
         occurrence_rows, occurrence_bryophyte_rows = build_occurrence(
-            con, rows, epiteto_ids, forma_ids, identificacao_ids, parcela_ids
+            con, rows, species_ids, life_form_ids, identification_status_ids, plot_ids
         )
-        coleta_substrato_rows, coleta_observacao_rows = build_bridges(
-            rows, occurrence_rows, substrato_ids, observacao_ids
+        occurrence_substrate_rows, occurrence_remark_rows = build_bridges(
+            rows, occurrence_rows, substrate_ids, remark_ids
         )
 
         # A ordem respeita as chaves estrangeiras: o Postgres as confere a cada comando
-        tabelas_upsert = {
-            config.TB_FILO: filo_dim,
-            config.TB_FAMILIA: familia_dim,
-            config.TB_GENERO: genero_dim,
-            config.TB_AUTOR: autor_dim,
-            config.TB_EPITETO_ESPECIFICO: epiteto_dim,
-            config.TB_FORMA_VIDA: forma_dim,
-            config.TB_PARCELA: parcela_dim,
-            config.TB_IDENTIFICACAO: identificacao_dim,
-            config.TB_SUBSTRATO: substrato_dim,
-            config.TB_OBSERVACAO: observacao_dim,
+        upsert_tables = {
+            config.TB_PHYLUM: phylum_dim,
+            config.TB_FAMILY: family_dim,
+            config.TB_GENUS: genus_dim,
+            config.TB_AUTHOR: author_dim,
+            config.TB_SPECIES: species_dim,
+            config.TB_LIFE_FORM: life_form_dim,
+            config.TB_PLOT: plot_dim,
+            config.TB_IDENTIFICATION_STATUS: identification_status_dim,
+            config.TB_SUBSTRATE: substrate_dim,
+            config.TB_REMARK: remark_dim,
             config.TB_OCCURRENCE: occurrence_rows,
             config.TB_OCCURRENCE_BRYOPHYTE: occurrence_bryophyte_rows,
         }
-        for nome_tabela, tabela_rows in tabelas_upsert.items():
-            db_utils.upsert_rows(con, nome_tabela, tabela_rows)
-            gravadas.append((nome_tabela, len(tabela_rows)))
+        for table_name, table_rows in upsert_tables.items():
+            db_utils.upsert_rows(con, table_name, table_rows)
+            written.append((table_name, len(table_rows)))
 
         db_utils.insert_ignore_rows(
-            con, config.TB_COLETA_SUBSTRATO, coleta_substrato_rows, ["id_occurrence", "id_substrate"]
+            con, config.TB_OCCURRENCE_SUBSTRATE, occurrence_substrate_rows, ["id_occurrence", "id_substrate"]
         )
-        gravadas.append((config.TB_COLETA_SUBSTRATO, len(coleta_substrato_rows)))
+        written.append((config.TB_OCCURRENCE_SUBSTRATE, len(occurrence_substrate_rows)))
         db_utils.insert_ignore_rows(
-            con, config.TB_COLETA_OBSERVACAO, coleta_observacao_rows, ["id_occurrence", "id_remark"]
+            con, config.TB_OCCURRENCE_REMARK, occurrence_remark_rows, ["id_occurrence", "id_remark"]
         )
-        gravadas.append((config.TB_COLETA_OBSERVACAO, len(coleta_observacao_rows)))
+        written.append((config.TB_OCCURRENCE_REMARK, len(occurrence_remark_rows)))
 
     # Só depois do COMMIT: com erro no meio, nenhuma tabela foi gravada
-    for nome_tabela, total in gravadas:
-        print(f"[load_SPP] {nome_tabela}: {total} linhas gravadas.")
+    for table_name, total in written:
+        print(f"[load_spp_bryophytes] {table_name}: {total} linhas gravadas.")
 
 
 if __name__ == "__main__":

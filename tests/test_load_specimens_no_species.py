@@ -8,12 +8,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.load import load_arboretum_specimens, taxonomy
 
 
-def _prepared_rows(genero, epiteto):
+def _prepared_rows(genus, epithet):
     """Uma linha no formato de saída de prepare()."""
     return [
         {
-            "genus": genero,
-            "epiteto": epiteto,
+            "genus": genus,
+            "epithet": epithet,
             "infraspecific": None,
             "author": None,
             "identification_qualifier": None,
@@ -37,7 +37,7 @@ class OccurrenceWithoutSpeciesTest(unittest.TestCase):
 
     def test_row_without_genus_and_epithet_loads_with_null_species(self):
         occurrence, satellite = load_arboretum_specimens.build_occurrence_specimens(
-            mock.Mock(), _prepared_rows(None, None), epiteto_ids={}, sector_ids={}, reproductive_status_ids={}
+            mock.Mock(), _prepared_rows(None, None), species_ids={}, sector_ids={}, reproductive_status_ids={}
         )
         self.assertEqual(1, len(occurrence))
         self.assertIsNone(occurrence[0]["id_species"])
@@ -48,7 +48,7 @@ class OccurrenceWithoutSpeciesTest(unittest.TestCase):
     def test_row_with_key_not_found_is_still_skipped(self):
         with mock.patch("builtins.print") as fake_print:
             occurrence, satellite = load_arboretum_specimens.build_occurrence_specimens(
-                mock.Mock(), _prepared_rows("Inga", "vera"), epiteto_ids={}, sector_ids={}, reproductive_status_ids={}
+                mock.Mock(), _prepared_rows("Inga", "vera"), species_ids={}, sector_ids={}, reproductive_status_ids={}
             )
         self.assertEqual(occurrence, [])
         self.assertEqual(satellite, [])

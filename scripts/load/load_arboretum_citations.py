@@ -11,7 +11,7 @@ _none_if_nan = taxonomy._none_if_nan
 def load_clean_rows(con) -> list[dict]:
     # Os ids saem na ordem das linhas lidas; cln_* não tem id, então a ordem vem da planilha
     return db_utils.read_rows(
-        con, config.CLN_ARBORETO_CITATIONS_TABLE, order_by=config.ARBORETO_CITATION_STAGING_ORDER
+        con, config.CLN_ARBORETUM_CITATIONS_TABLE, order_by=config.ARBORETUM_CITATION_STAGING_ORDER
     )
 
 
@@ -26,32 +26,31 @@ def prepare(rows: list[dict]) -> list[dict]:
         # linha de totais não gera citação, sai antes do bloco de morfo-espécie
         if row["parse_status"] == config.PARSE_STATUS_TOTAL_ROW:
             print(
-                f"[load_arboreto_citations] linha {clean_index} "
+                f"[load_arboretum_citations] linha {clean_index} "
                 f"({source_sheet}#{source_row}): linha de totais, ignorada"
             )
             continue
 
         # morfo-espécie e unparseable nunca reconciliam entre fontes (ADR-0003);
         # recebem a origem no nome; epíteto NULL continua NULL
-        epiteto_especifico = row["epithet"]
-        if not row["reconcile_across_sources"] and epiteto_especifico is not None:
-            epiteto_especifico = f"{epiteto_especifico} [{source_sheet}#{source_row}]"
+        epithet = row["epithet"]
+        if not row["reconcile_across_sources"] and epithet is not None:
+            epithet = f"{epithet} [{source_sheet}#{source_row}]"
 
         out.append({
             **row,
             # arboreto não tem Filo
-            "filo_nome": None,
+            "phylum_name": None,
             "source_file": row["_source_file"],
             "source_sheet": source_sheet,
             "source_row": source_row,
-            "epithet": epiteto_especifico,
-            "epiteto": epiteto_especifico,
+            "epithet": epithet,
             "clean_index": clean_index,
         })
     return out
 
 
-def build_bibliographic_citation(con, rows: list[dict], epiteto_ids: dict) -> list[dict]:
+def build_bibliographic_citation(con, rows: list[dict], species_ids: dict) -> list[dict]:
     existing_keys_to_id = {
         (row["origin_file"], row["origin_sheet"], row["origin_row"]): row["id"]
         for row in taxonomy._load_existing_rows(con, config.TB_BIBLIOGRAPHIC_CITATION)
@@ -61,17 +60,17 @@ def build_bibliographic_citation(con, rows: list[dict], epiteto_ids: dict) -> li
     citation_rows = []
 
     for row in rows:
-        chave_especie = tuple(
+        species_key = tuple(
             _none_if_nan(row[column])
-            for column in ("genus", "epiteto", "infraspecific", "author")
+            for column in ("genus", "epithet", "infraspecific", "author")
         )
-        id_especie = epiteto_ids.get(chave_especie)
+        id_species = species_ids.get(species_key)
 
-        if id_especie is None:
+        if id_species is None:
             print(
-                f"[load_arboreto_citations] linha {row['clean_index']} "
+                f"[load_arboretum_citations] linha {row['clean_index']} "
                 f"({row['source_sheet']}#{row['source_row']}): não encontrei "
-                f"epíteto para {chave_especie!r}, pulando citação"
+                f"epíteto para {species_key!r}, pulando citação"
             )
             continue
 
@@ -84,13 +83,13 @@ def build_bibliographic_citation(con, rows: list[dict], epiteto_ids: dict) -> li
             existing_keys_to_id[natural_key] = citation_id
             next_id += 1
 
-        quantidade = _none_if_nan(row["quantity"])
+        quantity = _none_if_nan(row["quantity"])
         citation_rows.append(
             {
                 "id": citation_id,
-                "id_species": id_especie,
+                "id_species": id_species,
                 "source": row["source_sheet"],
-                "quantity": int(quantidade) if quantidade is not None else None,
+                "quantity": int(quantity) if quantity is not None else None,
                 "identification_qualifier": row["identification_qualifier"],
                 "origin_file": row["source_file"],
                 "origin_sheet": row["source_sheet"],
@@ -104,36 +103,36 @@ def build_bibliographic_citation(con, rows: list[dict], epiteto_ids: dict) -> li
 def populate_normalized_tables() -> None:
     # Uma transação para o load inteiro: leitura dos ids existentes e gravação veem o mesmo
     # estado, e um erro no meio desfaz todas as tabelas deste load (os loads anteriores ficam)
-    gravadas = []
+    written = []
     with db_utils.postgres_duckdb() as con, db_utils.transaction(con):
         rows = prepare(load_clean_rows(con))
 
-        filo_dim, filo_ids = taxonomy.build_filo_rows(con, rows)
-        familia_dim, familia_by_nome = taxonomy.build_familia_rows(con, rows, filo_ids, filo_dim)
-        genero_dim, genero_by_nome = taxonomy.build_genero_rows(con, rows, familia_by_nome, familia_dim)
-        autor_dim, autor_ids = taxonomy.build_autor_rows(con, rows)
-        epiteto_dim, epiteto_ids = taxonomy.build_epiteto_especifico_rows(
-            con, rows, genero_by_nome, autor_ids, genero_dim
+        phylum_dim, phylum_ids = taxonomy.build_phylum_rows(con, rows)
+        family_dim, family_by_name = taxonomy.build_family_rows(con, rows, phylum_ids, phylum_dim)
+        genus_dim, genus_by_name = taxonomy.build_genus_rows(con, rows, family_by_name, family_dim)
+        author_dim, author_ids = taxonomy.build_author_rows(con, rows)
+        species_dim, species_ids = taxonomy.build_species_rows(
+            con, rows, genus_by_name, author_ids, genus_dim
         )
 
-        citation_rows = build_bibliographic_citation(con, rows, epiteto_ids)
+        citation_rows = build_bibliographic_citation(con, rows, species_ids)
 
         # A ordem respeita as chaves estrangeiras: o Postgres as confere a cada comando
-        tabelas_upsert = {
-            config.TB_FILO: filo_dim,
-            config.TB_FAMILIA: familia_dim,
-            config.TB_GENERO: genero_dim,
-            config.TB_AUTOR: autor_dim,
-            config.TB_EPITETO_ESPECIFICO: epiteto_dim,
+        upsert_tables = {
+            config.TB_PHYLUM: phylum_dim,
+            config.TB_FAMILY: family_dim,
+            config.TB_GENUS: genus_dim,
+            config.TB_AUTHOR: author_dim,
+            config.TB_SPECIES: species_dim,
             config.TB_BIBLIOGRAPHIC_CITATION: citation_rows,
         }
-        for nome_tabela, tabela_rows in tabelas_upsert.items():
-            db_utils.upsert_rows(con, nome_tabela, tabela_rows)
-            gravadas.append((nome_tabela, len(tabela_rows)))
+        for table_name, table_rows in upsert_tables.items():
+            db_utils.upsert_rows(con, table_name, table_rows)
+            written.append((table_name, len(table_rows)))
 
     # Só depois do COMMIT: com erro no meio, nenhuma tabela foi gravada
-    for nome_tabela, total in gravadas:
-        print(f"[load_arboreto_citations] {nome_tabela}: {total} linhas gravadas.")
+    for table_name, total in written:
+        print(f"[load_arboretum_citations] {table_name}: {total} linhas gravadas.")
 
 
 if __name__ == "__main__":

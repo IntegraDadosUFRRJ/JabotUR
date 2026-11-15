@@ -16,7 +16,7 @@ from scripts.staging import stage_arboretum_citations
 from scripts.transforms.scientific_name import PARSE_STATUS_UNPARSEABLE
 
 CONTROL_COLUMNS = [
-    config.ARBORETO_CITATION_COL_FAMILY_RAW,
+    config.ARBORETUM_CITATION_COL_FAMILY_RAW,
     "previous_quantity_sum",
     "is_total_row",
 ]
@@ -291,7 +291,7 @@ class StagingTests(unittest.TestCase):
             _write_mini_xlsx(path)
 
             with mock.patch.object(config, "ARBORETO_XLSX_PATH", path), \
-                 mock.patch.object(config, "ARBORETO_CITATION_SHEETS", ["Aba1"]):
+                 mock.patch.object(config, "ARBORETUM_CITATION_SHEETS", ["Aba1"]):
                 query = stage_arboretum_citations.citations_query()
 
             con = duckdb.connect()
@@ -331,13 +331,13 @@ class LoadPrepareTests(unittest.TestCase):
         by_origin = {(row["source_sheet"], row["source_row"]): row for row in prepared}
         # morfo-espécie não reconcilia: recebe a origem no nome
         self.assertFalse(by_origin[("A", 3)]["reconcile_across_sources"])
-        self.assertTrue(by_origin[("A", 3)]["epiteto"].endswith(" [A#3]"))
+        self.assertTrue(by_origin[("A", 3)]["epithet"].endswith(" [A#3]"))
         # unparseable sem espécie também não reconcilia, e o epíteto NULL continua NULL
         self.assertEqual(by_origin[("C", 3)]["parse_status"], PARSE_STATUS_UNPARSEABLE)
         self.assertFalse(by_origin[("C", 3)]["reconcile_across_sources"])
-        self.assertIsNone(by_origin[("C", 3)]["epiteto"])
+        self.assertIsNone(by_origin[("C", 3)]["epithet"])
         logged = [str(call.args[0]) for call in fake_print.call_args_list]
-        self.assertEqual(logged, ["[load_arboreto_citations] linha 2 (A#4): linha de totais, ignorada"])
+        self.assertEqual(logged, ["[load_arboretum_citations] linha 2 (A#4): linha de totais, ignorada"])
 
 
 if __name__ == "__main__":

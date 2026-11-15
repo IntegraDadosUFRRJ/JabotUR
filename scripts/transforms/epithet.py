@@ -7,15 +7,15 @@ import re
 
 from scripts.transforms.missing import is_missing
 
-_GENERO_ABREVIADO_RE = re.compile(r"^\s*[^\s.]+\.\s*")
+_GENUS_ABBREVIATION_RE = re.compile(r"^\s*[^\s.]+\.\s*")
 
 
-def strip_genero_abbreviation(values: list) -> list:
-    return [strip_genero_abbreviation_from_value(value) for value in values]
+def strip_genus_abbreviation(values: list) -> list:
+    return [strip_genus_abbreviation_from_value(value) for value in values]
 
 
-def strip_genero_abbreviation_from_value(value):
+def strip_genus_abbreviation_from_value(value):
     if is_missing(value):
         return None
     text = str(value).strip()
-    return _GENERO_ABREVIADO_RE.sub("", text).strip()
+    return _GENUS_ABBREVIATION_RE.sub("", text).strip()

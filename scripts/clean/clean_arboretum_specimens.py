@@ -2,7 +2,7 @@
 
 Leitura, transformação e gravação acontecem dentro do DuckDB, com o Postgres anexado:
 os dados não passam por DataFrame. Mesma divisão de responsabilidade de
-clean_arboreto_citations.py:
+clean_arboretum_citations.py:
   - DuckDB (SQL) pro mecânico: trim e normalização pontual de
     family/sector/location_description/reproductive_status, e as flags;
   - Python puro pros dois parsers especializados, chamados pelo SQL como funções
@@ -46,7 +46,7 @@ OUTPUT_COLUMNS = [
 def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
     """Expõe o staging, na ordem da planilha, como a view lida pela query do clean."""
     read_table(
-        con, config.STG_ARBORETO_SPECIMENS_TABLE, order_by=config.ARBORETO_SPECIMENS_STAGING_ORDER
+        con, config.STG_ARBORETUM_SPECIMENS_TABLE, order_by=config.ARBORETUM_SPECIMENS_STAGING_ORDER
     ).create_view(config.DUCKDB_STAGING_ALIAS)
 
 
@@ -55,7 +55,7 @@ def _sql_literal(value: str) -> str:
 
 
 def _clean_query() -> str:
-    # A query e o comentário-resumo dela estão em clean_arboreto_specimens.sql; aqui só
+    # A query e o comentário-resumo dela estão em clean_arboretum_specimens.sql; aqui só
     # entram os nomes das funções registradas no DuckDB e os valores de status
     full = SQL_PATH.read_text(encoding="utf-8").format(
         name_function=duckdb_parsers.SCIENTIFIC_NAME_FUNCTION,
@@ -91,9 +91,9 @@ def clean_specimens() -> None:
         create_staging_view(con)
         # Passa o texto da query, e não transform(con): a relação do con.sql() é
         # preguiçosa e não deve ser consumida dentro da transação do replace_table
-        replace_table(con, config.CLN_ARBORETO_SPECIMENS_TABLE, _prepare(con))
-        count = read_table(con, config.CLN_ARBORETO_SPECIMENS_TABLE).aggregate("count(*)").fetchone()[0]
-    print(f"[clean_arboreto_specimens] {config.CLN_ARBORETO_SPECIMENS_TABLE}: {count} linhas carregadas.")
+        replace_table(con, config.CLN_ARBORETUM_SPECIMENS_TABLE, _prepare(con))
+        count = read_table(con, config.CLN_ARBORETUM_SPECIMENS_TABLE).aggregate("count(*)").fetchone()[0]
+    print(f"[clean_arboretum_specimens] {config.CLN_ARBORETUM_SPECIMENS_TABLE}: {count} linhas carregadas.")
 
 
 if __name__ == "__main__":

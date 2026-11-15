@@ -19,7 +19,7 @@ import scripts.config as config
 
 # O export do Google Sheets grava número inteiro como float (<v>1.0</v>) e o all_varchar
 # devolve '1.0'; a regex grava '1', o número como aparece na planilha. Os passos seguintes
-# dependem desse texto: as chaves de PARCELA_COORDENADAS são '1', '2'... e o load converte
+# dependem desse texto: as chaves de PLOT_COORDINATES são '1', '2'... e o load converte
 # a amostra com int(), que recusa '1.0'. Como o all_varchar não distingue célula
 # numérica de célula de texto, um texto digitado '3.0' também viraria '3': o teste
 # test_staging_duckdb garante que nenhuma célula de texto lida tem esse formato.

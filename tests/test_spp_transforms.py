@@ -32,10 +32,10 @@ class MissingTests(unittest.TestCase):
             self.assertFalse(is_missing(value), repr(value))
 
 
-class FiloTests(unittest.TestCase):
+class PhylumTests(unittest.TestCase):
     def test_known_abbreviation_is_expanded(self):
-        for sigla, nome in config.FILO_NOME_MAP.items():
-            self.assertEqual(phylum.expand([sigla, f" {sigla.lower()} "]), [nome, nome])
+        for abbreviation, name in config.PHYLUM_NAME_MAP.items():
+            self.assertEqual(phylum.expand([abbreviation, f" {abbreviation.lower()} "]), [name, name])
 
     def test_missing_stays_none(self):
         self.assertEqual(phylum.expand(MISSING_VALUES), [None, None])
@@ -46,52 +46,52 @@ class FiloTests(unittest.TestCase):
         self.assertIn("Bryophyta", printed)
 
     def test_keeps_order_and_length(self):
-        siglas = list(config.FILO_NOME_MAP)
-        values = [siglas[1], None, siglas[0]]
+        abbreviations = list(config.PHYLUM_NAME_MAP)
+        values = [abbreviations[1], None, abbreviations[0]]
         self.assertEqual(
             phylum.expand(values),
-            [config.FILO_NOME_MAP[siglas[1]], None, config.FILO_NOME_MAP[siglas[0]]],
+            [config.PHYLUM_NAME_MAP[abbreviations[1]], None, config.PHYLUM_NAME_MAP[abbreviations[0]]],
         )
 
 
-class EpitetoTests(unittest.TestCase):
+class EpithetTests(unittest.TestCase):
     def test_genus_abbreviation_is_removed(self):
         self.assertEqual(
-            epithet.strip_genero_abbreviation(["B. indica", "  Bry.  argenteum "]),
+            epithet.strip_genus_abbreviation(["B. indica", "  Bry.  argenteum "]),
             ["indica", "argenteum"],
         )
 
     def test_epithet_without_abbreviation_is_kept(self):
-        self.assertEqual(epithet.strip_genero_abbreviation([" indica "]), ["indica"])
+        self.assertEqual(epithet.strip_genus_abbreviation([" indica "]), ["indica"])
 
     def test_any_first_token_ending_in_dot_is_removed(self):
         # A regra olha só a forma do primeiro token, não se ele é um gênero
         self.assertEqual(
-            epithet.strip_genero_abbreviation(["sp.", "cf. indica"]),
+            epithet.strip_genus_abbreviation(["sp.", "cf. indica"]),
             ["", "indica"],
         )
 
     def test_missing_stays_none(self):
-        self.assertEqual(epithet.strip_genero_abbreviation(MISSING_VALUES), [None, None])
+        self.assertEqual(epithet.strip_genus_abbreviation(MISSING_VALUES), [None, None])
 
     def test_value_and_list_versions_agree(self):
         values = ["B. indica", None, "indica"]
         self.assertEqual(
-            epithet.strip_genero_abbreviation(values),
-            [epithet.strip_genero_abbreviation_from_value(v) for v in values],
+            epithet.strip_genus_abbreviation(values),
+            [epithet.strip_genus_abbreviation_from_value(v) for v in values],
         )
 
 
-class SubstratoTests(unittest.TestCase):
+class SubstrateTests(unittest.TestCase):
     def test_multivalued_is_split_and_expanded(self):
-        (first, first_name), (second, second_name) = list(config.SUBSTRATO_NOME_MAP.items())[:2]
+        (first, first_name), (second, second_name) = list(config.SUBSTRATE_NAME_MAP.items())[:2]
         self.assertEqual(
             substrate.expand_multivalued([f"{first} + {second.lower()}"]),
             [[first_name, second_name]],
         )
 
     def test_repeated_name_appears_once_in_first_order(self):
-        (first, first_name), (second, second_name) = list(config.SUBSTRATO_NOME_MAP.items())[:2]
+        (first, first_name), (second, second_name) = list(config.SUBSTRATE_NAME_MAP.items())[:2]
         self.assertEqual(
             substrate.expand_multivalued([f"{second}+{first}+{second}"]),
             [[second_name, first_name]],
@@ -101,13 +101,13 @@ class SubstratoTests(unittest.TestCase):
         self.assertEqual(substrate.expand_multivalued(MISSING_VALUES + ["", "  ", "+"]), [[]] * 5)
 
     def test_unknown_abbreviation_is_kept_and_reported(self):
-        first, first_name = next(iter(config.SUBSTRATO_NOME_MAP.items()))
+        first, first_name = next(iter(config.SUBSTRATE_NAME_MAP.items()))
         result, printed = _quietly(substrate.expand_multivalued, [f"{first}+XYZ"])
         self.assertEqual(result, [[first_name, "XYZ"]])
         self.assertIn("'XYZ'", printed)
 
 
-class ObservacoesTests(unittest.TestCase):
+class RemarksTests(unittest.TestCase):
     def test_multivalued_is_split_and_trimmed(self):
         self.assertEqual(
             remarks.split_multivalued([" com esporófito ; acrocárpico "]),

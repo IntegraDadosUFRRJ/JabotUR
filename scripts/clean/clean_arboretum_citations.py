@@ -36,7 +36,7 @@ OUTPUT_COLUMNS = [
 def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
     """Expõe o staging, na ordem da planilha, como a view lida pela query do clean."""
     read_table(
-        con, config.STG_ARBORETO_CITATIONS_TABLE, order_by=config.ARBORETO_CITATION_STAGING_ORDER
+        con, config.STG_ARBORETUM_CITATIONS_TABLE, order_by=config.ARBORETUM_CITATION_STAGING_ORDER
     ).create_view(config.DUCKDB_STAGING_ALIAS)
 
 
@@ -44,7 +44,7 @@ def _staging_order_sql() -> str:
     # _source_row comparado como número: como texto, a linha 10 viria antes da 9
     return ", ".join(
         f"CAST({col} AS INTEGER)" if col == config.SOURCE_ROW_COL else col
-        for col in config.ARBORETO_CITATION_STAGING_ORDER
+        for col in config.ARBORETUM_CITATION_STAGING_ORDER
     )
 
 
@@ -53,12 +53,12 @@ def _sql_literal(value: str) -> str:
 
 
 def _full_query() -> str:
-    # A query e o comentário-resumo dela estão em clean_arboreto_citations.sql; aqui só
+    # A query e o comentário-resumo dela estão em clean_arboretum_citations.sql; aqui só
     # entram os trechos que vêm do config.py e do parser. O resultado traz também as
     # colunas de controle da soma, que o log usa e a tabela limpa não grava.
     return SQL_PATH.read_text(encoding="utf-8").format(
         staging_order=_staging_order_sql(),
-        family_raw_col=config.ARBORETO_CITATION_COL_FAMILY_RAW,
+        family_raw_col=config.ARBORETUM_CITATION_COL_FAMILY_RAW,
         parse_function=duckdb_parsers.SCIENTIFIC_NAME_FUNCTION,
         status_ok=_sql_literal(PARSE_STATUS_OK),
         status_genus_only=_sql_literal(PARSE_STATUS_GENUS_ONLY),
@@ -77,7 +77,7 @@ def _clean_query() -> str:
 def _log_control_sums(con: duckdb.DuckDBPyConnection) -> None:
     # Registra, por aba, se a soma de controle da linha de totais conferiu.
     # Só filtra e imprime: a soma e o flag is_total_row vêm da query.
-    family_raw = config.ARBORETO_CITATION_COL_FAMILY_RAW
+    family_raw = config.ARBORETUM_CITATION_COL_FAMILY_RAW
     full = _full_query()
     # abas na ordem em que aparecem na planilha
     sheets = con.execute(
@@ -92,17 +92,17 @@ def _log_control_sums(con: duckdb.DuckDBPyConnection) -> None:
     for source_file, sheet in sheets:
         rows = [row for row in candidates if row[:2] == (source_file, sheet)]
         if not rows:
-            print(f"[clean_arboreto_citations] aba '{sheet}': sem linha de totais.")
+            print(f"[clean_arboretum_citations] aba '{sheet}': sem linha de totais.")
             continue
         for _, _, row_number, found, expected, is_total_row, parse_status in rows:
             if is_total_row:
                 print(
-                    f"[clean_arboreto_citations] aba '{sheet}' linha {row_number}: "
+                    f"[clean_arboretum_citations] aba '{sheet}' linha {row_number}: "
                     f"soma de controle conferiu ({found:g} == {expected:g})."
                 )
             else:
                 print(
-                    f"[clean_arboreto_citations] aba '{sheet}' linha {row_number}: "
+                    f"[clean_arboretum_citations] aba '{sheet}' linha {row_number}: "
                     f"soma de controle NÃO conferiu (esperado {expected:g}, achei {found:g}); "
                     f"mantida como {parse_status}."
                 )
@@ -129,9 +129,9 @@ def clean_citations() -> None:
         create_staging_view(con)
         # Passa o texto da query, e não transform(con): a relação do con.sql() é
         # preguiçosa e não deve ser consumida dentro da transação do replace_table
-        replace_table(con, config.CLN_ARBORETO_CITATIONS_TABLE, _prepare(con))
-        count = read_table(con, config.CLN_ARBORETO_CITATIONS_TABLE).aggregate("count(*)").fetchone()[0]
-    print(f"[clean_arboreto_citations] {config.CLN_ARBORETO_CITATIONS_TABLE}: {count} linhas carregadas.")
+        replace_table(con, config.CLN_ARBORETUM_CITATIONS_TABLE, _prepare(con))
+        count = read_table(con, config.CLN_ARBORETUM_CITATIONS_TABLE).aggregate("count(*)").fetchone()[0]
+    print(f"[clean_arboretum_citations] {config.CLN_ARBORETUM_CITATIONS_TABLE}: {count} linhas carregadas.")
 
 
 if __name__ == "__main__":

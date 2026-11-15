@@ -12,10 +12,10 @@ def expand_value(value):
     if is_missing(value):
         return None
     key = str(value).strip().upper()
-    if key not in config.FILO_NOME_MAP:
-        print(f"[transforms.filo] sigla de filo desconhecida: {value!r} (mantendo original)")
+    if key not in config.PHYLUM_NAME_MAP:
+        print(f"[transforms.phylum] sigla de filo desconhecida: {value!r} (mantendo original)")
         return str(value).strip()
-    return config.FILO_NOME_MAP[key]
+    return config.PHYLUM_NAME_MAP[key]
 
 
 def expand(values: list) -> list:

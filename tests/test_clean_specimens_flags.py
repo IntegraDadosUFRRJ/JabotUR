@@ -27,15 +27,15 @@ STAGING_COLUMNS = [
 def _staging_rows():
     """Linhas no formato do staging (tudo texto, como vem do Postgres), fora de ordem."""
     rows = [
-        # (_source_row, especie, numero_registro)
+        # (_source_row, species_raw, registration_number)
         ("10", "sem identificação", "RBRv90000293"),
         ("2", "Astronium concinnum Schott", "0015130"),
         ("3", "Morfo-Espécie 1", "LACRE AZUL 0015131"),
         ("4", "Inga vera Willd.", "lacre ilegível"),
     ]
     return [
-        ("teste.xlsx", "Espécimes", source_row, "Fabaceae", especie, numero_registro, None, None, None)
-        for source_row, especie, numero_registro in rows
+        ("teste.xlsx", "Espécimes", source_row, "Fabaceae", species_raw, registration_number, None, None, None)
+        for source_row, species_raw, registration_number in rows
     ]
 
 
@@ -107,10 +107,10 @@ class CleanSpecimensFlagsTests(unittest.TestCase):
         prepared = {
             row["_source_row"]: row for row in load_arboretum_specimens.prepare(_transform_rows(_staging_rows()))
         }
-        self.assertIsNone(prepared["10"]["epiteto"])
+        self.assertIsNone(prepared["10"]["epithet"])
         self.assertIsNone(prepared["10"]["genus"])
-        self.assertEqual(prepared["3"]["epiteto"], "Morfo-Espécie 1 [Espécimes#3]")
-        self.assertEqual(prepared["2"]["epiteto"], "concinnum")
+        self.assertEqual(prepared["3"]["epithet"], "Morfo-Espécie 1 [Espécimes#3]")
+        self.assertEqual(prepared["2"]["epithet"], "concinnum")
 
 
 class RegisteredParserTests(unittest.TestCase):

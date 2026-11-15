@@ -1,4 +1,4 @@
--- Clean dos Espécimes do arboreto, lido e preenchido por clean_arboreto_specimens.py com str.format.
+-- Clean dos Espécimes do arboreto, lido e preenchido por clean_arboretum_specimens.py com str.format.
 --
 -- Numera as linhas de staging e normaliza os campos mecânicos
 --   - family: trim; " - " placeholder usado nas linhas "sem identificação" e vira NULL

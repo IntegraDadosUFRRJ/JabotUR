@@ -1,4 +1,4 @@
--- Clean das Citações do arboreto, lido e preenchido por clean_arboreto_citations.py com str.format.
+-- Clean das Citações do arboreto, lido e preenchido por clean_arboretum_citations.py com str.format.
 --
 -- Numera as linhas de staging na ordem da planilha (arquivo, aba, linha) e aplica
 -- fill-down de family com last_value() IGNORE NULLS

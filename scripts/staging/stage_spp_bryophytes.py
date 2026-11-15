@@ -17,7 +17,7 @@ def spp_query() -> str:
 
 
 def stage_spp() -> None:
-    xlsx_sheet.write_staging(config.STG_SPP_TABLE, spp_query(), "stage_spp")
+    xlsx_sheet.write_staging(config.STG_SPP_TABLE, spp_query(), "stage_spp_bryophytes")
 
 
 if __name__ == "__main__":

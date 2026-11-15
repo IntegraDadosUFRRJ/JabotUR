@@ -39,7 +39,7 @@ def _sql_literal(value: str) -> str:
 
 def _build_observation_expression() -> str:
     expression = "trim(coalesce(remark, ''))"
-    for pattern, replacement in config.OBSERVACAO_REGEX_FIXES:
+    for pattern, replacement in config.REMARK_REGEX_FIXES:
         expression = (
             f"regexp_replace({expression}, {_sql_literal(pattern)}, {_sql_literal(replacement)}, 'gi')"
         )
@@ -51,7 +51,7 @@ def _build_observation_expression() -> str:
 
 
 def _clean_query() -> str:
-    # A query e o comentário-resumo dela estão em clean_SPP.sql; aqui só entram os
+    # A query e o comentário-resumo dela estão em clean_spp_bryophytes.sql; aqui só entram os
     # trechos montados a partir de listas do config.py
     return SQL_PATH.read_text(encoding="utf-8").format(
         staging_order=_staging_order_sql(),
@@ -71,7 +71,7 @@ def clean_spp() -> None:
         # preguiçosa e não deve ser consumida dentro da transação do replace_table
         replace_table(con, config.CLN_SPP_TABLE, _clean_query())
         count = read_table(con, config.CLN_SPP_TABLE).aggregate("count(*)").fetchone()[0]
-    print(f"[clean_spp] {config.CLN_SPP_TABLE}: {count} linhas carregadas.")
+    print(f"[clean_spp_bryophytes] {config.CLN_SPP_TABLE}: {count} linhas carregadas.")
 
 
 if __name__ == "__main__":

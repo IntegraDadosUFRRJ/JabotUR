@@ -26,57 +26,57 @@ from scripts.transforms.scientific_name import (
 from tests import db_test_support
 
 FINAL_TABLES = [
-    config.TB_FILO,
-    config.TB_FAMILIA,
-    config.TB_GENERO,
-    config.TB_AUTOR,
-    config.TB_EPITETO_ESPECIFICO,
-    config.TB_FORMA_VIDA,
-    config.TB_PARCELA,
-    config.TB_IDENTIFICACAO,
-    config.TB_SUBSTRATO,
-    config.TB_OBSERVACAO,
+    config.TB_PHYLUM,
+    config.TB_FAMILY,
+    config.TB_GENUS,
+    config.TB_AUTHOR,
+    config.TB_SPECIES,
+    config.TB_LIFE_FORM,
+    config.TB_PLOT,
+    config.TB_IDENTIFICATION_STATUS,
+    config.TB_SUBSTRATE,
+    config.TB_REMARK,
     config.TB_SECTOR,
     config.TB_REPRODUCTIVE_STATUS,
     config.TB_OCCURRENCE,
     config.TB_OCCURRENCE_BRYOPHYTE,
     config.TB_OCCURRENCE_ARBORETUM,
-    config.TB_COLETA_SUBSTRATO,
-    config.TB_COLETA_OBSERVACAO,
+    config.TB_OCCURRENCE_SUBSTRATE,
+    config.TB_OCCURRENCE_REMARK,
     config.TB_BIBLIOGRAPHIC_CITATION,
 ]
 
 STAGE_TO_CLEAN = [
     (config.STG_SPP_TABLE, config.CLN_SPP_TABLE),
-    (config.STG_ARBORETO_CITATIONS_TABLE, config.CLN_ARBORETO_CITATIONS_TABLE),
-    (config.STG_ARBORETO_SPECIMENS_TABLE, config.CLN_ARBORETO_SPECIMENS_TABLE),
+    (config.STG_ARBORETUM_CITATIONS_TABLE, config.CLN_ARBORETUM_CITATIONS_TABLE),
+    (config.STG_ARBORETUM_SPECIMENS_TABLE, config.CLN_ARBORETUM_SPECIMENS_TABLE),
 ]
 
 # Só as fontes cujo clean tem parse_status e needs_review; o SPP ainda não tem
 FLAGGED_CLEAN_TABLES = [
-    config.CLN_ARBORETO_CITATIONS_TABLE,
-    config.CLN_ARBORETO_SPECIMENS_TABLE,
+    config.CLN_ARBORETUM_CITATIONS_TABLE,
+    config.CLN_ARBORETUM_SPECIMENS_TABLE,
 ]
 
 # (filho, coluna, pai): cada relação tem FK no schema.sql e consulta de órfãos aqui
 REFERENCES = [
-    (config.TB_FAMILIA, "id_phylum", config.TB_FILO),
-    (config.TB_GENERO, "id_family", config.TB_FAMILIA),
-    (config.TB_EPITETO_ESPECIFICO, "id_genus", config.TB_GENERO),
-    (config.TB_EPITETO_ESPECIFICO, "id_author", config.TB_AUTOR),
-    (config.TB_OCCURRENCE, "id_species", config.TB_EPITETO_ESPECIFICO),
+    (config.TB_FAMILY, "id_phylum", config.TB_PHYLUM),
+    (config.TB_GENUS, "id_family", config.TB_FAMILY),
+    (config.TB_SPECIES, "id_genus", config.TB_GENUS),
+    (config.TB_SPECIES, "id_author", config.TB_AUTHOR),
+    (config.TB_OCCURRENCE, "id_species", config.TB_SPECIES),
     (config.TB_OCCURRENCE_BRYOPHYTE, "id", config.TB_OCCURRENCE),
-    (config.TB_OCCURRENCE_BRYOPHYTE, "id_life_form", config.TB_FORMA_VIDA),
-    (config.TB_OCCURRENCE_BRYOPHYTE, "id_identification_status", config.TB_IDENTIFICACAO),
-    (config.TB_OCCURRENCE_BRYOPHYTE, "id_plot", config.TB_PARCELA),
+    (config.TB_OCCURRENCE_BRYOPHYTE, "id_life_form", config.TB_LIFE_FORM),
+    (config.TB_OCCURRENCE_BRYOPHYTE, "id_identification_status", config.TB_IDENTIFICATION_STATUS),
+    (config.TB_OCCURRENCE_BRYOPHYTE, "id_plot", config.TB_PLOT),
     (config.TB_OCCURRENCE_ARBORETUM, "id", config.TB_OCCURRENCE),
     (config.TB_OCCURRENCE_ARBORETUM, "id_reproductive_status", config.TB_REPRODUCTIVE_STATUS),
     (config.TB_OCCURRENCE_ARBORETUM, "id_sector", config.TB_SECTOR),
-    (config.TB_COLETA_SUBSTRATO, "id_occurrence", config.TB_OCCURRENCE_BRYOPHYTE),
-    (config.TB_COLETA_SUBSTRATO, "id_substrate", config.TB_SUBSTRATO),
-    (config.TB_COLETA_OBSERVACAO, "id_occurrence", config.TB_OCCURRENCE_BRYOPHYTE),
-    (config.TB_COLETA_OBSERVACAO, "id_remark", config.TB_OBSERVACAO),
-    (config.TB_BIBLIOGRAPHIC_CITATION, "id_species", config.TB_EPITETO_ESPECIFICO),
+    (config.TB_OCCURRENCE_SUBSTRATE, "id_occurrence", config.TB_OCCURRENCE_BRYOPHYTE),
+    (config.TB_OCCURRENCE_SUBSTRATE, "id_substrate", config.TB_SUBSTRATE),
+    (config.TB_OCCURRENCE_REMARK, "id_occurrence", config.TB_OCCURRENCE_BRYOPHYTE),
+    (config.TB_OCCURRENCE_REMARK, "id_remark", config.TB_REMARK),
+    (config.TB_BIBLIOGRAPHIC_CITATION, "id_species", config.TB_SPECIES),
 ]
 
 KNOWN_PARSE_STATUSES = {
@@ -173,8 +173,8 @@ class TestPipelineInvariants(unittest.TestCase):
                 null_author = _scalar(conn, f'SELECT count(*) FROM "{table}" WHERE author IS NULL')
                 lines.append(f"{table}: author nulo = {null_author}")
             lines.append(
-                f"{config.TB_EPITETO_ESPECIFICO}: id_author nulo = "
-                f"{_scalar(conn, f'SELECT count(*) FROM {config.TB_EPITETO_ESPECIFICO} WHERE id_author IS NULL')}"
+                f"{config.TB_SPECIES}: id_author nulo = "
+                f"{_scalar(conn, f'SELECT count(*) FROM {config.TB_SPECIES} WHERE id_author IS NULL')}"
             )
         print("\n".join(lines), file=sys.stderr)
 
@@ -189,10 +189,10 @@ class TestPipelineInvariants(unittest.TestCase):
 
     def test_citations_clean_equals_loaded_plus_total_rows(self):
         with self.engine.connect() as conn:
-            cln = _scalar(conn, f'SELECT count(*) FROM "{config.CLN_ARBORETO_CITATIONS_TABLE}"')
+            cln = _scalar(conn, f'SELECT count(*) FROM "{config.CLN_ARBORETUM_CITATIONS_TABLE}"')
             total_rows = _scalar(
                 conn,
-                f'SELECT count(*) FROM "{config.CLN_ARBORETO_CITATIONS_TABLE}" WHERE parse_status = :s',
+                f'SELECT count(*) FROM "{config.CLN_ARBORETUM_CITATIONS_TABLE}" WHERE parse_status = :s',
                 s=config.PARSE_STATUS_TOTAL_ROW,
             )
             loaded = _scalar(conn, f'SELECT count(*) FROM "{config.TB_BIBLIOGRAPHIC_CITATION}"')
@@ -201,11 +201,11 @@ class TestPipelineInvariants(unittest.TestCase):
 
     def test_specimens_clean_equals_loaded(self):
         with self.engine.connect() as conn:
-            cln = _scalar(conn, f'SELECT count(*) FROM "{config.CLN_ARBORETO_SPECIMENS_TABLE}"')
+            cln = _scalar(conn, f'SELECT count(*) FROM "{config.CLN_ARBORETUM_SPECIMENS_TABLE}"')
             occurrences = _scalar(
                 conn,
                 f'SELECT count(*) FROM "{config.TB_OCCURRENCE}" WHERE basis_of_record = :b',
-                b=config.ARBORETO_SPECIMENS_BASIS_OF_RECORD,
+                b=config.ARBORETUM_SPECIMENS_BASIS_OF_RECORD,
             )
             satellites = _scalar(conn, f'SELECT count(*) FROM "{config.TB_OCCURRENCE_ARBORETUM}"')
         self.assertGreater(cln, 0)
@@ -387,12 +387,12 @@ class TestPipelineInvariants(unittest.TestCase):
         with self.engine.connect() as conn:
             total_rows = _scalar(
                 conn,
-                f'SELECT count(*) FROM "{config.CLN_ARBORETO_CITATIONS_TABLE}" WHERE parse_status = :s',
+                f'SELECT count(*) FROM "{config.CLN_ARBORETUM_CITATIONS_TABLE}" WHERE parse_status = :s',
                 s=config.PARSE_STATUS_TOTAL_ROW,
             )
             flagged = _scalar(
                 conn,
-                f'SELECT count(*) FROM "{config.CLN_ARBORETO_CITATIONS_TABLE}" '
+                f'SELECT count(*) FROM "{config.CLN_ARBORETUM_CITATIONS_TABLE}" '
                 f"WHERE parse_status = :s AND needs_review IS NOT FALSE",
                 s=config.PARSE_STATUS_TOTAL_ROW,
             )
@@ -403,7 +403,7 @@ class TestPipelineInvariants(unittest.TestCase):
         with self.engine.connect() as conn:
             sp = _scalar(
                 conn,
-                f'SELECT count(*) FROM "{config.TB_EPITETO_ESPECIFICO}" '
+                f'SELECT count(*) FROM "{config.TB_SPECIES}" '
                 f"WHERE lower(trim(epithet)) IN ('sp', 'sp.')",
             )
         self.assertEqual(sp, 0)
@@ -423,7 +423,7 @@ class TestPipelineInvariants(unittest.TestCase):
                 conn.execute(
                     text(
                         f'SELECT _source_file, _source_sheet, _source_row::bigint '
-                        f'FROM "{config.CLN_ARBORETO_SPECIMENS_TABLE}" WHERE parse_status = :s'
+                        f'FROM "{config.CLN_ARBORETUM_SPECIMENS_TABLE}" WHERE parse_status = :s'
                     ),
                     {"s": PARSE_STATUS_UNPARSEABLE},
                 ).all()
@@ -437,7 +437,7 @@ class TestPipelineInvariants(unittest.TestCase):
             duplicates = conn.execute(
                 text(
                     f'SELECT id_genus, epithet, infraspecific, id_author, count(*) '
-                    f'FROM "{config.TB_EPITETO_ESPECIFICO}" '
+                    f'FROM "{config.TB_SPECIES}" '
                     f"GROUP BY 1, 2, 3, 4 HAVING count(*) > 1"
                 )
             ).all()
