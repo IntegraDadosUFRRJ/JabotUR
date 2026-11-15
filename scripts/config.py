@@ -37,10 +37,10 @@ DUCKDB_STAGING_ALIAS = "df_input"
 SPP_SHEET_NAME = "SPP - JB"
 
 # === Arboreto (Especimes) ===
-ARBORETO_SPECIMENS_SHEET_NAME = "Espécimes"
+ARBORETUM_SPECIMENS_SHEET_NAME = "Espécimes"
 
 # === Arboreto (Monografia Gabriel, Livro Pesquisas, JABOT) ===
-ARBORETO_CITATION_SHEETS = [
+ARBORETUM_CITATION_SHEETS = [
     "Monografia Gabriel",
     "Livro Pesquisas no JB",
     "JABOT",
@@ -64,13 +64,13 @@ SPP_COLUMN_MAP = {
 }
 
 # Nome na planilha original -> nome da coluna normalizado
-ARBORETO_CITATION_COLUMN_MAP = {
+ARBORETUM_CITATION_COLUMN_MAP = {
     "Família": "family",
     "Espécie": "species_raw",
     "Quant": "quantity",
 }
 
-ARBORETO_SPECIMENS_COLUMN_MAP = {
+ARBORETUM_SPECIMENS_COLUMN_MAP = {
     "Família": "family",
     "Espécie": "species_raw",
     "N° de registro": "registration_number",
@@ -81,14 +81,14 @@ ARBORETO_SPECIMENS_COLUMN_MAP = {
 
 STG_SPP_TABLE = "stg_spp_bryophytes"
 CLN_SPP_TABLE = "cln_spp_bryophytes"
-STG_ARBORETO_CITATIONS_TABLE = "stg_arboretum_citations"
-CLN_ARBORETO_CITATIONS_TABLE = "cln_arboretum_citations"
-STG_ARBORETO_SPECIMENS_TABLE = "stg_arboretum_specimens"
-CLN_ARBORETO_SPECIMENS_TABLE = "cln_arboretum_specimens"
+STG_ARBORETUM_CITATIONS_TABLE = "stg_arboretum_citations"
+CLN_ARBORETUM_CITATIONS_TABLE = "cln_arboretum_citations"
+STG_ARBORETUM_SPECIMENS_TABLE = "stg_arboretum_specimens"
+CLN_ARBORETUM_SPECIMENS_TABLE = "cln_arboretum_specimens"
 
 # Citações do arboreto: linhas de totais
 PARSE_STATUS_TOTAL_ROW = "total_row"
-ARBORETO_CITATION_COL_FAMILY_RAW = "family_raw"
+ARBORETUM_CITATION_COL_FAMILY_RAW = "family_raw"
 
 # Colunas de linhagem que o staging grava em toda fonte
 SOURCE_FILE_COL = "_source_file"
@@ -96,25 +96,25 @@ SOURCE_SHEET_COL = "_source_sheet"
 SOURCE_ROW_COL = "_source_row"
 
 # Ordem da planilha usada na leitura do staging, no row_number() do clean e na leitura do clean pelos loads
-ARBORETO_CITATION_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
-ARBORETO_SPECIMENS_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
+ARBORETUM_CITATION_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
+ARBORETUM_SPECIMENS_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
 SPP_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_ROW_COL]
 
 # === Nomes das tabelas finais normalizadas ===
-TB_FILO = "phylum"
-TB_FAMILIA = "family"
-TB_GENERO = "genus"
-TB_AUTOR = "author"
-TB_EPITETO_ESPECIFICO = "species"
-TB_FORMA_VIDA = "life_form"
-TB_PARCELA = "plot"
-TB_SUBSTRATO = "substrate"
-TB_IDENTIFICACAO = "identification_status"
+TB_PHYLUM = "phylum"
+TB_FAMILY = "family"
+TB_GENUS = "genus"
+TB_AUTHOR = "author"
+TB_SPECIES = "species"
+TB_LIFE_FORM = "life_form"
+TB_PLOT = "plot"
+TB_SUBSTRATE = "substrate"
+TB_IDENTIFICATION_STATUS = "identification_status"
 TB_OCCURRENCE = "occurrence"
 TB_OCCURRENCE_BRYOPHYTE = "occurrence_bryophyte"
-TB_COLETA_SUBSTRATO = "occurrence_substrate"
-TB_COLETA_OBSERVACAO = "occurrence_remark"
-TB_OBSERVACAO = "remark"
+TB_OCCURRENCE_SUBSTRATE = "occurrence_substrate"
+TB_OCCURRENCE_REMARK = "occurrence_remark"
+TB_REMARK = "remark"
 TB_BIBLIOGRAPHIC_CITATION = "bibliographic_citation"
 TB_SECTOR = "sector"
 TB_REPRODUCTIVE_STATUS = "reproductive_status"
@@ -123,7 +123,7 @@ TB_OCCURRENCE_ARBORETUM = "occurrence_arboretum"
 # === Constantes de negócio usadas na etapa clean ===
 
 # Correções de vocabulário em Observações (SPP)
-OBSERVACAO_REGEX_FIXES = [
+REMARK_REGEX_FIXES = [
     (r"poste de cimento", "cimento"),
     (r"cimento de placa[^;]*pau[\s\-]?brasil", "cimento"),
     (r"acro\s*\[\s*fotos\s*\]", "acro"),
@@ -135,13 +135,13 @@ OBSERVACAO_REGEX_FIXES = [
 # === Constantes de negócio usadas no load final ===
  
 # Legendas Tabela_Briofitas: FILO id/nome/sigla
-FILO_NOME_MAP = {
+PHYLUM_NAME_MAP = {
     "M": "Musgos",
     "H": "Hepáticas",
 }
  
 # Legendas Tabela_Briofitas: Substrato
-SUBSTRATO_NOME_MAP = {
+SUBSTRATE_NAME_MAP = {
     "RZ": "Raiz de árvore",
     "S": "Solo",
     "TD": "Tronco em decomposição",
@@ -150,14 +150,14 @@ SUBSTRATO_NOME_MAP = {
 }
  
 # Legendas Tabela_Briofitas: StatusIdentificacao
-IDENTIFICACAO_DESCRICAO_MAP = {
+IDENTIFICATION_STATUS_DESCRIPTION_MAP = {
     1: "Identificada",
     2: "Parcialmente Identificada",
     3: "Dúvida",
 }
  
 # Coordenadas das parcelas 
-PARCELA_COORDENADAS = {
+PLOT_COORDINATES = {
     "1": "22° 45' 54.2\"S 43° 41' 31.1\"O",  
     "2": "22° 45' 57.3\"S 43° 41' 34\"O",     
     "3": "22° 45' 54.3\"S 43° 41' 33.7\"O",   
@@ -169,7 +169,7 @@ PARCELA_COORDENADAS = {
 SPP_BASIS_OF_RECORD = "PreservedSpecimen"
 
 # São as árvores vivas do arboreto, não material herborizado como o SPP
-ARBORETO_SPECIMENS_BASIS_OF_RECORD = "LivingSpecimen"
+ARBORETUM_SPECIMENS_BASIS_OF_RECORD = "LivingSpecimen"
  
 
 # Canteiro C 
