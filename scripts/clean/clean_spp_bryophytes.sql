@@ -10,7 +10,7 @@
 -- Placeholders, preenchidos pelo Python a partir do config.py:
 --   staging_order: lista de colunas da ordem da planilha, com a linha convertida para inteiro;
 --     aparece no row_number() e no ORDER BY final.
---   observation_expression: expressão CASE inteira da coluna de observações, com uma
+--   remark_expression: expressão CASE inteira da coluna de observações, com uma
 --     regexp_replace encadeada para cada correção da lista de regex de observação.
 -- Como o arquivo passa por str.format, uma chave literal (ex.: quantificador de regex)
 -- precisa ser escrita dobrada.
@@ -44,7 +44,7 @@ WITH numbered AS (
             WHEN trim(coalesce(life_form, '')) = '' THEN NULL
             ELSE regexp_replace(trim(coalesce(life_form, '')), '^\s+|\s+$', '', 'g')
         END AS life_form,
-        {observation_expression} AS remarks,
+        {remark_expression} AS remarks,
         CASE
             WHEN trim(coalesce(identification_status, '')) = '' THEN NULL
             ELSE CAST(trim(coalesce(identification_status, '')) AS INTEGER)

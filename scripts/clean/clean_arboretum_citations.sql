@@ -108,7 +108,7 @@ statused AS (
         *,
         CASE
             WHEN is_total_row THEN {status_total_row}
-            WHEN quantity IS NULL THEN {status_unparseable_quantidade}
+            WHEN quantity IS NULL THEN {status_unparseable_quantity}
             ELSE name.parse_status
         END AS parse_status
     FROM parsed

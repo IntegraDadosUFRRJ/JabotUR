@@ -20,30 +20,30 @@ STATUS_AMARELO = "amarelo"
 STATUS_NULL = "null"
 STATUS_UNPARSEABLE = "unparseable"
 
-_AZUL_RE = re.compile(r"\(?\s*(?:LACRE\s+)?AZUL\s*-?\s*(?P<numero>\d+)\s*\)?", re.IGNORECASE)
+_AZUL_RE = re.compile(r"\(?\s*(?:LACRE\s+)?AZUL\s*-?\s*(?P<number>\d+)\s*\)?", re.IGNORECASE)
 _AMARELO_RE = re.compile(r"^RBRv\s*\d+$", re.IGNORECASE)
 # ADR-0009: número sem prefixo "RBRv" é lacre azul, mesmo sem a palavra AZUL
-_BLUE_UNLABELED_RE = re.compile(r"^(?P<numero>\d+)$")
+_BLUE_UNLABELED_RE = re.compile(r"^(?P<number>\d+)$")
 _NA_RE = re.compile(r"^n/?a$", re.IGNORECASE)
 
 
-def _normalize_raw(valor):
-    if is_missing(valor):
+def _normalize_raw(value):
+    if is_missing(value):
         return None
-    s = str(valor).strip()
+    s = str(value).strip()
     s = re.sub(r"\s+", " ", s)
     return s or None
 
 
-def _result(raw, normalizado, status, numero=None):
+def _result(raw, normalized, status, number=None):
     return {
         "registration_number_raw": raw,
-        "registration_number": numero,
+        "registration_number": number,
         "registration_status": status,
     }
 
 
-def parse_registration_number(valor_raw):
+def parse_registration_number(raw_value):
     """
     Registration_status indica o que aconteceu:
       "azul"        -> lacre azul extraído (com ou sem amarelo junto quando os dois existem, o azul vence)
@@ -51,21 +51,21 @@ def parse_registration_number(valor_raw):
       "null"        -> sem lacre (célula vazia ou "NA")
       "unparseable" -> não bateu com nenhum padrão conhecido; revisão manual
     """
-    norm = _normalize_raw(valor_raw)
+    norm = _normalize_raw(raw_value)
     if not norm or _NA_RE.match(norm):
-        return _result(valor_raw, norm, status=STATUS_NULL, numero=None)
+        return _result(raw_value, norm, status=STATUS_NULL, number=None)
 
     azul_match = _AZUL_RE.search(norm)
     if azul_match:
-        numero = azul_match.group("numero")
-        return _result(valor_raw, norm, status=STATUS_AZUL, numero=f"LACRE AZUL {numero}")
+        number = azul_match.group("number")
+        return _result(raw_value, norm, status=STATUS_AZUL, number=f"LACRE AZUL {number}")
 
     if _AMARELO_RE.match(norm):
-        return _result(valor_raw, norm, status=STATUS_AMARELO, numero=norm)
+        return _result(raw_value, norm, status=STATUS_AMARELO, number=norm)
 
     unlabeled_match = _BLUE_UNLABELED_RE.match(norm)
     if unlabeled_match:
-        numero = unlabeled_match.group("numero")
-        return _result(valor_raw, norm, status=STATUS_AZUL, numero=f"LACRE AZUL {numero}")
+        number = unlabeled_match.group("number")
+        return _result(raw_value, norm, status=STATUS_AZUL, number=f"LACRE AZUL {number}")
 
-    return _result(valor_raw, norm, status=STATUS_UNPARSEABLE, numero=None)
+    return _result(raw_value, norm, status=STATUS_UNPARSEABLE, number=None)

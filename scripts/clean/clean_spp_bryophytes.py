@@ -37,7 +37,7 @@ def _sql_literal(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-def _build_observation_expression() -> str:
+def _build_remark_expression() -> str:
     expression = "trim(coalesce(remark, ''))"
     for pattern, replacement in config.REMARK_REGEX_FIXES:
         expression = (
@@ -55,7 +55,7 @@ def _clean_query() -> str:
     # trechos montados a partir de listas do config.py
     return SQL_PATH.read_text(encoding="utf-8").format(
         staging_order=_staging_order_sql(),
-        observation_expression=_build_observation_expression(),
+        remark_expression=_build_remark_expression(),
     )
 
 

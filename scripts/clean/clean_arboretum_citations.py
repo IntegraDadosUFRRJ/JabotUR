@@ -21,7 +21,7 @@ from scripts.transforms.scientific_name import (
     PARSE_STATUS_UNPARSEABLE,
 )
 
-UNPARSEABLE_QUANTIDADE = "unparseable_quantidade"
+UNPARSEABLE_QUANTITY = "unparseable_quantidade"
 SQL_PATH = Path(__file__).with_name("clean_arboretum_citations.sql")
 
 OUTPUT_COLUMNS = [
@@ -65,7 +65,7 @@ def _full_query() -> str:
         status_morphospecies=_sql_literal(PARSE_STATUS_MORPHOSPECIES),
         status_unparseable=_sql_literal(PARSE_STATUS_UNPARSEABLE),
         status_total_row=_sql_literal(config.PARSE_STATUS_TOTAL_ROW),
-        status_unparseable_quantidade=_sql_literal(UNPARSEABLE_QUANTIDADE),
+        status_unparseable_quantity=_sql_literal(UNPARSEABLE_QUANTITY),
     )
 
 
