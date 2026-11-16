@@ -169,24 +169,6 @@ class TestPostgresDuckdb(unittest.TestCase):
                 db_utils.replace_table(con, TABLE, "SELECT 'depois' AS valor, error('falha') AS x")
         self.assertEqual(self._pg_rows(f'SELECT * FROM "{TABLE}"'), [("antes",)])
 
-    def test_upsert_inserts_updates_and_is_idempotent(self):
-        self._create_id_table()
-        query = "SELECT 2 AS id, 'B' AS nome UNION ALL SELECT 4, 'd'"
-        expected = [(1, "a"), (2, "B"), (3, "c"), (4, "d")]
-        for _ in range(2):
-            with db_utils.postgres_duckdb() as con:
-                db_utils.upsert_table(con, TABLE, query)
-            self.assertEqual(self._pg_rows(f'SELECT * FROM "{TABLE}" ORDER BY id'), expected)
-
-    def test_upsert_with_repeated_id_fails_and_keeps_table(self):
-        self._create_id_table()
-        with db_utils.postgres_duckdb() as con:
-            with self.assertRaisesRegex(ValueError, "id repetido.*: 2"):
-                db_utils.upsert_table(con, TABLE, "SELECT 2 AS id, 'x' AS nome UNION ALL SELECT 2, 'y'")
-        self.assertEqual(
-            self._pg_rows(f'SELECT * FROM "{TABLE}" ORDER BY id'), [(1, "a"), (2, "b"), (3, "c")]
-        )
-
     def _assert_no_staged_rows_table(self, con):
         staged = con.execute("SELECT count(*) FROM duckdb_tables() WHERE table_name = 'rows_input'")
         self.assertEqual(staged.fetchone()[0], 0)

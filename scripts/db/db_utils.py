@@ -209,24 +209,6 @@ def replace_table(con: duckdb.DuckDBPyConnection, table_name: str, query: str) -
     )
 
 
-def upsert_table(con: duckdb.DuckDBPyConnection, table_name: str, query: str) -> None:
-    """Upsert por "id" do resultado da query numa tabela que já existe no Postgres.
-
-    Id repetido na entrada é erro: o ON CONFLICT do DuckDB ficaria em silêncio com a
-    primeira das linhas repetidas, e qual delas vale é decisão de dado, não do upsert.
-    """
-    # A entrada é materializada uma vez no DuckDB: a checagem e a gravação veem as mesmas
-    # linhas mesmo se a query tiver CURRENT_TIMESTAMP ou a origem mudar no meio
-    staged = "upsert_input"
-    con.execute(f"CREATE OR REPLACE TEMP TABLE {staged} AS {query}")
-    try:
-        _raise_if_duplicated_id(con, staged, table_name)
-        columns = [col[0] for col in con.execute(f"SELECT * FROM {staged} LIMIT 0").description]
-        _run_in_transaction(con, _upsert_by_id_statement(table_name, staged, columns))
-    finally:
-        con.execute(f"DROP TABLE IF EXISTS {staged}")
-
-
 def _raise_if_duplicated_id(con: duckdb.DuckDBPyConnection, staged: str, table_name: str) -> None:
     duplicated = con.execute(
         f"SELECT id FROM {staged} GROUP BY id HAVING count(*) > 1 ORDER BY id LIMIT 10"
@@ -259,8 +241,8 @@ def transaction(con: duckdb.DuckDBPyConnection) -> Iterator[None]:
     """BEGIN na entrada, COMMIT na saída e ROLLBACK em erro.
 
     Dentro do bloco, use só con.execute() (ver _run_in_transaction) e as funções sem
-    transação própria (read_rows, upsert_rows, insert_ignore_rows). replace_table e
-    upsert_table abrem BEGIN próprio e falham aqui dentro: o DuckDB não aninha transações.
+    transação própria (read_rows, upsert_rows, insert_ignore_rows). replace_table abre
+    BEGIN próprio e falha aqui dentro: o DuckDB não aninha transações.
     """
     con.execute("BEGIN")
     try:
@@ -346,9 +328,11 @@ def _stage_rows(con: duckdb.DuckDBPyConnection, table_name: str, rows: list[dict
 
 
 def upsert_rows(con: duckdb.DuckDBPyConnection, table_name: str, rows: list[dict]) -> None:
-    """Upsert por "id" das linhas numa tabela que já existe, como upsert_table.
+    """Upsert por "id" das linhas numa tabela que já existe.
 
-    Id repetido na entrada é erro, com a mesma checagem de upsert_table. Sem linhas, não faz nada.
+    Id repetido na entrada é erro: o ON CONFLICT do DuckDB ficaria em silêncio com a
+    primeira das linhas repetidas, e qual delas vale é decisão de dado, não do upsert.
+    Só as colunas das linhas são atualizadas. Sem linhas, não faz nada.
     """
     if not rows:
         return
