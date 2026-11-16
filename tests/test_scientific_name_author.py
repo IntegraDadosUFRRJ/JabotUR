@@ -27,7 +27,7 @@ class ScientificNameAuthorTests(unittest.TestCase):
         self.assertEqual(result["author"], "Schott")
 
     def test_cf_fills_qualifier_without_author(self):
-        # caminho "gênero + epíteto" sem resto: antes perdia o qualifier
+        # caminho "gênero + epíteto" sem resto também guarda o qualifier
         result = parse_scientific_name("Astronium cf. concinnum")
         self.assertEqual(result["identification_qualifier"], "cf.")
         self.assertEqual(result["epithet"], "concinnum")
