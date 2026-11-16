@@ -16,6 +16,7 @@ from sqlalchemy import text
 
 import scripts.config as config
 from scripts.db import db_utils
+from scripts.db import init_postgres as init_postgres_module
 from scripts.db.init_postgres import init_postgres
 from tests import db_test_support
 
@@ -40,6 +41,29 @@ class TestPostgresDsn(unittest.TestCase):
     def test_lock_timeout_goes_in_dsn(self):
         with mock.patch.object(config, "POSTGRES_LOCK_TIMEOUT", "7s"):
             self.assertIn("options='-c lock_timeout=7s'", db_utils._postgres_dsn())
+
+
+class TestPostgresUrl(unittest.TestCase):
+    """Roda sempre, sem banco: create_engine() não abre conexão."""
+
+    PASSWORD = "a b\"c/d'"
+
+    def tearDown(self):
+        db_utils.dispose_connections()
+
+    def test_password_with_special_characters_reaches_engine_intact(self):
+        with mock.patch.object(config, "POSTGRES_PASSWORD", self.PASSWORD):
+            self.assertEqual(db_utils.get_connection().url.password, self.PASSWORD)
+
+    def test_init_postgres_uses_same_password_on_postgres_database(self):
+        # Só a URL do engine interessa; o resto do init_postgres não pode tocar o banco
+        with mock.patch.object(config, "POSTGRES_PASSWORD", self.PASSWORD), \
+                mock.patch.object(init_postgres_module, "create_engine") as create_engine, \
+                mock.patch.object(init_postgres_module, "apply_schema"), \
+                contextlib.redirect_stdout(io.StringIO()):
+            init_postgres_module.init_postgres()
+        url = create_engine.call_args.args[0]
+        self.assertEqual((url.database, url.password), ("postgres", self.PASSWORD))
 
 
 class TestWriteDataframeDefaultMode(unittest.TestCase):

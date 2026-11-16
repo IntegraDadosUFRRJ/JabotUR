@@ -3,7 +3,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, text
 
 import scripts.config as config
-from scripts.db.db_utils import dispose_connections, get_connection
+from scripts.db.db_utils import dispose_connections, get_connection, get_postgres_url
 
 SCHEMA_SQL_PATH = Path(__file__).with_name("schema.sql")
 
@@ -19,11 +19,7 @@ def apply_schema() -> None:
 
 
 def init_postgres() -> None:
-    engine = create_engine(
-        f"postgresql+psycopg2://{config.POSTGRES_USER}:{config.POSTGRES_PASSWORD}@"
-        f"{config.POSTGRES_HOST}:{config.POSTGRES_PORT}/postgres",
-        future=True,
-    )
+    engine = create_engine(get_postgres_url(database="postgres"), future=True)
 
     # O engine do banco "postgres" só serve aqui; sem dispose(), cada chamada deixaria
     # uma conexão aberta

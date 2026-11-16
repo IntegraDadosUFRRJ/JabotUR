@@ -2,28 +2,36 @@ import math
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
-from urllib.parse import quote_plus
 
 import duckdb
 import pandas as pd
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import URL, Engine, create_engine, text
 
 import scripts.config as config
 
 
-def get_postgres_url() -> str:
-    password = quote_plus(config.POSTGRES_PASSWORD)
-    return (
-        f"postgresql+psycopg2://{config.POSTGRES_USER}:{password}@"
-        f"{config.POSTGRES_HOST}:{config.POSTGRES_PORT}/{config.POSTGRES_DB}"
+def get_postgres_url(database: str | None = None) -> URL:
+    """URL do Postgres do config; database troca só o banco (o init_postgres usa "postgres").
+
+    A senha vai crua para o URL.create, que a entrega intacta ao driver; escapada dentro
+    de um texto de URL, o SQLAlchemy a devolveria com "+" no lugar do espaço.
+    """
+    return URL.create(
+        "postgresql+psycopg2",
+        username=config.POSTGRES_USER,
+        password=config.POSTGRES_PASSWORD,
+        host=config.POSTGRES_HOST,
+        port=config.POSTGRES_PORT,
+        database=config.POSTGRES_DB if database is None else database,
     )
 
 
 # Um engine por URL, reaproveitado: cada create_engine() abre um pool próprio, e o
 # engine tem referências cíclicas, então só sai da memória pelo coletor de ciclos do
 # Python; pools esquecidos se acumulavam até esgotar o max_connections do Postgres.
-# A chave é a URL inteira para um teste que troca o POSTGRES_DB receber outro engine.
-_engines: dict[str, Engine] = {}
+# A chave é a URL inteira para um teste que troca o POSTGRES_DB receber outro engine; o
+# URL é imutável e entra no dict com a senha (str(url) a mascararia).
+_engines: dict[URL, Engine] = {}
 _engines_lock = threading.Lock()
 
 
