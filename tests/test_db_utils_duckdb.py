@@ -42,6 +42,17 @@ class TestPostgresDsn(unittest.TestCase):
             self.assertIn("options='-c lock_timeout=7s'", db_utils._postgres_dsn())
 
 
+class TestWriteDataframeDefaultMode(unittest.TestCase):
+    """Roda sempre, sem banco: um DataFrame vazio sai antes de abrir conexão."""
+
+    def test_default_mode_is_accepted(self):
+        # O mock só imita o DataFrame vazio, para o teste não depender do pandas
+        empty = mock.Mock(empty=True)
+        with mock.patch.object(db_utils, "get_connection") as get_connection:
+            db_utils.write_dataframe_to_postgres(empty, "tabela_qualquer")
+        get_connection.assert_not_called()
+
+
 class TestEngineCache(unittest.TestCase):
     """Roda sempre, sem banco: create_engine() não abre conexão."""
 

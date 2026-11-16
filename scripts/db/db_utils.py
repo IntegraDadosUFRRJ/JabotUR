@@ -53,7 +53,7 @@ def dispose_connections() -> None:
 # as funções DuckDB abaixo.
 
 
-def write_dataframe_to_postgres(df: pd.DataFrame, table_name: str, mode : str = "upsert", composite_key: list[str] | None = None) -> None:
+def write_dataframe_to_postgres(df: pd.DataFrame, table_name: str, mode : str = "replace", composite_key: list[str] | None = None) -> None:
     """
     mode="replace": recria a tabela do zero a cada rodada; usada no staging e no clean do Canteiro C.
     Outro mode é ValueError: o upsert e a tabela associativa são gravados por upsert_rows e
