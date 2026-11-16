@@ -11,7 +11,8 @@ def stage_arboreto_canteiro_c_data():
         *,
         '{config.ARBORETO_XLSX_PATH.name}' AS _source_file,
         '{config.CANTEIRO_C_SHEET_NAME}' AS _source_sheet,
-        row_number() OVER () + 1 AS _source_row
+        row_number() OVER () + 1 AS _source_row,
+        current_timestamp AS _loaded_at
     FROM st_read('{config.ARBORETO_XLSX_PATH}', layer='{config.CANTEIRO_C_SHEET_NAME}')
     """
     
@@ -19,10 +20,11 @@ def stage_arboreto_canteiro_c_data():
 
     db_utils.write_dataframe_to_postgres(
         df_stg, 
-        table_name="stg_canteiro_c", 
+        table_name=config.STG_CANTEIRO_C_TABLE, 
         mode="replace"
     )
     print("Staging do Canteiro C realizado com sucesso via DuckDB!")
+
 
 if __name__ == "__main__":
     stage_arboreto_canteiro_c_data()
