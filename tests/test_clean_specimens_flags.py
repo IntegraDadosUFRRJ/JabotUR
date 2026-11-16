@@ -16,7 +16,7 @@ from scripts.transforms.scientific_name import (
     PARSE_STATUS_OK,
     PARSE_STATUS_UNPARSEABLE,
 )
-from scripts.transforms.registration_number import STATUS_AZUL, STATUS_UNPARSEABLE
+from scripts.transforms.registration_number import STATUS_BLUE, STATUS_UNPARSEABLE
 
 STAGING_COLUMNS = [
     "_source_file", "_source_sheet", "_source_row", "family", "species_raw", "registration_number",
@@ -92,7 +92,7 @@ class CleanSpecimensFlagsTests(unittest.TestCase):
 
     def test_bare_registration_number_is_blue(self):
         row = self.by_row["2"]
-        self.assertEqual(row["registration_status"], STATUS_AZUL)
+        self.assertEqual(row["registration_status"], STATUS_BLUE)
         self.assertEqual(row["registration_number"], "LACRE AZUL 0015130")
 
     def test_unparseable_registration_needs_review(self):
