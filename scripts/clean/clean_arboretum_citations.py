@@ -10,7 +10,7 @@ from pathlib import Path
 
 import duckdb
 
-from scripts.clean import duckdb_parsers
+from scripts.clean import duckdb_parsers, sql_support
 from scripts.db.db_utils import postgres_duckdb, read_table, replace_table
 import scripts.config as config
 
@@ -39,31 +39,19 @@ def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
     ).create_view(config.DUCKDB_STAGING_ALIAS)
 
 
-def _staging_order_sql() -> str:
-    # _source_row comparado como número: como texto, a linha 10 viria antes da 9
-    return ", ".join(
-        f"CAST({col} AS INTEGER)" if col == config.SOURCE_ROW_COL else col
-        for col in config.ARBORETUM_CITATION_STAGING_ORDER
-    )
-
-
-def _sql_literal(value: str) -> str:
-    return "'" + value.replace("'", "''") + "'"
-
-
 def _full_query() -> str:
     # A query e o comentário-resumo dela estão em clean_arboretum_citations.sql; aqui só
     # entram os trechos que vêm do config.py e do parser. O resultado traz também as
     # colunas de controle da soma, que o log usa e a tabela limpa não grava.
     return SQL_PATH.read_text(encoding="utf-8").format(
-        staging_order=_staging_order_sql(),
+        staging_order=sql_support.staging_order_sql(config.ARBORETUM_CITATIONS_SOURCE_ORDER),
         family_raw_col=config.ARBORETUM_CITATION_COL_FAMILY_RAW,
         parse_function=duckdb_parsers.SCIENTIFIC_NAME_FUNCTION,
-        status_ok=_sql_literal(PARSE_STATUS_OK),
-        status_genus_only=_sql_literal(PARSE_STATUS_GENUS_ONLY),
-        status_morphospecies=_sql_literal(PARSE_STATUS_MORPHOSPECIES),
-        status_unparseable=_sql_literal(PARSE_STATUS_UNPARSEABLE),
-        status_total_row=_sql_literal(config.PARSE_STATUS_TOTAL_ROW),
+        status_ok=sql_support.sql_literal(PARSE_STATUS_OK),
+        status_genus_only=sql_support.sql_literal(PARSE_STATUS_GENUS_ONLY),
+        status_morphospecies=sql_support.sql_literal(PARSE_STATUS_MORPHOSPECIES),
+        status_unparseable=sql_support.sql_literal(PARSE_STATUS_UNPARSEABLE),
+        status_total_row=sql_support.sql_literal(config.PARSE_STATUS_TOTAL_ROW),
     )
 
 

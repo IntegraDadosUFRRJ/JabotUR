@@ -12,6 +12,7 @@ from pathlib import Path
 
 import duckdb
 
+from scripts.clean import sql_support
 from scripts.db.db_utils import postgres_duckdb, read_table, replace_table
 import scripts.config as config
 
@@ -25,23 +26,12 @@ def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
     )
 
 
-def _staging_order_sql() -> str:
-    # _source_row comparado como número: como texto, a linha 10 viria antes da 9
-    return ", ".join(
-        f"CAST({col} AS INTEGER)" if col == config.SOURCE_ROW_COL else col
-        for col in config.SPP_STAGING_ORDER
-    )
-
-
-def _sql_literal(value: str) -> str:
-    return "'" + value.replace("'", "''") + "'"
-
-
 def _build_remark_expression() -> str:
     expression = "trim(coalesce(remark, ''))"
     for pattern, replacement in config.REMARK_REGEX_FIXES:
         expression = (
-            f"regexp_replace({expression}, {_sql_literal(pattern)}, {_sql_literal(replacement)}, 'gi')"
+            f"regexp_replace({expression}, {sql_support.sql_literal(pattern)}, "
+            f"{sql_support.sql_literal(replacement)}, 'gi')"
         )
     # Célula vazia é ausência de observação: NULL, não texto de preenchimento
     return (
@@ -54,7 +44,7 @@ def _clean_query() -> str:
     # A query e o comentário-resumo dela estão em clean_spp_bryophytes.sql; aqui só entram os
     # trechos montados a partir de listas do config.py
     return SQL_PATH.read_text(encoding="utf-8").format(
-        staging_order=_staging_order_sql(),
+        staging_order=sql_support.staging_order_sql(config.SPP_SOURCE_ORDER),
         remark_expression=_build_remark_expression(),
     )
 
