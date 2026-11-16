@@ -9,7 +9,7 @@
 -- Resumo da query (CTEs encadeadas, cada passo lê só o anterior):
 --   numbered/normalized: numeração e campos mecânicos acima;
 --   parsed:   nome científico e número de registro pelos parsers Python, registrados
---             como funções registradas no DuckDB que devolvem STRUCT;
+--             no DuckDB como funções que devolvem STRUCT;
 --   marked:   is_morphospecies;
 --   SELECT final: morfo-espécie usa o nome normalizado como epíteto e fica sem gênero;
 --             morfo-espécie e unparseable não reconciliam entre fontes (ADR-0003);
