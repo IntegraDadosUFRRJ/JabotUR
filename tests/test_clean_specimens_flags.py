@@ -56,6 +56,46 @@ def _transform_rows(rows):
         con.close()
 
 
+def _source_key(row: dict) -> tuple:
+    # Ordem da planilha segundo o config, com a linha comparada como número
+    return tuple(
+        int(row[col]) if col == config.SOURCE_ROW_COL else row[col]
+        for col in config.ARBORETUM_SPECIMENS_SOURCE_ORDER
+    )
+
+
+def _without_cleaned_at(out: list[dict]) -> list[dict]:
+    # _cleaned_at é o horário da execução
+    return [{col: value for col, value in row.items() if col != "_cleaned_at"} for row in out]
+
+
+class CleanSpecimensOrderTests(unittest.TestCase):
+    def _rows(self):
+        # Dois arquivos e duas abas cujas linhas se intercalam pelo número: a ordem só
+        # por _source_row misturaria as origens
+        rows = [
+            ("a.xlsx", "Espécimes", "10", "Inga vera Willd.", "0015130"),
+            ("b.xlsx", "Espécimes", "2", "Astronium concinnum Schott", "0015131"),
+            ("a.xlsx", "Outra", "3", "Morfo-Espécie 1", "RBRv90000293"),
+            ("a.xlsx", "Espécimes", "9", "sem identificação", "0015132"),
+        ]
+        return [
+            (source_file, sheet, source_row, "Fabaceae", species_raw, registration_number, None, None, None)
+            for source_file, sheet, source_row, species_raw, registration_number in rows
+        ]
+
+    def test_rows_follow_config_source_order(self):
+        out = _transform_rows(self._rows())
+        keys = [_source_key(row) for row in out]
+        self.assertEqual(keys, sorted(keys))
+
+    def test_shuffled_input_gives_same_clean(self):
+        rows = self._rows()
+        expected = _transform_rows(rows)
+        actual = _transform_rows([rows[i] for i in (3, 1, 0, 2)])
+        self.assertEqual(_without_cleaned_at(actual), _without_cleaned_at(expected))
+
+
 class CleanSpecimensFlagsTests(unittest.TestCase):
     def setUp(self):
         self.out = _transform_rows(_staging_rows())

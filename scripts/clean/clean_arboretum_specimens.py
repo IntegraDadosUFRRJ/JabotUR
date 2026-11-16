@@ -19,7 +19,7 @@ from pathlib import Path
 
 import duckdb
 
-from scripts.clean import duckdb_parsers
+from scripts.clean import duckdb_parsers, sql_support
 from scripts.db.db_utils import postgres_duckdb, read_table, replace_table
 import scripts.config as config
 from scripts.transforms.scientific_name import (
@@ -50,21 +50,18 @@ def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
     ).create_view(config.DUCKDB_STAGING_ALIAS)
 
 
-def _sql_literal(value: str) -> str:
-    return "'" + value.replace("'", "''") + "'"
-
-
 def _clean_query() -> str:
     # A query e o comentário-resumo dela estão em clean_arboretum_specimens.sql; aqui só
-    # entram os nomes das funções registradas no DuckDB e os valores de status
+    # entram a ordem da planilha, os nomes das funções registradas no DuckDB e os valores de status
     full = SQL_PATH.read_text(encoding="utf-8").format(
+        staging_order=sql_support.staging_order_sql(config.ARBORETUM_SPECIMENS_SOURCE_ORDER),
         name_function=duckdb_parsers.SCIENTIFIC_NAME_FUNCTION,
         registration_function=duckdb_parsers.REGISTRATION_NUMBER_FUNCTION,
-        status_ok=_sql_literal(PARSE_STATUS_OK),
-        status_genus_only=_sql_literal(PARSE_STATUS_GENUS_ONLY),
-        status_morphospecies=_sql_literal(PARSE_STATUS_MORPHOSPECIES),
-        status_unparseable=_sql_literal(PARSE_STATUS_UNPARSEABLE),
-        registration_status_unparseable=_sql_literal(REG_STATUS_UNPARSEABLE),
+        status_ok=sql_support.sql_literal(PARSE_STATUS_OK),
+        status_genus_only=sql_support.sql_literal(PARSE_STATUS_GENUS_ONLY),
+        status_morphospecies=sql_support.sql_literal(PARSE_STATUS_MORPHOSPECIES),
+        status_unparseable=sql_support.sql_literal(PARSE_STATUS_UNPARSEABLE),
+        registration_status_unparseable=sql_support.sql_literal(REG_STATUS_UNPARSEABLE),
     )
     columns = ", ".join(OUTPUT_COLUMNS)
     return f"SELECT {columns}, CURRENT_TIMESTAMP AS _cleaned_at FROM ({full}) ORDER BY rn"

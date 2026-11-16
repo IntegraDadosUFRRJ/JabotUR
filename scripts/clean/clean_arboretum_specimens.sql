@@ -19,12 +19,13 @@
 --             flag sai NULL.
 --
 -- Placeholders, preenchidos pelo Python:
+--   staging_order: lista de colunas da ordem da planilha, com a linha convertida para inteiro;
 --   name_function / registration_function: nomes das funções registradas no DuckDB para os parsers;
 --   status_* / registration_status_unparseable: valores de status, já como literais SQL.
 -- Como o arquivo passa por str.format, uma chave literal (ex.: quantificador de regex)
 -- precisa ser escrita dobrada.
 WITH numbered AS (
-    SELECT row_number() OVER (ORDER BY CAST(_source_row AS INTEGER)) AS rn, * FROM df_input
+    SELECT row_number() OVER (ORDER BY {staging_order}) AS rn, * FROM df_input
 ),
 normalized AS (
 SELECT
