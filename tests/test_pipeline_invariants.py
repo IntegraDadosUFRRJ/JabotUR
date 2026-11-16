@@ -335,14 +335,23 @@ class TestPipelineInvariants(unittest.TestCase):
 
     def test_no_placeholders_in_final_text_columns(self):
         # ADR-0008: ausência é NULL, nunca texto de preenchimento
+        self._assert_no_placeholders(FINAL_TABLES)
+
+    def test_no_placeholders_in_spp_clean_text_columns(self):
+        # ADR-0008 já no clean: a guarda das finais não vê um placeholder que o load
+        # transforme ou descarte no caminho
+        self._assert_no_placeholders([config.CLN_SPP_TABLE])
+
+    def _assert_no_placeholders(self, tables):
+        # As tabelas finais usam text; as recriadas pelo DuckDB, character varying
         with self.engine.connect() as conn:
             columns = conn.execute(
                 text(
                     "SELECT table_name, column_name FROM information_schema.columns "
-                    "WHERE table_schema = 'public' AND data_type = 'text' "
+                    "WHERE table_schema = 'public' AND data_type IN ('text', 'character varying') "
                     "AND table_name = ANY(:tables) ORDER BY 1, 2"
                 ),
-                {"tables": FINAL_TABLES},
+                {"tables": tables},
             ).all()
             self.assertTrue(columns)
             for table, column in columns:
