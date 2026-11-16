@@ -11,7 +11,7 @@ _none_if_nan = taxonomy._none_if_nan
 def load_clean_rows(con) -> list[dict]:
     # Os ids saem na ordem das linhas lidas; cln_* não tem id, então a ordem vem da planilha
     return db_utils.read_rows(
-        con, config.CLN_ARBORETUM_CITATIONS_TABLE, order_by=config.ARBORETUM_CITATION_STAGING_ORDER
+        con, config.CLN_ARBORETUM_CITATIONS_TABLE, order_by=config.ARBORETUM_CITATIONS_SOURCE_ORDER
     )
 
 

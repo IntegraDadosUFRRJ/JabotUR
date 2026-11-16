@@ -46,7 +46,7 @@ OUTPUT_COLUMNS = [
 def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
     """Expõe o staging, na ordem da planilha, como a view lida pela query do clean."""
     read_table(
-        con, config.STG_ARBORETUM_SPECIMENS_TABLE, order_by=config.ARBORETUM_SPECIMENS_STAGING_ORDER
+        con, config.STG_ARBORETUM_SPECIMENS_TABLE, order_by=config.ARBORETUM_SPECIMENS_SOURCE_ORDER
     ).create_view(config.DUCKDB_STAGING_ALIAS)
 
 

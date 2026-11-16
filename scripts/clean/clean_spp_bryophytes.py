@@ -21,7 +21,7 @@ SQL_PATH = Path(__file__).with_name("clean_spp_bryophytes.sql")
 
 def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
     """Expõe o staging, na ordem da planilha, como a view lida pela query do clean."""
-    read_table(con, config.STG_SPP_TABLE, order_by=config.SPP_STAGING_ORDER).create_view(
+    read_table(con, config.STG_SPP_TABLE, order_by=config.SPP_SOURCE_ORDER).create_view(
         config.DUCKDB_STAGING_ALIAS
     )
 

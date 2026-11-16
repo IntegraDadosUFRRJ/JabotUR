@@ -57,7 +57,7 @@ class TestReadsUseSheetOrder(unittest.TestCase):
         with mock.patch.object(clean_spp_bryophytes, "read_table") as fake_read:
             clean_spp_bryophytes.create_staging_view(mock.Mock())
         fake_read.assert_called_once_with(
-            mock.ANY, config.STG_SPP_TABLE, order_by=config.SPP_STAGING_ORDER
+            mock.ANY, config.STG_SPP_TABLE, order_by=config.SPP_SOURCE_ORDER
         )
 
     def test_clean_citations_reads_staging_by_source_columns(self):
@@ -66,14 +66,14 @@ class TestReadsUseSheetOrder(unittest.TestCase):
         fake_read.assert_called_once_with(
             mock.ANY,
             config.STG_ARBORETUM_CITATIONS_TABLE,
-            order_by=config.ARBORETUM_CITATION_STAGING_ORDER,
+            order_by=config.ARBORETUM_CITATIONS_SOURCE_ORDER,
         )
 
     def test_load_spp_orders_by_source_columns(self):
         with mock.patch.object(db_utils, "read_rows", return_value=[]) as fake_read:
             load_spp_bryophytes.load_clean_rows(mock.Mock())
         fake_read.assert_called_once_with(
-            mock.ANY, config.CLN_SPP_TABLE, order_by=config.SPP_STAGING_ORDER
+            mock.ANY, config.CLN_SPP_TABLE, order_by=config.SPP_SOURCE_ORDER
         )
 
     def test_load_citations_orders_by_source_columns(self):
@@ -82,7 +82,7 @@ class TestReadsUseSheetOrder(unittest.TestCase):
         fake_read.assert_called_once_with(
             mock.ANY,
             config.CLN_ARBORETUM_CITATIONS_TABLE,
-            order_by=config.ARBORETUM_CITATION_STAGING_ORDER,
+            order_by=config.ARBORETUM_CITATIONS_SOURCE_ORDER,
         )
 
     def test_load_specimens_orders_by_source_columns(self):
@@ -91,7 +91,7 @@ class TestReadsUseSheetOrder(unittest.TestCase):
         fake_read.assert_called_once_with(
             mock.ANY,
             config.CLN_ARBORETUM_SPECIMENS_TABLE,
-            order_by=config.ARBORETUM_SPECIMENS_STAGING_ORDER,
+            order_by=config.ARBORETUM_SPECIMENS_SOURCE_ORDER,
         )
 
     def test_clean_specimens_reads_staging_by_source_columns(self):
@@ -100,7 +100,7 @@ class TestReadsUseSheetOrder(unittest.TestCase):
         fake_read.assert_called_once_with(
             mock.ANY,
             config.STG_ARBORETUM_SPECIMENS_TABLE,
-            order_by=config.ARBORETUM_SPECIMENS_STAGING_ORDER,
+            order_by=config.ARBORETUM_SPECIMENS_SOURCE_ORDER,
         )
 
 
@@ -159,7 +159,7 @@ class TestLoadsIgnorePhysicalOrder(unittest.TestCase):
         self._assert_reversed_clean_gives_same_ids(
             _stage_and_clean_spp,
             config.CLN_SPP_TABLE,
-            config.SPP_STAGING_ORDER,
+            config.SPP_SOURCE_ORDER,
             load_spp_bryophytes.populate_normalized_tables,
             SPP_FINAL_TABLES,
         )
@@ -168,7 +168,7 @@ class TestLoadsIgnorePhysicalOrder(unittest.TestCase):
         self._assert_reversed_clean_gives_same_ids(
             _stage_and_clean_citations,
             config.CLN_ARBORETUM_CITATIONS_TABLE,
-            config.ARBORETUM_CITATION_STAGING_ORDER,
+            config.ARBORETUM_CITATIONS_SOURCE_ORDER,
             load_arboretum_citations.populate_normalized_tables,
             CITATIONS_FINAL_TABLES,
         )
@@ -177,7 +177,7 @@ class TestLoadsIgnorePhysicalOrder(unittest.TestCase):
         self._assert_reversed_clean_gives_same_ids(
             _stage_and_clean_specimens,
             config.CLN_ARBORETUM_SPECIMENS_TABLE,
-            config.ARBORETUM_SPECIMENS_STAGING_ORDER,
+            config.ARBORETUM_SPECIMENS_SOURCE_ORDER,
             load_arboretum_specimens.populate_normalized_tables,
             SPECIMENS_FINAL_TABLES,
         )

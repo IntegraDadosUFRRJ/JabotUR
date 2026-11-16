@@ -16,7 +16,7 @@ _merge_ids = taxonomy._merge_ids
 
 def load_clean_rows(con) -> list[dict]:
     # Os ids saem na ordem das linhas lidas; cln_* não tem id, então a ordem vem da planilha
-    return db_utils.read_rows(con, config.CLN_SPP_TABLE, order_by=config.SPP_STAGING_ORDER)
+    return db_utils.read_rows(con, config.CLN_SPP_TABLE, order_by=config.SPP_SOURCE_ORDER)
 
 
 def prepare(rows: list[dict]) -> list[dict]:
