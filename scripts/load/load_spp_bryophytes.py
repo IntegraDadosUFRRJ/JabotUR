@@ -23,13 +23,13 @@ def prepare(rows: list[dict]) -> list[dict]:
     if not rows:
         return []
     phylum_names = phylum_t.expand([row["phylum"] for row in rows])
-    clean_epithets = epithet_t.strip_genus_abbreviation([row["epithet"] for row in rows])
+    split_epithets = epithet_t.split_epithet([row["epithet"] for row in rows])
     substrates = substrate_t.expand_multivalued([row["substrate"] for row in rows])
     remarks = remarks_t.split_multivalued([row["remarks"] for row in rows])
 
     out = []
-    for row, phylum_name, clean_epithet, substrate_list, remarks_list in zip(
-        rows, phylum_names, clean_epithets, substrates, remarks
+    for row, phylum_name, (clean_epithet, qualifier), substrate_list, remarks_list in zip(
+        rows, phylum_names, split_epithets, substrates, remarks
     ):
         out.append({
             **row,
@@ -39,9 +39,11 @@ def prepare(rows: list[dict]) -> list[dict]:
             "remarks_list": remarks_list,
             "source_file": row["_source_file"],
             "source_row": row["_source_row"],
-            # epithet sem a abreviação do gênero, que é a chave lida pelo taxonomy.py;
+            # epithet sem a abreviação do gênero e sem o qualificador, que é a chave lida pelo
+            # taxonomy.py; o qualificador é do registro e vai para occurrence (ADR-0006);
             # SPP nunca tem infraespecífico;
             "epithet": clean_epithet,
+            "identification_qualifier": qualifier,
             "infraspecific": None,
         })
     return out
@@ -138,6 +140,7 @@ def build_occurrence(con, rows: list[dict], species_ids: dict, life_form_ids: di
                 "basis_of_record": config.SPP_BASIS_OF_RECORD,
                 "origin_file": row["source_file"],
                 "origin_row": row["source_row"],
+                "identification_qualifier": row["identification_qualifier"],
             }
         )
         satellite_rows.append(

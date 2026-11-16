@@ -55,30 +55,51 @@ class PhylumTests(unittest.TestCase):
 
 
 class EpithetTests(unittest.TestCase):
+    # split_epithet devolve (epíteto, qualificador de identificação) por valor
+
     def test_genus_abbreviation_is_removed(self):
         self.assertEqual(
-            epithet.strip_genus_abbreviation(["B. indica", "  Bry.  argenteum "]),
-            ["indica", "argenteum"],
+            epithet.split_epithet(["B. indica", "  Bry.  argenteum "]),
+            [("indica", None), ("argenteum", None)],
         )
 
     def test_epithet_without_abbreviation_is_kept(self):
-        self.assertEqual(epithet.strip_genus_abbreviation([" indica "]), ["indica"])
+        self.assertEqual(epithet.split_epithet([" indica "]), [("indica", None)])
 
     def test_any_first_token_ending_in_dot_is_removed(self):
         # A regra olha só a forma do primeiro token, não se ele é um gênero
+        self.assertEqual(epithet.split_epithet(["sp."]), [("", None)])
+
+    def test_qualifier_after_genus_abbreviation_goes_to_the_record(self):
         self.assertEqual(
-            epithet.strip_genus_abbreviation(["sp.", "cf. indica"]),
-            ["", "indica"],
+            epithet.split_epithet(["L. cf. flava", "L. aff. flava"]),
+            [("flava", "cf."), ("flava", "aff.")],
         )
 
+    def test_qualifier_without_dot_is_normalized(self):
+        self.assertEqual(epithet.split_epithet(["L. cf flava"]), [("flava", "cf.")])
+
+    def test_qualifier_without_genus_abbreviation_is_not_taken_as_abbreviation(self):
+        self.assertEqual(epithet.split_epithet(["cf. indica"]), [("indica", "cf.")])
+
+    def test_qualifier_alone_leaves_no_epithet(self):
+        # Caso degenerado: o qualificador nunca vira epíteto; sobra só o gênero da linha
+        self.assertEqual(
+            epithet.split_epithet(["L. cf.", "aff."]),
+            [(None, "cf."), (None, "aff.")],
+        )
+
+    def test_word_starting_with_qualifier_is_an_epithet(self):
+        self.assertEqual(epithet.split_epithet(["B. affinis"]), [("affinis", None)])
+
     def test_missing_stays_none(self):
-        self.assertEqual(epithet.strip_genus_abbreviation(MISSING_VALUES), [None, None])
+        self.assertEqual(epithet.split_epithet(MISSING_VALUES), [(None, None), (None, None)])
 
     def test_value_and_list_versions_agree(self):
-        values = ["B. indica", None, "indica"]
+        values = ["B. indica", None, "indica", "L. cf. flava"]
         self.assertEqual(
-            epithet.strip_genus_abbreviation(values),
-            [epithet.strip_genus_abbreviation_from_value(v) for v in values],
+            epithet.split_epithet(values),
+            [epithet.split_epithet_from_value(v) for v in values],
         )
 
 
