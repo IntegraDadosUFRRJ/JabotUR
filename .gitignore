@@ -14,3 +14,6 @@ __pycache__/
 *.pyc
 
 .idea/
+
+# Metadados gerados pelo pip install / pip wheel
+*.egg-info/
