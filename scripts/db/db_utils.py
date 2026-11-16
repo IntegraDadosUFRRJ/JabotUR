@@ -317,7 +317,7 @@ def _stage_rows(con: duckdb.DuckDBPyConnection, table_name: str, rows: list[dict
         f"CREATE OR REPLACE TEMP TABLE {staged} AS "
         f"SELECT {column_list} FROM {_qualified_table(table_name)} LIMIT 0"
     )
-    # unnest com uma lista por coluna: um só INSERT, ~1 ms contra ~81 ms do executemany (236 linhas)
+    # unnest com uma lista por coluna: um só INSERT, bem mais rápido que um executemany linha a linha
     types = [row[1] for row in con.execute(f"DESCRIBE {staged}").fetchall()]
     unnested = ", ".join(f"unnest(CAST(? AS {col_type}[]))" for col_type in types)
     con.execute(
