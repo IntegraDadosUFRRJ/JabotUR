@@ -30,7 +30,7 @@ DUCKDB_POSTGRES_ALIAS = "pg"
 # Espera máxima por lock na conexão do DuckDB com o Postgres: um lock preso vira erro
 POSTGRES_LOCK_TIMEOUT = "30s"
 
-# Nome da tabela registrada no DuckDB durante o transform()
+# Nome da view do staging lida pela query de cada clean
 DUCKDB_STAGING_ALIAS = "df_input"
 
 # === Briofitas (SPP) ===
@@ -96,9 +96,13 @@ SOURCE_SHEET_COL = "_source_sheet"
 SOURCE_ROW_COL = "_source_row"
 
 # Ordem da planilha usada na leitura do staging, no row_number() do clean e na leitura do clean pelos loads
-ARBORETUM_CITATION_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
-ARBORETUM_SPECIMENS_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
-SPP_STAGING_ORDER = [SOURCE_FILE_COL, SOURCE_ROW_COL]
+ARBORETUM_CITATIONS_SOURCE_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
+ARBORETUM_SPECIMENS_SOURCE_ORDER = [SOURCE_FILE_COL, SOURCE_SHEET_COL, SOURCE_ROW_COL]
+SPP_SOURCE_ORDER = [SOURCE_FILE_COL, SOURCE_ROW_COL]
+# Nomes antigos, enquanto o código não passa aos novos
+ARBORETUM_CITATION_STAGING_ORDER = ARBORETUM_CITATIONS_SOURCE_ORDER
+ARBORETUM_SPECIMENS_STAGING_ORDER = ARBORETUM_SPECIMENS_SOURCE_ORDER
+SPP_STAGING_ORDER = SPP_SOURCE_ORDER
 
 # === Nomes das tabelas finais normalizadas ===
 TB_PHYLUM = "phylum"
