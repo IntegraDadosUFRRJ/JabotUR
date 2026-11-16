@@ -11,9 +11,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import config
 from scripts.clean import clean_arboretum_citations, duckdb_parsers
-from scripts.load import load_arboretum_citations
+from scripts.load import load_arboretum_citations, taxonomy
 from scripts.staging import stage_arboretum_citations
-from scripts.transforms.scientific_name import PARSE_STATUS_UNPARSEABLE
+from scripts.transforms.scientific_name import (
+    PARSE_STATUS_GENUS_ONLY,
+    PARSE_STATUS_MORPHOSPECIES,
+    PARSE_STATUS_OK,
+    PARSE_STATUS_UNPARSEABLE,
+    parse_scientific_name,
+)
 
 CONTROL_COLUMNS = [
     config.ARBORETUM_CITATION_COL_FAMILY_RAW,
@@ -46,6 +52,31 @@ def _ordering_rows():
         ("D", 9, "Malvaceae", "Pachira aquatica Aubl.", "1"),
         ("D", 10, None, "Pachira glabra Pasq.", "1"),
     ]
+
+
+# Um nome de cada classe do parser e as formas de quantidade que o clean não aceita
+NAMES_BY_STATUS = {
+    PARSE_STATUS_OK: "Inga edulis Mart.",
+    PARSE_STATUS_MORPHOSPECIES: "Morfo-Espécie 1",
+    PARSE_STATUS_GENUS_ONLY: "Inga sp.",
+    PARSE_STATUS_UNPARSEABLE: "???",
+}
+# None é a célula ausente, que o staging guarda como NULL
+INVALID_QUANTITIES = ["abc", "NaN", "inf", "", None]
+
+
+def _invalid_quantity_rows():
+    """Cada nome com cada quantidade inválida, em duas abas que repetem os mesmos
+    números de linha: só a chave (arquivo, aba, linha) identifica a linha."""
+    rows = []
+    sheets = ["X", "Y"]
+    for i, quantity in enumerate(INVALID_QUANTITIES):
+        sheet = sheets[i % 2]
+        for j, name in enumerate(NAMES_BY_STATUS.values()):
+            source_row = 2 + (i // 2) * len(NAMES_BY_STATUS) + j
+            family = "Fabaceae" if source_row == 2 else None
+            rows.append((sheet, source_row, family, name, quantity))
+    return rows
 
 
 def _load_staging(con, rows, source_row_type="BIGINT"):
@@ -250,6 +281,100 @@ class TotalRowTests(unittest.TestCase):
             self.assertNotIn(column, cols)
 
 
+class InvalidQuantityTests(unittest.TestCase):
+    """Quantidade ausente ou inválida marca needs_review e mais nada: o parse_status é o
+    do parser do nome, e só a linha de totais vence esse status."""
+
+    STAGING_KEY = "_source_file, _source_sheet, _source_row"
+
+    def _clean(self, rows):
+        con = _transform(rows)
+        self.addCleanup(con.close)
+        return con
+
+    def test_fixture_names_cover_each_parser_status(self):
+        for status, name in NAMES_BY_STATUS.items():
+            with self.subTest(name=name):
+                self.assertEqual(parse_scientific_name(name)["parse_status"], status)
+
+    def test_name_status_wins_over_invalid_quantity(self):
+        cleaned = self._clean(_invalid_quantity_rows())
+        rows = cleaned.execute(
+            f"""
+            SELECT s.species_raw, s.quantity, r.parse_status, r.needs_review, r.quantity,
+                   r.genus, r.reconcile_across_sources
+            FROM result r
+            JOIN {config.DUCKDB_STAGING_ALIAS} s USING (_source_file, _source_sheet, _source_row)
+            ORDER BY r._source_sheet, r._source_row
+            """
+        ).fetchall()
+        self.assertEqual(len(rows), len(INVALID_QUANTITIES) * len(NAMES_BY_STATUS))
+        for name, quantity_raw, status, needs_review, quantity, genus, reconcile in rows:
+            with self.subTest(name=name, quantity=quantity_raw):
+                self.assertEqual(status, parse_scientific_name(name)["parse_status"])
+                self.assertTrue(needs_review)
+                self.assertIsNone(quantity)
+                if status == PARSE_STATUS_MORPHOSPECIES:
+                    self.assertIsNone(genus)
+                if status in (PARSE_STATUS_MORPHOSPECIES, PARSE_STATUS_UNPARSEABLE):
+                    self.assertFalse(reconcile)
+                else:
+                    # a quantidade não impede o nome de reconciliar entre fontes
+                    self.assertTrue(reconcile)
+
+    def test_invalid_quantity_is_recovered_from_staging(self):
+        # O clean não guarda a quantidade original; o motivo da sinalização se lê
+        # no staging, pela chave completa da linha
+        rows = _invalid_quantity_rows()
+        cleaned = self._clean(rows)
+        for table in ("result", config.DUCKDB_STAGING_ALIAS):
+            total, distinct_keys, distinct_rows = cleaned.execute(
+                f"SELECT count(*), count(DISTINCT ({self.STAGING_KEY})), "
+                f"count(DISTINCT _source_row) FROM {table}"
+            ).fetchone()
+            with self.subTest(table=table):
+                self.assertEqual(total, len(rows))
+                self.assertEqual(distinct_keys, total)
+                # só a linha se repete entre abas: a junção precisa da chave inteira
+                self.assertLess(distinct_rows, total)
+
+        recovered = cleaned.execute(
+            f"""
+            SELECT s._source_sheet, s._source_row, s.quantity
+            FROM result r
+            JOIN {config.DUCKDB_STAGING_ALIAS} s USING (_source_file, _source_sheet, _source_row)
+            WHERE r.needs_review AND r.quantity IS NULL
+            ORDER BY s._source_sheet, s._source_row
+            """
+        ).fetchall()
+        expected = sorted((sheet, row, quantity) for sheet, row, _, _, quantity in rows)
+        self.assertEqual(recovered, expected)
+
+    def test_total_row_wins_over_name_and_quantity(self):
+        # a linha 3 tem quantidade inválida, que soma 0; a linha 4 fecha a aba com a
+        # soma das anteriores e, sem nome, o parser a daria como unparseable
+        cleaned = self._clean(
+            [
+                ("T", 2, "Fabaceae", "Inga edulis Mart.", "2"),
+                ("T", 3, None, "Morfo-Espécie 1", "abc"),
+                ("T", 4, None, None, "2"),
+            ]
+        )
+        self.assertEqual(
+            _flags(cleaned),
+            [
+                ("T", 2, PARSE_STATUS_OK, False, True),
+                ("T", 3, PARSE_STATUS_MORPHOSPECIES, True, False),
+                ("T", 4, config.PARSE_STATUS_TOTAL_ROW, False, False),
+            ],
+        )
+
+    def test_clean_keeps_every_staging_row(self):
+        rows = _invalid_quantity_rows() + _staging_rows()
+        cleaned = self._clean(rows)
+        self.assertEqual(cleaned.execute("SELECT count(*) FROM result").fetchone()[0], len(rows))
+
+
 class RegisteredParserTests(unittest.TestCase):
     """Parser registrado no DuckDB: recebe NULL, uma exceção interrompe o clean e um
     retorno fora do STRUCT declarado é recusado."""
@@ -338,6 +463,33 @@ class LoadPrepareTests(unittest.TestCase):
         self.assertIsNone(by_origin[("C", 3)]["epithet"])
         logged = [str(call.args[0]) for call in fake_print.call_args_list]
         self.assertEqual(logged, ["[load_arboretum_citations] linha 2 (A#4): linha de totais, ignorada"])
+
+    def test_morphospecies_without_quantity_becomes_citation(self):
+        # Sem o Postgres anexado, os ids existentes vêm vazios (tabela inexistente):
+        # o caminho de montagem do load roda inteiro numa conexão DuckDB vazia
+        cleaned = _transform_rows(
+            [
+                ("A", 2, "Fabaceae", "Inga edulis Mart.", "2"),
+                ("A", 3, None, "Morfo-Espécie 1", ""),
+            ]
+        )
+        con = duckdb.connect()
+        self.addCleanup(con.close)
+        with mock.patch("builtins.print") as fake_print:
+            rows = load_arboretum_citations.prepare(cleaned)
+            phylum_dim, phylum_ids = taxonomy.build_phylum_rows(con, rows)
+            family_dim, family_by_name = taxonomy.build_family_rows(con, rows, phylum_ids, phylum_dim)
+            genus_dim, genus_by_name = taxonomy.build_genus_rows(con, rows, family_by_name, family_dim)
+            _, author_ids = taxonomy.build_author_rows(con, rows)
+            _, species_ids = taxonomy.build_species_rows(con, rows, genus_by_name, author_ids, genus_dim)
+            citations = load_arboretum_citations.build_bibliographic_citation(con, rows, species_ids)
+
+        by_origin = {(row["origin_sheet"], row["origin_row"]): row for row in citations}
+        self.assertEqual(sorted(by_origin), [("A", 2), ("A", 3)])
+        self.assertIsNone(by_origin[("A", 3)]["quantity"])
+        self.assertIsNotNone(by_origin[("A", 3)]["id_species"])
+        logged = [str(call.args[0]) for call in fake_print.call_args_list]
+        self.assertFalse([line for line in logged if "pulando citação" in line])
 
 
 if __name__ == "__main__":
