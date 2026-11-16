@@ -42,8 +42,9 @@ def _build_remark_expression() -> str:
 
 def _clean_query() -> str:
     # A query e o comentário-resumo dela estão em clean_spp_bryophytes.sql; aqui só entram os
-    # trechos montados a partir de listas do config.py
+    # nomes e trechos montados a partir do config.py
     return SQL_PATH.read_text(encoding="utf-8").format(
+        **sql_support.source_placeholders(),
         staging_order=sql_support.staging_order_sql(config.SPP_SOURCE_ORDER),
         remark_expression=_build_remark_expression(),
     )

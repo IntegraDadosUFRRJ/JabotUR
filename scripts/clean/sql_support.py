@@ -20,3 +20,14 @@ def staging_order_sql(order: list[str]) -> str:
     return ", ".join(
         _source_row_number() if col == config.SOURCE_ROW_COL else col for col in order
     )
+
+
+def source_placeholders() -> dict[str, str]:
+    """Nomes do config.py que toda query .sql de clean usa: a view do staging e a linhagem."""
+    return {
+        "staging": config.DUCKDB_STAGING_ALIAS,
+        "source_file": config.SOURCE_FILE_COL,
+        "source_sheet": config.SOURCE_SHEET_COL,
+        "source_row": config.SOURCE_ROW_COL,
+        "source_row_number": _source_row_number(),
+    }

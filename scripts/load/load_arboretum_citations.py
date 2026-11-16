@@ -20,8 +20,8 @@ def prepare(rows: list[dict]) -> list[dict]:
     for clean_index, row in enumerate(rows):
         # clean_index é a posição na leitura do clean, contando as linhas de totais
         # descartadas: é o número que os logs mostram para localizar a linha
-        source_sheet = row["_source_sheet"]
-        source_row = row["_source_row"]
+        source_sheet = row[config.SOURCE_SHEET_COL]
+        source_row = row[config.SOURCE_ROW_COL]
 
         # linha de totais não gera citação, sai antes do bloco de morfo-espécie
         if row["parse_status"] == config.PARSE_STATUS_TOTAL_ROW:
@@ -41,7 +41,7 @@ def prepare(rows: list[dict]) -> list[dict]:
             **row,
             # arboreto não tem Filo
             "phylum_name": None,
-            "source_file": row["_source_file"],
+            "source_file": row[config.SOURCE_FILE_COL],
             "source_sheet": source_sheet,
             "source_row": source_row,
             "epithet": epithet,

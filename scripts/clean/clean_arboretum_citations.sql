@@ -33,6 +33,9 @@
 --             nenhuma flag sai NULL.
 --
 -- Placeholders, preenchidos pelo Python a partir do config.py e do parser:
+--   staging: nome da view do staging (config.DUCKDB_STAGING_ALIAS);
+--   source_file / source_sheet / source_row: colunas de linhagem (config.SOURCE_*_COL);
+--   source_row_number: a linha de origem convertida para inteiro, no fill-down;
 --   staging_order: lista de colunas da ordem da planilha, com a linha convertida para inteiro;
 --     aparece no row_number().
 --   family_raw_col: nome da coluna da família original; é constante do config.py porque
@@ -42,14 +45,14 @@
 -- Como o arquivo passa por str.format, uma chave literal (ex.: quantificador de regex)
 -- precisa ser escrita dobrada.
 WITH numbered AS (
-    SELECT row_number() OVER (ORDER BY {staging_order}) AS rn, * FROM df_input
+    SELECT row_number() OVER (ORDER BY {staging_order}) AS rn, * FROM {staging}
 ),
 typed AS (
     SELECT
         rn,
-        _source_file,
-        _source_sheet,
-        _source_row,
+        {source_file},
+        {source_sheet},
+        {source_row},
         trim(coalesce(family, '')) AS {family_raw_col},
         last_value(
             CASE
@@ -73,8 +76,8 @@ summed AS (
         *,
         coalesce(
             sum(quantity) OVER (
-                PARTITION BY _source_file, _source_sheet
-                ORDER BY CAST(_source_row AS INTEGER)
+                PARTITION BY {source_file}, {source_sheet}
+                ORDER BY {source_row_number}
                 ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
             ),
             0
@@ -84,9 +87,9 @@ summed AS (
 flagged AS (
 SELECT
     rn,
-    _source_file,
-    _source_sheet,
-    _source_row,
+    {source_file},
+    {source_sheet},
+    {source_row},
     {family_raw_col},
     family,
     species_input,
@@ -120,9 +123,9 @@ marked AS (
 )
 SELECT
     rn,
-    _source_file,
-    _source_sheet,
-    _source_row,
+    {source_file},
+    {source_sheet},
+    {source_row},
     {family_raw_col},
     species_input,
     previous_quantity_sum,

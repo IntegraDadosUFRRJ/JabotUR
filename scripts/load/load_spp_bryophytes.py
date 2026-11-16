@@ -37,8 +37,8 @@ def prepare(rows: list[dict]) -> list[dict]:
             "clean_epithet": clean_epithet,
             "substrate_list": substrate_list,
             "remarks_list": remarks_list,
-            "source_file": row["_source_file"],
-            "source_row": row["_source_row"],
+            "source_file": row[config.SOURCE_FILE_COL],
+            "source_row": row[config.SOURCE_ROW_COL],
             # epithet sem a abreviação do gênero e sem o qualificador, que é a chave lida pelo
             # taxonomy.py; o qualificador é do registro e vai para occurrence (ADR-0006);
             # SPP nunca tem infraespecífico;

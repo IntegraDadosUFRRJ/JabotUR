@@ -19,20 +19,22 @@
 --             flag sai NULL.
 --
 -- Placeholders, preenchidos pelo Python:
+--   staging: nome da view do staging (config.DUCKDB_STAGING_ALIAS);
+--   source_file / source_sheet / source_row: colunas de linhagem (config.SOURCE_*_COL);
 --   staging_order: lista de colunas da ordem da planilha, com a linha convertida para inteiro;
 --   name_function / registration_function: nomes das funções registradas no DuckDB para os parsers;
 --   status_* / registration_status_unparseable: valores de status, já como literais SQL.
 -- Como o arquivo passa por str.format, uma chave literal (ex.: quantificador de regex)
 -- precisa ser escrita dobrada.
 WITH numbered AS (
-    SELECT row_number() OVER (ORDER BY {staging_order}) AS rn, * FROM df_input
+    SELECT row_number() OVER (ORDER BY {staging_order}) AS rn, * FROM {staging}
 ),
 normalized AS (
 SELECT
     rn,
-    _source_file,
-    _source_sheet,
-    _source_row,
+    {source_file},
+    {source_sheet},
+    {source_row},
     CASE
         WHEN trim(coalesce(family, '')) IN ('', '-') THEN NULL
         ELSE regexp_replace(trim(coalesce(family, '')), '^\s+|\s+$', '', 'g')
@@ -68,9 +70,9 @@ marked AS (
 )
 SELECT
     rn,
-    _source_file,
-    _source_sheet,
-    _source_row,
+    {source_file},
+    {source_sheet},
+    {source_row},
     family,
     CASE WHEN is_morphospecies THEN NULL ELSE name.genus END AS genus,
     CASE WHEN is_morphospecies THEN name.name_normalized ELSE name.epithet END

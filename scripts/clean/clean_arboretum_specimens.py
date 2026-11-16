@@ -33,7 +33,7 @@ from scripts.transforms.registration_number import STATUS_UNPARSEABLE as REG_STA
 SQL_PATH = Path(__file__).with_name("clean_arboretum_specimens.sql")
 
 OUTPUT_COLUMNS = [
-    "_source_file", "_source_sheet", "_source_row",
+    config.SOURCE_FILE_COL, config.SOURCE_SHEET_COL, config.SOURCE_ROW_COL,
     "family", "genus", "epithet", "infraspecific", "author",
     "identification_qualifier",
     "name_raw", "name_normalized", "parse_status",
@@ -52,8 +52,10 @@ def create_staging_view(con: duckdb.DuckDBPyConnection) -> None:
 
 def _clean_query() -> str:
     # A query e o comentário-resumo dela estão em clean_arboretum_specimens.sql; aqui só
-    # entram a ordem da planilha, os nomes das funções registradas no DuckDB e os valores de status
+    # entram os nomes do config.py (view do staging, linhagem e ordem da planilha), os nomes
+    # das funções registradas no DuckDB e os valores de status
     full = SQL_PATH.read_text(encoding="utf-8").format(
+        **sql_support.source_placeholders(),
         staging_order=sql_support.staging_order_sql(config.ARBORETUM_SPECIMENS_SOURCE_ORDER),
         name_function=duckdb_parsers.SCIENTIFIC_NAME_FUNCTION,
         registration_function=duckdb_parsers.REGISTRATION_NUMBER_FUNCTION,

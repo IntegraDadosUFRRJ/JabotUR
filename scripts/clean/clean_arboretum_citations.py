@@ -24,7 +24,7 @@ from scripts.transforms.scientific_name import (
 SQL_PATH = Path(__file__).with_name("clean_arboretum_citations.sql")
 
 OUTPUT_COLUMNS = [
-    "_source_file", "_source_sheet", "_source_row",
+    config.SOURCE_FILE_COL, config.SOURCE_SHEET_COL, config.SOURCE_ROW_COL,
     "family", "genus", "epithet", "infraspecific", "author",
     "identification_qualifier",
     "quantity", "name_raw", "name_normalized",
@@ -44,6 +44,7 @@ def _full_query() -> str:
     # entram os trechos que vêm do config.py e do parser. O resultado traz também as
     # colunas de controle da soma, que o log usa e a tabela limpa não grava.
     return SQL_PATH.read_text(encoding="utf-8").format(
+        **sql_support.source_placeholders(),
         staging_order=sql_support.staging_order_sql(config.ARBORETUM_CITATIONS_SOURCE_ORDER),
         family_raw_col=config.ARBORETUM_CITATION_COL_FAMILY_RAW,
         parse_function=duckdb_parsers.SCIENTIFIC_NAME_FUNCTION,
@@ -64,14 +65,14 @@ def _log_control_sums(con: duckdb.DuckDBPyConnection) -> None:
     # Registra, por aba, se a soma de controle da linha de totais conferiu.
     # Só filtra e imprime: a soma e o flag is_total_row vêm da query.
     family_raw = config.ARBORETUM_CITATION_COL_FAMILY_RAW
+    origin = f"{config.SOURCE_FILE_COL}, {config.SOURCE_SHEET_COL}"
     full = _full_query()
     # abas na ordem em que aparecem na planilha
     sheets = con.execute(
-        f"SELECT _source_file, _source_sheet FROM ({full}) "
-        "GROUP BY _source_file, _source_sheet ORDER BY min(rn)"
+        f"SELECT {origin} FROM ({full}) GROUP BY {origin} ORDER BY min(rn)"
     ).fetchall()
     candidates = con.execute(
-        f"SELECT _source_file, _source_sheet, _source_row, quantity, previous_quantity_sum, "
+        f"SELECT {origin}, {config.SOURCE_ROW_COL}, quantity, previous_quantity_sum, "
         f"is_total_row, parse_status FROM ({full}) "
         f"WHERE {family_raw} = '' AND species_input = '' AND quantity IS NOT NULL ORDER BY rn"
     ).fetchall()

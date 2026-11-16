@@ -23,8 +23,8 @@ def load_clean_rows(con) -> list[dict]:
 def prepare(rows: list[dict]) -> list[dict]:
     out = []
     for row in rows:
-        source_sheet = row["_source_sheet"]
-        source_row = row["_source_row"]
+        source_sheet = row[config.SOURCE_SHEET_COL]
+        source_row = row[config.SOURCE_ROW_COL]
 
         # morfo-espécie e unparseable nunca reconciliam entre fontes (ADR-0003);
         # em unparseable o epíteto é NULL e continua NULL depois do sufixo
@@ -35,7 +35,7 @@ def prepare(rows: list[dict]) -> list[dict]:
         out.append({
             **row,
             "phylum_name": None,
-            "source_file": row["_source_file"],
+            "source_file": row[config.SOURCE_FILE_COL],
             "source_sheet": source_sheet,
             "source_row": source_row,
             "epithet": epithet,

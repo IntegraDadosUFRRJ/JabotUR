@@ -8,6 +8,8 @@
 -- identification_status pra INT e monta a coluna de observações.
 --
 -- Placeholders, preenchidos pelo Python a partir do config.py:
+--   staging: nome da view do staging (config.DUCKDB_STAGING_ALIAS);
+--   source_file / source_row: colunas de linhagem (config.SOURCE_*_COL);
 --   staging_order: lista de colunas da ordem da planilha, com a linha convertida para inteiro;
 --     aparece no row_number() e no ORDER BY final.
 --   remark_expression: expressão CASE inteira da coluna de observações, com uma
@@ -15,12 +17,12 @@
 -- Como o arquivo passa por str.format, uma chave literal (ex.: quantificador de regex)
 -- precisa ser escrita dobrada.
 WITH numbered AS (
-    SELECT row_number() OVER (ORDER BY {staging_order}) AS rn, * FROM df_input
+    SELECT row_number() OVER (ORDER BY {staging_order}) AS rn, * FROM {staging}
 ), filled AS (
     SELECT
         rn,
-        _source_file,
-        _source_row,
+        {source_file},
+        {source_row},
         last_value(
             CASE
                 WHEN trim(coalesce(plot, '')) = '' THEN NULL
@@ -72,8 +74,8 @@ WITH numbered AS (
     FROM numbered
 )
 SELECT
-    _source_file,
-    _source_row,
+    {source_file},
+    {source_row},
     -- texto que a normalização deixou vazio vira NULL, não string vazia
     NULLIF(plot, '') AS plot,
     sample,
