@@ -1,10 +1,6 @@
-import sys
-from pathlib import Path
 import unittest
 
 import duckdb
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import scripts.config as config
 from scripts.clean import clean_spp_bryophytes

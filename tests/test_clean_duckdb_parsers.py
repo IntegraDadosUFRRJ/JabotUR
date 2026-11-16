@@ -1,13 +1,9 @@
 """Parsers registrados como funções no DuckDB (scripts.clean.duckdb_parsers)."""
 
-import sys
 import unittest
-from pathlib import Path
 from unittest import mock
 
 import duckdb
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.clean import duckdb_parsers
 from scripts.transforms.registration_number import STATUS_NULL, parse_registration_number

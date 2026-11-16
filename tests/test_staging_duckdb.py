@@ -10,7 +10,6 @@ Eles gravam só em tabelas próprias (prefixo test_staging_).
 import contextlib
 import io
 import re
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,8 +18,6 @@ from unittest import mock
 import duckdb
 from openpyxl import Workbook, load_workbook
 from sqlalchemy import text
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import scripts.config as config
 from scripts.db import db_utils

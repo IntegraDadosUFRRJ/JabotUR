@@ -4,12 +4,8 @@ qualificador de identificação, que vai para a ocorrência.
 Roda sempre, sem banco: a leitura das tabelas existentes é substituída por mock.
 """
 
-import sys
 import unittest
-from pathlib import Path
 from unittest import mock
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import duckdb
 

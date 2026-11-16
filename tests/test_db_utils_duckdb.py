@@ -7,16 +7,12 @@ Eles criam e apagam só tabelas próprias (prefixo test_duckdb_).
 
 import contextlib
 import io
-import sys
 import threading
 import unittest
-from pathlib import Path
 from unittest import mock
 
 import duckdb
 from sqlalchemy import text
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import scripts.config as config
 from scripts.db import db_utils

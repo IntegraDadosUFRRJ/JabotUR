@@ -7,12 +7,8 @@ Os testes do banco só rodam num banco cujo nome termina em "_test":
 
 import contextlib
 import io
-import sys
 import unittest
-from pathlib import Path
 from unittest import mock
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import scripts.config as config
 from scripts.clean import clean_spp_bryophytes, clean_arboretum_citations, clean_arboretum_specimens

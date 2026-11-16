@@ -8,10 +8,7 @@ Sem isso os testes de invariantes são pulados; os testes da guarda rodam sempre
 import re
 import sys
 import unittest
-from pathlib import Path
 from unittest import mock
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import text
 

@@ -1,9 +1,5 @@
-import sys
 import unittest
-from pathlib import Path
 import duckdb
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.clean import duckdb_parsers
 from scripts.transforms.scientific_name import (

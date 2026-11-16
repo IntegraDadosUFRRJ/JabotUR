@@ -1,12 +1,8 @@
-import sys
 import unittest
-from pathlib import Path
 
 from unittest import mock
 
 import duckdb
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import scripts.config as config
 from scripts.clean import clean_arboretum_specimens, duckdb_parsers
