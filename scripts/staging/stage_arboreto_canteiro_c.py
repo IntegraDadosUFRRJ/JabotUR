@@ -20,7 +20,7 @@ def stage_arboreto_canteiro_c_data():
 
     db_utils.write_dataframe_to_postgres(
         df_stg, 
-        table_name="stg_canteiro_c", 
+        table_name=config.STG_CANTEIRO_C_TABLE, 
         mode="replace"
     )
     print("Staging do Canteiro C realizado com sucesso via DuckDB!")

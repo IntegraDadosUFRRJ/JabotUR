@@ -162,3 +162,4 @@ COL_CANTEIRO_C_LOCALIZACAO = "Localização canteiro"
 COL_CANTEIRO_C_ALTURA = "height_m"
 
 CLN_CANTEIRO_C_TABLE = "cln_canteiro_c"
+STG_CANTEIRO_C_TABLE = "stg_canteiro_c"

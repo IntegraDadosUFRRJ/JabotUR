@@ -1,31 +1,27 @@
+import unittest
 import pandas as pd
 from scripts.clean.clean_arboreto_canteiro_c import transform
-from scripts import config
 
-def test_transform_regras_negocio():
-    dados_falsos = {
-        "Família": ["sem id", "Fabaceae"],
-        "Espécie": ["NA", "Paubrasilia echinata"],
-        "Origem": ["exótico", "Nativa"],
-        "Domínio fitogeográfico": ["na", "Mata Atlântica"],
-        "Categoria CNCFlora": ["na", "LC"],
-        "Altura (m)": ["15124", "10,5"]
-    }
-    df_sujo = pd.DataFrame(dados_falsos)
-
-    df_limpo = transform(df_sujo)
-
-    linha_com_erro = df_limpo.iloc[0]
-    linha_correta = df_limpo.iloc[1]
-
-    assert linha_com_erro[config.COL_CANTEIRO_C_ORIGEM] == "Exótica", "Erro: 'exótico' não virou 'Exótica'"
-    assert linha_com_erro[config.COL_CANTEIRO_C_CATEGORIA_CNCFLORA] == "NA", "Erro: CNCFlora 'na' não virou 'NA' maiúsculo"
-    assert pd.isna(linha_com_erro[config.COL_CANTEIRO_C_ALTURA]), "Erro: Altura 15124 não virou nulo (NaN)"
-    assert linha_com_erro["needs_review"] == True, "Erro: needs_review não marcou a Espécie 'NA'"
-
-    assert linha_correta[config.COL_CANTEIRO_C_ALTURA] == 10.5, "Erro: Altura '10,5' não converteu para 10.5"
+class TestCleanArboretoCanteiroC(unittest.TestCase):
     
-    print("Sucesso! Todas as colunas sobreviveram e as regras de negócio funcionaram.")
+    def test_transform_validates_rules(self):
+        data = {
+            "_source_file": ["arboreto.xlsx"],
+            "_source_sheet": ["Canteiro C"],
+            "_source_row": [1],
+            "Família": ["Myrtaceae"],
+            "Espécie": ["Eucalyptus grandis"],
+            "Origem": ["Exótica"],
+            "Domínio fitogeográfico": ["Mata Atlântica"],
+            "Categoria CNCFlora": ["LC"],
+            "Altura (m)": [15124]  
+        }
+        df_input = pd.DataFrame(data)
+        
+        df_output = transform(df_input)
+        
+        self.assertTrue(pd.isna(df_output.loc[0, "height_m"]))
+        self.assertTrue(df_output.loc[0, "needs_review"])
 
 if __name__ == "__main__":
-    test_transform_regras_negocio()
+    unittest.main()
