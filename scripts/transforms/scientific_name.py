@@ -13,7 +13,8 @@ PARSE_STATUS_GENUS_ONLY = "genus_only"
 PARSE_STATUS_MORPHOSPECIES = "morphospecies"
 PARSE_STATUS_UNPARSEABLE = "unparseable"
 
-_QUALIFIER = r"(?:cf\.?|aff\.?)"
+# Público porque o epíteto do SPP (epithet.py) separa o qualificador com a mesma regra
+QUALIFIER_PATTERN = r"(?:cf\.?|aff\.?)"
 
 _MORPHOSPECIES_RE = re.compile(r"^Morfo-Esp[ée]cie\s+\d+$", re.IGNORECASE)
 
@@ -23,7 +24,7 @@ _GENUS_SP_RE = re.compile(r"^(?P<genus>[A-ZÀ-Ý][a-zà-ÿ]+)\s+sp\.?$")
 
 _GENUS_EPITHET_RE = re.compile(
     r"^(?P<genus>[A-ZÀ-Ý][a-zà-ÿ]+)"
-    rf"(?:\s+(?P<qualifier>{_QUALIFIER}))?"
+    rf"(?:\s+(?P<qualifier>{QUALIFIER_PATTERN}))?"
     r"\s+(?P<epithet>[a-zà-ÿ×]+)"
     r"(?P<rest>.*)$"
 )
@@ -43,7 +44,7 @@ def _normalize_raw(name):
     s = re.sub(r"([A-Za-zÀ-ÿ])\.\s*-\s*", r"\1.-", s)
     return s
 
-def _normalize_qualifier(raw_qualifier):
+def normalize_qualifier(raw_qualifier):
     # Normaliza "cf", "cf.", "aff", "aff." pra forma padrão com ponto
     if not raw_qualifier:
         return None
@@ -115,7 +116,7 @@ def parse_scientific_name(name_raw):
 
     genus = m.group("genus")
     epithet = m.group("epithet")
-    qualifier = _normalize_qualifier(m.group("qualifier"))
+    qualifier = normalize_qualifier(m.group("qualifier"))
     rest = m.group("rest").strip()
 
     if not rest:
