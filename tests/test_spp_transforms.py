@@ -68,7 +68,17 @@ class EpithetTests(unittest.TestCase):
 
     def test_any_first_token_ending_in_dot_is_removed(self):
         # A regra olha só a forma do primeiro token, não se ele é um gênero
-        self.assertEqual(epithet.split_epithet(["sp."]), [("", None)])
+        self.assertEqual(epithet.split_epithet(["sp.", "G."]), [(None, None), (None, None)])
+
+    def test_sp_after_genus_abbreviation_is_genus_only(self):
+        # ADR-0003: "G. sp." é gênero-só, sem epíteto, e não espécie de epíteto "sp."
+        self.assertEqual(
+            epithet.split_epithet(["G. sp.", "G. sp", "G. cf. sp."]),
+            [(None, None), (None, None), (None, "cf.")],
+        )
+
+    def test_epithet_starting_with_sp_is_kept(self):
+        self.assertEqual(epithet.split_epithet(["G. spinosa"]), [("spinosa", None)])
 
     def test_qualifier_after_genus_abbreviation_goes_to_the_record(self):
         self.assertEqual(

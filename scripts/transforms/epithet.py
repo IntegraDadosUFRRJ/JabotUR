@@ -2,6 +2,7 @@
 
 - remove o primeiro token da string quando ele termina em "." (para remover a abreviação de gênero)
 - separa o qualificador de identificação ("cf.", "aff."), que é do registro e não da espécie
+- sem epíteto depois disso (vazio ou só "sp."), devolve None: a espécie é só do gênero (ADR-0003)
 """
 
 import re
@@ -13,6 +14,9 @@ _GENUS_ABBREVIATION_RE = re.compile(r"^\s*[^\s.]+\.\s*")
 
 # O qualificador precisa ser um token inteiro: "affinis" é epíteto, não "aff" + "inis"
 _LEADING_QUALIFIER_RE = re.compile(rf"^(?P<qualifier>{QUALIFIER_PATTERN})(?:\s+|$)")
+
+# Mesma forma que o parser de Citações e Espécimes trata como gênero-só ("Genus sp")
+_NO_EPITHET_RE = re.compile(r"^(?:sp\.?)?$")
 
 
 def split_epithet(values: list) -> list:
@@ -29,5 +33,9 @@ def split_epithet_from_value(value):
         text = _GENUS_ABBREVIATION_RE.sub("", text).strip()
     match = _LEADING_QUALIFIER_RE.match(text)
     if not match:
-        return text, None
-    return text[match.end():].strip() or None, normalize_qualifier(match.group("qualifier"))
+        return _epithet_or_none(text), None
+    return _epithet_or_none(text[match.end():].strip()), normalize_qualifier(match.group("qualifier"))
+
+
+def _epithet_or_none(text: str):
+    return None if _NO_EPITHET_RE.match(text) else text
