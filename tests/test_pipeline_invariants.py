@@ -5,6 +5,7 @@ Só roda num banco cujo nome termina em "_test" e com as planilhas reais em data
 Sem isso os testes de invariantes são pulados; os testes da guarda rodam sempre.
 """
 
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -17,11 +18,13 @@ from sqlalchemy import text
 import scripts.config as config
 from scripts import run_pipeline
 from scripts.db import db_utils
+from scripts.transforms import epithet
 from scripts.transforms.scientific_name import (
     PARSE_STATUS_GENUS_ONLY,
     PARSE_STATUS_MORPHOSPECIES,
     PARSE_STATUS_OK,
     PARSE_STATUS_UNPARSEABLE,
+    QUALIFIER_PATTERN,
 )
 from tests import db_test_support
 
@@ -407,6 +410,42 @@ class TestPipelineInvariants(unittest.TestCase):
                 f"WHERE lower(trim(epithet)) IN ('sp', 'sp.')",
             )
         self.assertEqual(sp, 0)
+
+    def test_no_identification_qualifier_in_epithet(self):
+        # O qualificador é do registro (ADR-0006): nenhuma espécie pode começar com ele
+        starts_with_qualifier = re.compile(rf"^{QUALIFIER_PATTERN}(?:\s|$)")
+        with self.engine.connect() as conn:
+            epithets = conn.execute(
+                text(f'SELECT epithet FROM "{config.TB_SPECIES}" WHERE epithet IS NOT NULL')
+            ).scalars().all()
+        self.assertEqual([e for e in epithets if starts_with_qualifier.match(e)], [])
+
+    def test_spp_qualifier_is_on_the_occurrence(self):
+        # Comparação de conjuntos de origem: o qualificador que o clean do SPP traz no epíteto
+        # aparece em occurrence, na mesma linha da planilha
+        with self.engine.connect() as conn:
+            clean_rows = conn.execute(
+                text(f'SELECT _source_file, _source_row::bigint, epithet FROM "{config.CLN_SPP_TABLE}"')
+            ).all()
+            loaded = set(
+                conn.execute(
+                    text(
+                        f'SELECT origin_file, origin_row::bigint, identification_qualifier '
+                        f'FROM "{config.TB_OCCURRENCE}" '
+                        f"WHERE basis_of_record = :b AND identification_qualifier IS NOT NULL"
+                    ),
+                    {"b": config.SPP_BASIS_OF_RECORD},
+                ).all()
+            )
+        expected = {
+            (source_file, source_row, qualifier)
+            for (source_file, source_row, _), (_, qualifier) in zip(
+                clean_rows, epithet.split_epithet([row[2] for row in clean_rows])
+            )
+            if qualifier is not None
+        }
+        self.assertTrue(expected)
+        self.assertEqual(loaded, expected)
 
     def test_null_species_occurrences_are_unparseable_specimens(self):
         # Comparação de conjuntos de origem, não só de contagem
