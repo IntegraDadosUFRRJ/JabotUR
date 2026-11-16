@@ -21,14 +21,16 @@
 --   flagged:  is_total_row = família original e espécie vazias, quantidade
 --             preenchida e igual à soma anterior da aba (ADR-0012);
 --   parsed:   nome científico pelo parser Python, função registrada no DuckDB que devolve STRUCT;
---   statused: parse_status final; total_row vence unparseable_quantidade, que vence o
---             status do parser;
+--   statused: parse_status final; total_row vence o status do parser. A quantidade
+--             não entra aqui: ausente ou inválida, ela só marca needs_review;
 --   marked:   is_morphospecies, calculado sobre o parse_status final;
 --   SELECT final: morfo-espécie usa o nome normalizado como epíteto e fica sem gênero;
 --             morfo-espécie, unparseable e total_row não reconciliam entre fontes;
---             needs_review para todo status fora da lista aceita. parse_status NULL
---             não é morfo-espécie nem unparseable (coalesce com FALSE) e fica fora da
---             lista aceita (coalesce com TRUE): nenhuma flag sai NULL.
+--             needs_review para todo status fora da lista aceita e para toda
+--             quantidade ausente ou inválida (quantity NULL; o valor original fica
+--             no staging). parse_status NULL não é morfo-espécie nem unparseable
+--             (coalesce com FALSE) e fica fora da lista aceita (coalesce com TRUE):
+--             nenhuma flag sai NULL.
 --
 -- Placeholders, preenchidos pelo Python a partir do config.py e do parser:
 --   staging_order: lista de colunas da ordem da planilha, com a linha convertida para inteiro;
@@ -108,7 +110,6 @@ statused AS (
         *,
         CASE
             WHEN is_total_row THEN {status_total_row}
-            WHEN quantity IS NULL THEN {status_unparseable_quantity}
             ELSE name.parse_status
         END AS parse_status
     FROM parsed
@@ -147,6 +148,6 @@ SELECT
             {status_ok}, {status_genus_only}, {status_morphospecies}, {status_total_row}
         ),
         TRUE
-    ) AS needs_review
+    ) OR quantity IS NULL AS needs_review
 FROM marked
 ORDER BY rn
