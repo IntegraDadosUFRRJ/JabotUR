@@ -27,7 +27,7 @@ def init_postgres() -> None:
         future=True,
     )
 
-    # O engine do banco "postgres" só serve aqui; sem dispose(), cada chamada deixava
+    # O engine do banco "postgres" só serve aqui; sem dispose(), cada chamada deixaria
     # uma conexão aberta
     try:
         with engine.connect() as conn:
@@ -38,7 +38,7 @@ def init_postgres() -> None:
             ).scalar()
 
         if not existing:
-            # Precaução: operação de banco sem conexão de engine em cache aberta. Hoje nenhum
+            # Precaução: operação de banco sem conexão de engine em cache aberta. Nenhum
             # engine em cache aponta para um banco que ainda não existe nem para o template1
             dispose_connections()
             with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:

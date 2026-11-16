@@ -2,7 +2,8 @@
 -- Idempotente: só CREATE ... IF NOT EXISTS, sem DROP. Não migra banco antigo.
 -- Chaves estrangeiras sem ON DELETE CASCADE: uma violação é achado a investigar.
 -- Banco criado antes delas não ganha as FKs aqui; é preciso recriar o esquema.
--- Tabelas stg_* e cln_* ficam de fora: write_dataframe_to_postgres(mode="replace") as recria.
+-- Tabelas stg_* e cln_* ficam de fora: o staging e o clean de cada fonte as recriam
+-- (replace_table; no Canteiro C, write_dataframe_to_postgres).
 
 -- Núcleo taxonômico
 CREATE TABLE IF NOT EXISTS phylum (
@@ -87,7 +88,7 @@ CREATE TABLE IF NOT EXISTS reproductive_status (
 );
 
 -- Ocorrência (base) e satélites
--- id_species aceita NULL: ocorrência de Espécimes sem identificação (decisão de 30/10)
+-- id_species aceita NULL: ocorrência de Espécimes sem identificação
 CREATE TABLE IF NOT EXISTS occurrence (
     id bigint PRIMARY KEY,
     id_species bigint,
