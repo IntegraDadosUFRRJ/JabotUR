@@ -21,7 +21,7 @@ Além disso:
 2. **Saída da pasta `migrations/`:** o que estava nas migrações 001 e 002 já entrou no `schema.sql`. Elas viram histórico no git e a pasta `migrations/` deixa de existir.
 3. **FKs como constraint de tabela, sem `ON DELETE CASCADE`:** todas as ligações entre tabelas passam a ter `FOREIGN KEY` no `schema.sql`.
 4. **Falha de FK é achado, não motivo para tirar a FK:** se algum load ou teste quebrar por violação de FK, isso mostra um erro nos dados ou na ordem de carga que precisa ser consertado, e nunca resolvido tirando a constraint.
-5. **Banco `jabotur_test` e trava no nome:** o `init_postgres` passa a criar também o banco `jabotur_test`. A suíte de testes checa o nome do banco antes de rodar e recusa a execução se o nome não terminar em `_test`.
+5. **Banco de teste e trava no nome:** o `init_postgres` cria o banco indicado por `POSTGRES_DB`; os testes que gravam no banco só rodam se o nome terminar em `_test` e `require_test_database()` recusa qualquer outro.
 
 ## Alternativas consideradas
 
@@ -30,7 +30,7 @@ Além disso:
 | Continuar com a pasta `migrations/` (001, 002, ...) | Como o banco ainda é recriado do zero pelo pipeline, espalhar o esquema em vários arquivos só dificulta a leitura do que está valendo. |
 | Colocar `ON DELETE CASCADE` nas FKs | Apagaria linhas filhas sem avisar quando uma linha pai saísse, escondendo erro de carga ou de teste. |
 | Tirar ou não pôr FK onde desse erro na carga | Esconde problema real do pipeline ou da planilha; o banco tem que barrar. |
-| Rodar os testes no mesmo banco, dependendo de lembrar de trocar o `.env` | Um comando de teste rodado sem trocar o banco apagaria as tabelas do banco de trabalho. |
+| Rodar os testes no mesmo banco, dependendo de lembrar de trocar `POSTGRES_DB` | Um comando de teste rodado sem trocar o banco apagaria as tabelas do banco de trabalho. |
 
 ## Consequências
 
@@ -45,9 +45,9 @@ Além disso:
 
 **Impacto no código existente:**
 - Arquivos/tabelas afetados: `scripts/db/schema.sql`, `scripts/db/init_postgres.py`, `scripts/db/db_utils.py`, remoção da pasta `migrations/` (001 e 002), `tests/test_db_utils_duckdb.py`, `docs/data_dictionary.md`, `docs/panorama_tecnico_jabotur.md` e DER. Todas as tabelas e constraints de FK ficam unificadas no `schema.sql`.
-- Precisa de migração? Não. Não há mais pasta `migrations/`: rodar o `init_postgres` para recriar o banco local e criar o `jabotur_test` com o `schema.sql` novo, e rodar o pipeline em seguida.
+- Precisa de migração? Não. Não há mais pasta `migrations/`: rodar o `init_postgres` para aplicar o `schema.sql` no banco indicado por `POSTGRES_DB` e rodar o pipeline em seguida. Como o `schema.sql` só cria o que não existe, um banco local que já tem o esquema antigo precisa ser apagado antes; o `jabotur_test` é recriado pela própria suíte.
 - É retroativo? Sim, vale para todas as tabelas do banco.
-- Validação exigida: rodar o `init_postgres` do zero; rodar a suíte no `jabotur_test`; conferir que a suíte para com erro se apontar para um banco sem `_test` no final; rodar o pipeline duas vezes sem erro de FK e mantendo as mesmas contagens.
+- Validação exigida: rodar o `init_postgres` do zero; rodar a suíte no `jabotur_test`; conferir que os testes de banco não rodam (ou recusam) num banco sem `_test` no final; rodar o pipeline duas vezes sem erro de FK e mantendo as mesmas contagens.
 
 ## Referências
 
