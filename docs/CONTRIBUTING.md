@@ -14,7 +14,7 @@ para o histórico completo e decisões de arquitetura.
 ## 2. Rodando localmente
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate  # ou .venv\Scripts\activate no Windows
 pip install -r requirements.txt
 pip install -e .
@@ -40,7 +40,7 @@ python -m scripts.run_pipeline
 # Suíte de testes (pula os testes de banco se POSTGRES_DB não terminar em _test)
 python -m unittest discover -s tests
 
-# Suíte completa no banco de teste (tests/db_test_support.py cria jabotur_test via init_postgres e recusa rodar em banco sem sufixo _test)
+# Suíte completa no banco de teste (tests/db_test_support.py recria o schema do banco de teste, cria o banco via init_postgres se ele não existir, e recusa rodar em banco sem sufixo _test)
 POSTGRES_DB=jabotur_test python -m unittest discover -s tests
 ```
 
@@ -60,7 +60,7 @@ POSTGRES_DB=jabotur_test python -m unittest discover -s tests
   `db_utils.read_rows` quando a tabela tem `id`), porque o Postgres devolve
   linhas na ordem física, que muda a cada upsert.
 - **Clean nunca descarta linha.** Problema de qualidade vira coluna
-  (`parse_status`, `needs_review`, `reconcile_across_sources`), nunca uma
+  (`parse_status` e, nas fontes do arboreto, `needs_review` e `reconcile_across_sources`), nunca uma
   linha removida ou um dataframe separado.
 - **Qualquer lookup de chave natural passa por
   `taxonomy._none_if_nan()` antes de virar chave de dict/tupla.**
