@@ -16,16 +16,17 @@ Planilhas legadas de Excel frequentemente contêm linhas que não representam es
    - Em *Monografia Gabriel* e *Livro Pesquisas no JB*, as últimas linhas eram de fato somatórios (362 e 212 espécimes), com família e espécie em branco.
    - Na aba *JABOT*, a última linha era um espécime botânico real (*Citharexylum myrianthum*, quantidade 4), descartado inadvertidamente pelo corte cego.
 
-2. **Linhas Ocultas / Filtradas pelo Usuário (Espécimes e Canteiro C):**
-   A biblioteca `openpyxl` (utilizada pelo `pandas.read_excel`) lê integralmente todas as linhas da planilha, ignorando se estão visualmente ocultas ou filtradas no Excel.
-   - Na aba Espécimes, das 376 linhas brutas carregadas no staging, **84 correspondem a linhas originalmente ocultas no Excel**. Dessas 84 linhas, **82 não possuem setor preenchido**, e 10 possuem nomes populares ou placeholders ("Cássia Rosa" ×4, "sem identificação" ×6).
-   - Tentar filtrar linhas pelo estado de visibilidade visual do Excel na extração introduz dependência frágil de propriedades de exibição gráfica do software cliente.
+2. **Linhas Ocultas / Filtradas pelo Usuário (Espécimes):**
+   O leitor `read_xlsx` do DuckDB (`scripts/staging/xlsx_sheet.py`, que substituiu o `openpyxl` / `pandas.read_excel` conforme o **ADR-0013**) lê todas as linhas da planilha, visíveis ou ocultas no Excel (o Canteiro C não tem linhas ocultas e não passa por `xlsx_sheet.py`).
+   - Na versão anterior da aba Espécimes havia linhas originalmente ocultas no Excel sem setor preenchido e linhas com nomes populares ou placeholders ("Cássia Rosa", "sem identificação"); a planilha atual (`data/arboretum_floristic_diversity.xlsx`) não traz mais linhas ocultas, mas o `read_xlsx` continua lendo linhas ocultas se existirem.
+   - Tentar filtrar linhas pelo estado de visibilidade do Excel na extração acoplaria a leitura a propriedades visuais do arquivo.
 
 ## Decisão
 
-1. **O Staging preserva integralmente todas as linhas:**
-   - O comando `iloc[:-1]` é permanentemente removido de `stage_arboreto_citations.py` (totalizando 336 linhas staged).
-   - O leitor de `openpyxl` extrai todas as linhas da planilha, visíveis ou ocultas (376 linhas em Espécimes).
+1. **O Staging preserva todas as linhas que têm dado nas colunas mapeadas:**
+   - O corte `iloc[:-1]` foi removido de `stage_arboretum_citations.py` (antigo `stage_arboreto_citations.py`).
+   - O `read_xlsx` do DuckDB em `scripts/staging/xlsx_sheet.py` (com `all_varchar = true` e `stop_at_empty = false`) extrai todas as linhas visíveis ou ocultas da aba.
+   - *(Nota de revisão)* Linha sem nenhum dado **nas colunas mapeadas** pelo `column_map` não é registro e não entra no staging: o filtro em `scripts/staging/xlsx_sheet.py` é `WHERE coalesce(<colunas mapeadas>) IS NOT NULL`. Se uma linha tiver valor apenas em coluna fora do `column_map` (como `Canteiro`, `Procedência` ou `ADICIONAR` em Espécimes), ela também fica de fora.
 
 2. **A camada Clean classifica e sinaliza declarativamente:**
    - **Totais de Citações:** Identificados quando a família **original** (antes do fill-down, preservada em `family_raw`) e a espécie são vazias e a quantidade coincide exatamente com a soma das linhas anteriores da mesma aba (soma acumulada por aba, com `ORDER BY` explícito, calculada na própria query DuckDB do clean). Recebem `parse_status = "total_row"`, `needs_review = False` e `reconcile_across_sources = False` (a linha não representa um táxon). A soma de controle é validada e registrada no log, por aba. Linhas vazias que não batem com a soma permanecem como `unparseable` e `needs_review = True`.
@@ -33,7 +34,7 @@ Planilhas legadas de Excel frequentemente contêm linhas que não representam es
 
 3. **A camada Load decide a inserção nos fatos com log explícito:**
    - Linhas com `parse_status = "total_row"` são ignoradas pelo loader de Citações, sem gerar registros em `bibliographic_citation`.
-   - Registros de Espécimes com pendência de identificação (`needs_review = True` / espécie não resolvida) são pulados na criação de `occurrence`, com emissão de log informativo por linha. Registros ocultos que contêm identificação botânica válida e consistente são carregados normalmente.
+   - *(Nota de revisão)* Linhas de Espécimes com pendência de identificação (sem gênero e sem epíteto, marcadas com `needs_review = True` no clean, como "sem identificação" e nomes populares que caem em `unparseable`) **não são puladas**: elas entram em `occurrence` com `id_species = NULL` (`scripts/load/load_arboretum_specimens.py`). As demais linhas com `needs_review = True` (que têm gênero ou epíteto) também são carregadas normalmente e permanecem sinalizadas em `cln_arboretum_specimens`.
 
 ## Alternativas consideradas
 
@@ -46,10 +47,10 @@ Planilhas legadas de Excel frequentemente contêm linhas que não representam es
 ## Consequências
 
 **Positivas:**
-- Rastreabilidade total: 100% das linhas do arquivo Excel entram no staging e no clean.
+- Rastreabilidade total: todas as linhas com dado nas colunas mapeadas entram no staging e no clean.
 - A linha de totais é aproveitada como validação de integridade matemática por aba.
 - Nenhuma citação ou espécime legítimo é perdido por filtros de interface gráfica.
-- Contagens de citações passam a bater exatamente: 336 staged, 336 cleaned, 334 citações carregadas no banco e 2 linhas de totais ignoradas.
+- As contagens de citações entre staging, clean e banco batem descontando apenas as linhas de totais ignoradas no load.
 
 **Negativas / trade-offs aceitos:**
 - Introdução do novo status `total_row` e verificação de soma por aba no clean.
