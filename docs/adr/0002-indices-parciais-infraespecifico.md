@@ -3,7 +3,7 @@
 **Data:** 11/08/2026
 **Status:** Aprovado
 **Autor(es):** Davidson
-**Relação com outras decisões:** O padrão arquitetural de índices parciais aqui definido é reutilizado pelo **ADR-0011** para a tabela `lineage`. `id_author` continua nos dois índices parciais porque o autor permanece na chave da espécie (conforme o ADR de autor na chave da espécie).
+**Relação com outras decisões:** O padrão arquitetural de índices parciais aqui definido é reutilizado pelo **ADR-0011** para a tabela `lineage`. `id_author` continua nos dois índices parciais porque o autor permanece na chave da espécie (conforme o **ADR-0015**).
 
 ---
 
@@ -67,8 +67,7 @@ resolução.
 
 ## Referências
 
-- `migrations/001_add_infraespecifico.sql` (Apêndice do
-  `panorama_tecnico_jabotur.md`) *(Nota de revisão: os índices hoje vivem em `scripts/db/schema.sql`)*
+- `scripts/db/schema.sql` (os índices parciais); a migração `migrations/001_add_infraespecifico.sql` saiu da pasta e fica no histórico do git
 - `JabotUR_DER.md`, comentário acima de `Table species`
 
 ---
