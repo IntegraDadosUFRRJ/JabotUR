@@ -51,7 +51,7 @@ python3 -m scripts.run_pipeline
 # Roda os testes que não dependem do Postgres (pula os de banco se POSTGRES_DB não terminar em _test)
 python3 -m unittest discover -s tests
 
-# Roda a suíte completa contra o banco de teste (cria/reseta jabotur_test via init_postgres)
+# Roda a suíte completa contra o banco de teste (a própria suíte recria o schema do jabotur_test, e o init_postgres cria o banco se ele não existir)
 POSTGRES_DB=jabotur_test python3 -m unittest discover -s tests
 ```
 
