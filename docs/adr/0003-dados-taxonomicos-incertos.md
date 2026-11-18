@@ -32,7 +32,7 @@ As sinalizações ocorrem na camada clean por meio das colunas de controle:
 - `reconcile_across_sources`: assume `True` para gênero-só e `False` para morfo-espécie e unparseable.
 - `needs_review`: assume `False` para `ok`, `genus_only` e `morphospecies` (casos legítimos e esperados no arboreto), e `True` para `unparseable` (exigindo conferência humana com os botânicos).
 - **Exceção em Citações (quantidade):** quantidade inválida ou ausente (`quantity IS NULL` depois do `TRY_CAST` em `clean_arboretum_citations.sql`) **não** muda o `parse_status` do nome científico; ela só marca `needs_review = True`.
-- **Limitação conhecida no gênero-só com autor:** o gênero-só do SPP leva o `author` da coluna própria na chave de `species`, enquanto no arboreto `scientific_name.py` (`_GENUS_ONLY_RE` e `_GENUS_SP_RE`) deixa `author = None`. Se o mesmo gênero vier das duas fontes, ele vira duas linhas em `species`, contra a reconciliação deste ADR; nenhum dado atual dispara esse caso (registrado no ADR de autor na chave da espécie).
+- **Limitação conhecida no gênero-só com autor:** o gênero-só do SPP leva o `author` da coluna própria na chave de `species`, enquanto no arboreto `scientific_name.py` (`_GENUS_ONLY_RE` e `_GENUS_SP_RE`) deixa `author = None`. Se o mesmo gênero vier das duas fontes, ele vira duas linhas em `species`, contra a reconciliação deste ADR; nenhum dado atual dispara esse caso (registrado no **ADR-0015**).
 
 ## Alternativas consideradas
 
@@ -51,7 +51,7 @@ As sinalizações ocorrem na camada clean por meio das colunas de controle:
 - Gêneros idênticos se fundem adequadamente entre fontes, enquanto morfo-espécies e unparseable permanecem estritamente isoladas.
 
 **Negativas / trade-offs aceitos:**
-- A tabela `species` armazena linhas de morfo-espécie e unparseable que não representam espécies taxonômicas formais no sentido biológico estrito.
+- A tabela `species` armazena linhas de morfo-espécie, que não representam espécies taxonômicas formais no sentido biológico estrito.
 - Registros `unparseable` geram alertas em `needs_review = True`, requerendo acompanhamento botânico.
 
 **Impacto no código existente:**
