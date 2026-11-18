@@ -30,7 +30,7 @@ O `CONTRIBUTING.md` pede ADR antes de PR de código, e este PR é a maior mudan�
 
 | O que muda | Antes (pandas / openpyxl) | Agora (DuckDB) |
 |---|---|---|
-| Strings `'NA'`, `'N/A'`, `'NULL'`, `'None'` | Viravam nulo (NaN) na leitura | Com `all_varchar = true`, `'NA'` (em Espécimes) e as demais entram como texto no staging; o clean é quem converte esses placeholders em NULL (ADR-0008) |
+| Strings `'NA'`, `'N/A'`, `'NULL'`, `'None'` | Viravam nulo (`NaN`) já na leitura do pandas | Com `all_varchar = true`, entram como texto no staging (`'NA'` de texto em Espécimes deixa de virar `NULL` na leitura); a conversão para `NULL` fica a cargo do clean (ADR-0008); hoje ele cobre os casos que as planilhas atuais trazem (ver Decisão, item 1) |
 | Espaço final no cabeçalho | Continuava no nome da coluna se não tratasse | `read_xlsx` tira o espaço final do cabeçalho sozinho |
 | Leitura do Postgres | `read_sql` via SQLAlchemy/psycopg | `ATTACH` lê igual ao pandas, sem passar pelo Python |
 | Upsert por `id` com `id` repetido | Ficava com a última linha sem avisar | Levanta `ValueError` antes de gravar (`_raise_if_duplicated_id`) |
@@ -42,9 +42,9 @@ O `CONTRIBUTING.md` pede ADR antes de PR de código, e este PR é a maior mudan�
 
 ## Decisão
 
-DuckDB entra no lugar do pandas, menos em `scripts/staging/stage_arboreto_canteiro_c.py`, onde o pandas continua por enquanto (Refs #19, não Closes #19).
+DuckDB entra no lugar do pandas, menos no staging e no clean do Canteiro C (`scripts/staging/stage_arboreto_canteiro_c.py` e `scripts/clean/clean_arboreto_canteiro_c.py`), onde o pandas continua por enquanto (Refs #19, não Closes #19).
 
-1. **`read_xlsx` só com `all_varchar = true` e nunca com `ignore_errors`:** `'NA'` de texto em Espécimes passa a ficar como `'NA'`, e `'N/A'`, `'NULL'` e `'None'` também ficam como texto no staging. Esses valores não chegam como texto nas tabelas finais: os scripts de clean convertem cada placeholder de ausência em NULL antes do load, cumprindo o ADR-0008 (que proíbe placeholder no banco).
+1. **`read_xlsx` só com `all_varchar = true` e nunca com `ignore_errors`:** strings que o pandas convertia sozinho em `NaN` na leitura (`'NA'`, `'N/A'`, `'NULL'` e `'None'`) passam a ficar como texto no staging — inclusive o `'NA'` de texto em Espécimes, que antes sumia na entrada. O staging não decide o que é ausência: a conversão para `NULL` é do clean. Hoje o clean de Espécimes converte o vazio (e `'-'` em `family`) e o parser do número de registro trata `'NA'`; a cobertura de outros placeholders em colunas de dimensão (como `'N/A'` em `reproductive_status`, ADR-0008) fica para uma issue depois do PR, e nenhuma planilha atual traz esse caso.
 
 2. **Staging o mais fiel possível à fonte (complementando o ADR-0012 §1):** o staging não limpa dado de negócio, mas faz dois cortes estruturais:
    - Tira o `.0` exato de números inteiros usando `regexp_replace("Coluna", '^(-?\d+)\.0$', '\1')`. A regex casa do início (`^`) ao fim (`$`) só com inteiro seguido de `.0` exato: valores como `2.5`, `2.00` e o lacre `RBRv...` passam intactos. Como o `all_varchar = true` transforma tudo em texto logo na entrada, o SQL não tem como saber se a célula era originalmente um número (`1` salvo como `1.0`) ou um texto `"3.0"` digitado à mão. Esse risco é controlado pelo teste `NoTextIntegerFloatCellsTests` em `tests/test_staging_duckdb.py`, que abre as planilhas reais com openpyxl e confere que não existe nenhuma célula do tipo `str` nesse formato `N.0`.
@@ -71,7 +71,7 @@ DuckDB entra no lugar do pandas, menos em `scripts/staging/stage_arboreto_cantei
 
 **Positivas:**
 - Leitura e carga mais rápidas, com o `ATTACH` trafegando os dados direto entre o DuckDB e o Postgres sem passar pelo Python (ver "Tempo medido" no Contexto).
-- Célula de texto em coluna numérica não derruba o staging nem vira NULL escondido, e `'NA'` em Espécimes não é mais apagado para nulo na entrada (a limpeza para NULL fica no clean, conforme o ADR-0008).
+- Célula de texto em coluna numérica não derruba o staging nem vira `NULL` escondido, e `'NA'` em Espécimes não é mais apagado para nulo na leitura bruta (a conversão para `NULL` fica no clean, conforme o ADR-0008).
 - Upsert por `id` com `id` repetido no mesmo lote agora levanta `ValueError` antes de gravar (`_raise_if_duplicated_id`) em vez de sobrescrever em silêncio, e erro de leitura no staging não apaga a tabela que já estava no banco.
 - O `_source_row` bate com a linha real do Excel mesmo quando há linhas em branco no meio da planilha.
 
