@@ -15,6 +15,8 @@ Ocasionalmente, o lacre azul aparece digitado apenas como um número, sem conter
 
 Qualquer número de registro que não possua o prefixo "RBRv" (case-insensitive) é tacitamente considerado um lacre azul, mesmo na ausência da palavra. Quando um mesmo registro apresentar simultaneamente um lacre amarelo ("RBRv...") e um azul, o lacre azul sempre tem preferência e será o valor limpo final guardado em `registration_number`.
 
+*(Nota de revisão)* O parser `scripts/transforms/registration_number.py` aplica a regra assim: número só com dígitos vira lacre azul; o azul rotulado ("AZUL", "Lacre azul") vale mesmo junto de um RBRv, e o valor gravado em `registration_number` é `"LACRE AZUL <número>"`. O par amarelo + azul só é reconhecido quando o azul traz o rótulo; valor que não bate com nenhum padrão fica `unparseable`, com `needs_review = True`. A extração está aplicada em Espécimes e segue pendente no Canteiro C (Refs #19). A planilha atual não traz nenhum caso `unparseable`; ampliar a regra para outros formatos fica para uma issue depois do PR.
+
 ## Alternativas consideradas
 
 | Alternativa | Motivo da rejeição |
