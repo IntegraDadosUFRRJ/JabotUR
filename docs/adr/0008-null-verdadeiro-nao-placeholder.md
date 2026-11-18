@@ -1,4 +1,4 @@
-# ADR 0008 — Dado ausente vira NULL verdadeiro, nunca uma linha "N/A" criada via get-or-create
+# ADR-0008 — Dado ausente vira NULL verdadeiro, nunca uma linha "N/A" criada via get-or-create
 
 **Data:** 12/08/2026
 **Status:** aprovada
