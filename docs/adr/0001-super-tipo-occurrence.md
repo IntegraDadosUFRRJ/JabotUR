@@ -47,9 +47,9 @@ exclusivo daquela fonte.
   queries são majoritariamente por fonte de qualquer forma.
 
 **Impacto no código existente:**
-- Arquivos/tabelas afetados: `load_SPP.py` (removida chamada a
-  `build_coleta`), `load_arboreto_citations.py`,
-  `load_arboreto_specimens.py`, `JabotUR_DER.md`.
+- Arquivos/tabelas afetados: `load_spp_bryophytes.py` (removida chamada a
+  `build_coleta`), `load_arboretum_citations.py`,
+  `load_arboretum_specimens.py`, `JabotUR_DER.md`.
 - Migração de dados: sim, de `coleta` pra `occurrence` +
   `occurrence_bryophyte` (1 linha antiga -> 1 linha em cada tabela nova).
 - É retroativo: sim, para os dados de SPP já carregados.
