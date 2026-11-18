@@ -1,4 +1,4 @@
-# ADR 0005 — `conservation_status.code = 'NA'` é código real do IUCN, não placeholder de dado ausente
+# ADR-0005 — `conservation_status.code = 'NA'` é código real do IUCN, não placeholder de dado ausente
 
 **Data:** 08/08/2026
 **Status:** aprovada
