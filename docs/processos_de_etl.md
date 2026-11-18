@@ -14,16 +14,21 @@
 O pipeline mantém a origem do dado rastreável e organiza a limpeza em
 camadas progressivas, cada uma com uma responsabilidade específica:
 
-**Staging:** carga bruta, sem transformação nenhuma. A planilha é lida e
-gravada quase inalterada direto no PostgreSQL. O único acréscimo aqui é lineage: 
-arquivo de origem, aba e linha (`_source_file`/`_source_sheet`/`_source_row`), 
-que acompanha o dado até a tabela final.
+**Staging:** leitura das abas da planilha pelo `read_xlsx` do DuckDB com
+`all_varchar = true` e `stop_at_empty = false` (`scripts/staging/xlsx_sheet.py`).
+O staging troca inteiros exportados com decimal (`'1.0'` -> `'1'` via
+`regexp_replace`), deixa de fora linhas que não têm nenhum dado nas colunas
+mapeadas (`WHERE coalesce(...) IS NOT NULL`, `xlsx_sheet.py`) e
+acrescenta a linhagem (`_source_file`, `_source_sheet`, `_source_row`) e
+`_loaded_at`.
 
 **Clean:** segunda camada de tabelas, recebendo o staging. Aqui sim
 acontece transformação: limpeza de digitação, fill-down, normalização de
-vocabulário, parsing de campos compostos. A transformação roda em DuckDB
-(motor SQL efêmero, só em memória, nunca persiste nada por conta própria)
-dentro da função `transform()` de cada fonte. **Regra central: clean
+vocabulário, parsing de campos compostos. A transformação roda no DuckDB
+(**ADR-0013**), que lê o staging do Postgres anexado, executa a query do
+arquivo `.sql` de cada fonte (chamando os parsers Python registrados em
+`scripts/clean/duckdb_parsers.py`) e grava a tabela `cln_*` direto no
+Postgres com `db_utils.replace_table`. **Regra central: clean
 nunca descarta linha.** Problema de qualidade de dado vira **coluna**
 (`parse_status`, `needs_review`, `reconcile_across_sources`, conforme a
 fonte), nunca uma linha removida ou um dataframe separado. Quem decide o
@@ -34,10 +39,15 @@ Postgres. A resolução de chave natural (get-or-create) é feita inteiramente
 em **Python puro** (`load/taxonomy.py`), não em SQL, um dict com tupla
 como chave decide se uma família/gênero/autor/espécie já existe ou precisa
 de um id novo. Isso é o que garante que a mesma espécie citada em fontes
-diferentes resolva pro mesmo registro. A gravação em si usa
-`db_utils.write_dataframe_to_postgres` com um modo explícito por
-tipo de tabela: `"replace"` pra staging/clean, `"upsert"` por `id` pra
-dimensões/fatos, `"append_composite"` pra tabelas associativas.
+diferentes resolva pro mesmo registro. A gravação usa o DuckDB anexado ao
+Postgres (`db_utils.postgres_duckdb()`): `db_utils.replace_table` recria as
+tabelas de staging e clean, e nos loads `db_utils.upsert_rows` (upsert por
+`id` via `_upsert_by_id_statement`) grava dimensões e fatos e
+`db_utils.insert_ignore_rows` grava tabelas associativas, tudo dentro de uma
+única transação por fonte (`db_utils.transaction(con)`).
+`db_utils.write_dataframe_to_postgres` agora aceita apenas `mode="replace"`
+(default) e só é usada pelo Canteiro C (os modos `"upsert"` e
+`"append_composite"` saíram).
 
 Toda fonte nova segue essas três camadas, reaproveitando `taxonomy.py`
 sempre que o conceito for compartilhado (família/gênero/autor/epíteto) e
@@ -57,11 +67,11 @@ só criando tabela/lógica nova para o que for exclusivo daquela fonte.
 | Filo | Juntar sigla + nome completo |
 | Família | Transpor os dados |
 | Gênero | Transpor os dados |
-| Espécie | Vira `epiteto_especifico` remover a abreviação de gênero que a planilha traz embutida, sobra só o epíteto |
+| Espécie | Vira `epithet` (`transforms/epithet.py` remove a abreviação de gênero; separa `cf.`/`aff.` para `occurrence.identification_qualifier` conforme ADR-0006; se sobrar vazio, `sp` ou `sp.`, como em `G. sp.`, `G. sp` ou `G.`, devolve `None` e a espécie entra como gênero-só conforme ADR-0003) |
 | Autor | Transpor os dados |
 | Forma de Vida | Ausente -> NULL |
 | Substrato | Fill-down; significado da sigla via legenda; multivalorado, separado por "+" |
-| Observações | Conversões pontuais (`"poste de cimento"`/`"cimento de placa de pau brasil"` -> `"cimento"`, `"acro [fotos]"` -> `"acro"`); ausente -> `"sem observações registradas"`; multivalorado por ";" |
+| Observações | Conversões pontuais (`"poste de cimento"`/`"cimento de placa de pau brasil"` -> `"cimento"`, `"acro [fotos]"` -> `"acro"`); ausente -> NULL; multivalorado por ";" |
 
 ### 2.2 Arboreto — observações gerais sobre a coluna "Espécie"
 
@@ -89,7 +99,7 @@ reais:
   Mattos"`, "cf"/"aff" entre gênero e epíteto, indicando identificação
   não confirmada
 
-Ver `JabotUR_DER.md` (nota em `epiteto_especifico`) pra decisão de produto
+Ver `JabotUR_DER.md` (nota em `species`) pra decisão de produto
 sobre como cada um desses casos é registrado hoje.
 
 ### 2.3 Arboreto — Lista Completa (SPS)
@@ -108,7 +118,7 @@ sobre como cada um desses casos é registrado hoje.
 
 ### 2.4 Arboreto — Espécimes
 
-> **Nota sobre Extração e Linhas Ocultas (Excel):** A biblioteca `openpyxl` lê nativamente todas as linhas físicas da planilha, incluindo aquelas ocultas por filtros no Excel. Na aba Espécimes, das 376 linhas extraídas, **84 são linhas originalmente ocultas** (das quais **82 não possuem setor preenchido**). Em conformidade com o princípio de que staging e clean nunca descartam dados, essas linhas entram no pipeline: são preservadas em `stg_arboreto_specimens` e `cln_arboreto_specimens`. Quando faltam dados botânicos ou há placeholders (ex.: "Cássia Rosa", "sem identificação"), elas recebem `needs_review = True` na camada clean e são puladas na criação de `occurrence` durante o load com log explícito por linha.
+> **Nota sobre Extração e Linhas Ocultas:** O `read_xlsx` do DuckDB (`scripts/staging/xlsx_sheet.py`) lê todas as linhas da aba que tenham dado nas colunas mapeadas, inclusive linhas ocultas no Excel (se houver), gravando em `stg_arboretum_specimens` e `cln_arboretum_specimens`. Quando faltam dados botânicos ou há placeholders (ex.: "Cássia Rosa", "sem identificação"), as linhas recebem `needs_review = True` na camada clean e entram em `occurrence` com `id_species = NULL` durante o load (`scripts/load/load_arboretum_specimens.py`, linhas 80–90).
 
 | Coluna | Regra |
 |---|---|
@@ -125,7 +135,7 @@ sobre como cada um desses casos é registrado hoje.
 
 ### 2.5 Arboreto — Canteiro C
 
-> **Nota sobre Estrutura das Fontes (Excel):** "Espécimes" e "Canteiro C" são **abas do mesmo arquivo** Excel (`Diversidade florística do arboreto do JB.xlsx`), e não a mesma planilha com filtros aplicados. Cada aba é processada por rotinas de extração independentes, respeitando as colunas e regras de negócio específicas de cada uma.
+> **Nota sobre Estrutura das Fontes (Excel):** "Espécimes" e "Canteiro C" são **abas do mesmo arquivo** Excel (`data/arboretum_floristic_diversity.xlsx`), e não a mesma planilha com filtros aplicados. Cada aba é processada por rotinas de extração independentes, respeitando as colunas e regras de negócio específicas de cada uma.
 
 | Coluna | Regra |
 |---|---|
@@ -149,25 +159,25 @@ fonte em vez de três quase iguais.
 |---|---|
 | Família | Fill-down |
 | Espécie | Script de parsing (mesmo do item 2.2) |
-| Quant | Transpor os dados |
+| Quant | Converter para número (`TRY_CAST` + `isfinite`); quantidade ausente ou inválida vira `NULL` e só marca `needs_review = True`, sem mudar o `parse_status` do nome científico (`unparseable_quantidade` não é mais gravado; o valor bruto original se consulta no staging pela chave `_source_file`, `_source_sheet`, `_source_row`) |
 
 **Linhas de totais.** Duas das três abas terminam em linha de somatório
 (Monografia Gabriel e Livro Pesquisas no JB). O staging preserva todas as
-linhas (ADR-0012); o clean marca como `parse_status = "total_row"` a linha com
-família original e espécie vazias e quantidade igual à soma das linhas
-anteriores da mesma aba (soma acumulada por aba, com ordem explícita), com
-`needs_review = False` e `reconcile_across_sources = False`; o load a ignora
-com log, sem criar citação. Linha vazia cuja quantidade não bate com a soma
-continua `unparseable` (`needs_review = True`).
+linhas com dado nas colunas mapeadas (ADR-0012); o clean marca como
+`parse_status = "total_row"` a linha com família original e espécie vazias
+e quantidade igual à soma das linhas anteriores da mesma aba (soma acumulada
+por aba, com ordem explícita), com `needs_review = False` e
+`reconcile_across_sources = False`; o load a ignora com log, sem criar
+citação. Linha vazia cuja quantidade não bate com a soma continua
+`unparseable` (`needs_review = True`).
 
 
 ---
 
 ## 3. Pendências
 
-- Canteiro C e Lista Completa (Sps) do arboreto: staging/clean/load ainda não integrados/escritos.
+- Canteiro C (já tem `stage_arboreto_canteiro_c.py` e `clean_arboreto_canteiro_c.py` em `scripts/`, faltando o load) e Lista Completa (Sps) do arboreto (ainda não iniciada).
 - Limpador de nomes: ainda não integrado.
   Ponto de encaixe já definido: pré-processamento antes de
-  `stage_arboreto_*`, substituindo a coluna "Espécie" bruta pela versão
+  `stage_arboretum_*`, substituindo a coluna "Espécie" bruta pela versão
   corrigida, sem mudar o resto do pipeline.
-- Testes automatizados: adiados até o schema do arboreto estabilizar.
