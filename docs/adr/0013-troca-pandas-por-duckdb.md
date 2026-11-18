@@ -83,7 +83,7 @@ DuckDB entra no lugar do pandas, menos no staging e no clean do Canteiro C (`scr
 - O openpyxl continua nos requisitos por causa dos testes, e o pandas continua até fechar a issue #19.
 
 **Impacto no código existente:**
-- Arquivos/tabelas afetados: `scripts/staging/xlsx_sheet.py`, `scripts/staging/stage_arboretum_specimens.py`, `scripts/staging/stage_arboretum_citations.py`, `scripts/staging/stage_spp_bryophytes.py`, `scripts/db/db_utils.py`, `tests/test_staging_duckdb.py`, `tests/test_db_utils_duckdb.py`, `docs/processos_de_etl.md`, `docs/panorama_tecnico_jabotur.md` e ADR-0012 (`docs/adr/0012-linhas-de-totais-sinalizadas.md`).
+- Arquivos/tabelas afetados: `scripts/staging/xlsx_sheet.py`, `scripts/staging/stage_arboretum_specimens.py`, `scripts/staging/stage_arboretum_citations.py`, `scripts/staging/stage_spp_bryophytes.py`, os cleans `.py` e `.sql` de Citações, Espécimes e SPP em `scripts/clean/`, `scripts/clean/duckdb_parsers.py`, `scripts/clean/sql_support.py`, os loads `load_arboretum_citations.py`, `load_arboretum_specimens.py` e `load_spp_bryophytes.py`, `scripts/load/taxonomy.py`, `scripts/db/db_utils.py`, `tests/test_staging_duckdb.py`, `tests/test_db_utils_duckdb.py`, `docs/processos_de_etl.md`, `docs/panorama_tecnico_jabotur.md` e ADR-0012 (`docs/adr/0012-linhas-de-totais-sinalizadas.md`).
 - Esquema: no staging, o replace cria as colunas como `VARCHAR` e transforma `HUGEINT` em `DOUBLE`; nas tabelas finais vale o `schema.sql` (ver ADR-0014).
 - Precisa de migração? Não. Não há arquivo em `migrations/` (a pasta sai no ADR-0014); no banco local, apagar e rodar o pipeline do zero.
 - É retroativo? Sim, muda o staging e a carga de Citações, Espécimes e SPP; Canteiro C não muda agora.

@@ -50,7 +50,7 @@ Planilhas legadas de Excel frequentemente contêm linhas que não representam es
 - Rastreabilidade total: todas as linhas com dado nas colunas mapeadas entram no staging e no clean.
 - A linha de totais é aproveitada como validação de integridade matemática por aba.
 - Nenhuma citação ou espécime legítimo é perdido por filtros de interface gráfica.
-- As contagens de citações entre staging, clean e banco batem descontando apenas as linhas de totais ignoradas no load.
+- As contagens de citações entre staging, clean e banco batem descontando as linhas de totais e as linhas sem espécie, que o load de Citações ignora com log (`load_arboretum_citations.py`).
 
 **Negativas / trade-offs aceitos:**
 - Introdução do novo status `total_row` e verificação de soma por aba no clean.
