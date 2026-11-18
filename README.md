@@ -9,13 +9,13 @@ O pipeline segue três camadas (staging -> clean -> load), não descarta nenhuma
 ## Executando o projeto
 
 **Requisitos:**
-- Python 3.12
+- Python (testado em 3.14.4)
 - PostgreSQL
 
 **1. Clonando o repositório:**
 ```bash
 git clone <url-do-repositorio>
-cd jabotur
+cd JabotUR
 ```
 
 **2. Instalação e Ambiente Virtual:**
@@ -26,21 +26,34 @@ source .venv/bin/activate      # Linux/macOS
 
 pip install -r requirements.txt
 pip install -e .
+
+# Instala as extensões do DuckDB
+python3 -c "import duckdb; duckdb.sql('INSTALL excel; INSTALL postgres')"
 ```
 
 **3. Configurando o Banco de Dados:**
-Verifique o arquivo `config.py` e certifique-se de possuir o PostgreSQL rodando localmente (ou via Docker).
+Verifique as variáveis `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD` em `scripts/config.py` (ou exporte no ambiente) e suba o PostgreSQL localmente ou em container Docker. A suíte de testes usa um banco separado terminado em `_test` (`jabotur_test`).
 
-**4. Inicializando o Banco:**
+**4. Inicializando o Banco (opcional):**
 ```bash
-python3 -m scripts.init_postgres
+python3 -m scripts.db.init_postgres
 ```
+> Este passo separado é opcional porque `python3 -m scripts.run_pipeline` já chama `init_postgres()` no início.
 
 **5. Rodando o Pipeline:**
 ```bash
 python3 -m scripts.run_pipeline
 ```
-> **Nota:** o uso do `-m` é obrigatório. Como os módulos utilizam imports absolutos a partir da raiz do projeto (ex: `from scripts.clean...`), tentar rodar o script diretamente (`python3 scripts/run_pipeline.py`) causará um `ModuleNotFoundError`.
+> **Nota:** sem instalar o pacote com `pip install -e .`, rodar `python3 scripts/run_pipeline.py` direto falha com `ModuleNotFoundError` porque os módulos usam imports absolutos (`from scripts.clean...`); com `-m` (ou com o pacote instalado em modo editável) funciona da raiz do projeto.
+
+**6. Rodando os Testes:**
+```bash
+# Roda os testes que não dependem do Postgres (pula os de banco se POSTGRES_DB não terminar em _test)
+python3 -m unittest discover -s tests
+
+# Roda a suíte completa contra o banco de teste (cria/reseta jabotur_test via init_postgres)
+POSTGRES_DB=jabotur_test python3 -m unittest discover -s tests
+```
 
 ## Documentação
 
