@@ -22,6 +22,8 @@ em todas, indica "derivação" de outro táxon.
 | Exemplo bruto | `O. albidum` (autor em coluna separada) | `Astronium urundeuva (M.Allemão) Engl.` |
 | Identificador normalizado (ADR-0010) | `epithet` | `species_raw` (antes do parsing) |
 
+**Tipos no banco (`scripts/db/schema.sql`) e `id_species` nulo:** nas tabelas finais, identificadores (`id`), chaves estrangeiras (`id_*`), `sample`, `quantity` e `origin_row` são `bigint`; textos são `text`; `height_m` é `double precision`. Em `occurrence`, a coluna `id_species` aceita `NULL` para registrar ocorrências de Espécimes sem identificação botânica (`load_arboretum_specimens.py`, linhas 80–90) e, futuramente, árvores mortas do Inventário.
+
 ## 2. Colunas por fonte (nome original -> coluna normalizada)
 
 Legenda: [#] atenção a nomenclatura divergente entre fontes.
@@ -29,34 +31,34 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 ### SPP (briófitas)
 | Original | Normalizado | Observação |
 |---|---|---|
-| Parcela | `parcela` (`plot` no ADR-0010) | fill-down; valores "1" a "5" e "aleat" |
-| Amostra | `amostra` (`sample` no ADR-0010) | fill-down |
-| StatusIdentificacao* | `identificacao` [#] | também aparece como "identificação" em outras fontes; ver seção 4 |
-| Filo | `filo` (`phylum` no ADR-0010) | só existe pra briófitas (arboreto fica NULL (ADR-0004)) |
-| Família | `familia` (`family` no ADR-0010) | |
-| Gênero | `genero` (`genus` no ADR-0010) | |
-| Espécie | `epithet` (`epiteto_especifico` legado) [#] | contém só o epíteto aqui (gênero abreviado removido no clean); contrasta com `species_raw` de Arboreto (ver ADR-0010 e seção 4) |
-| Autor | `autor` (`author` no ADR-0010) | coluna própria |
-| Forma de Vida | `forma_vida` (`life_form` no ADR-0010) | |
-| Substrato | `substrato` (`substrate` no ADR-0010) | multivalorada (separada por transform); ver resíduo de "alt" na seção 3 |
-| Observações | `observacao` [#] (`remark` no ADR-0010) | aparece como "observacoes" em código legado, `clean_SPP._to_duckdb_table` normaliza os dois nomes |
+| Parcela | `plot` | fill-down; valores "1" a "5" e "aleat" |
+| Amostra | `sample` | fill-down |
+| StatusIdentificacao* | `identification_status` [#] | também aparece como "identificação" em outras fontes; ver seção 4 |
+| Filo | `phylum` | só existe pra briófitas (arboreto fica NULL (ADR-0004)) |
+| Família | `family` | |
+| Gênero | `genus` | |
+| Espécie | `epithet` [#] | `transforms/epithet.py` remove a abreviação de gênero, tira `cf.`/`aff.` para `occurrence.identification_qualifier` (ADR-0006) e converte vazio, `sp` ou `sp.` (`G. sp.`, `G. sp`, `G.`) em `None` (gênero-só, ADR-0003); contrasta com `species_raw` do arboreto |
+| Autor | `author` | coluna própria |
+| Forma de Vida | `life_form` | |
+| Substrato | `substrate` | multivalorada (separada por `transforms/substrate.py`); ver nota sobre "alt" na seção 3 |
+| Observações | `remark` (staging) / `remarks` (clean) [#] | mapeada por `SPP_COLUMN_MAP` para `remark` no staging e gravada como `remarks` em `clean_spp_bryophytes.sql` |
 
 ### Arboreto — Citações (Monografia Gabriel / Livro Pesquisas no JB / JABOT)
 | Original | Normalizado | Observação |
 |---|---|---|
-| Família | `familia` (`family`) | fill-down |
+| Família | `family` | fill-down |
 | Espécie | `species_raw` -> parseada em `genus`/`epithet`/`infraspecific`/`author`/`identification_qualifier` | via `transforms/scientific_name.py` (ADR-0010) |
-| Quant | `quantidade` (`quantity`) | |
+| Quant | `quantity` | |
 
 ### Arboreto — Espécimes
 | Original                 | Normalizado                                      | Observação                               |
 | --------------------------| --------------------------------------------------| ------------------------------------------|
-| Família                  | `familia` (`family`)                             |                                          |
+| Família                  | `family`                                         |                                          |
 | Espécie                  | `species_raw` -> parseada igual citações         | via `transforms/scientific_name.py`      |
-| N° de registro           | `numero_registro` (`registration_number`)        | ver regra do lacre azul, seção 4         |
-| Setor                    | `setor` (`sector`)                                        |
-| Descrição da localização | `descricao_localizacao` (`location_description`) | maioria NULL, nunca virar string `"N/A"` |
-| Estado reprodutivo       | `estado_reprodutivo` (`reproductive_status`)     | valores confirmados: "Adulto"/"jovem"  |
+| N° de registro           | `registration_number`                            | ver regra do lacre azul, seção 4         |
+| Setor                    | `sector`                                         |                                          |
+| Descrição da localização | `location_description`                           | maioria NULL, nunca virar string `"N/A"` |
+| Estado reprodutivo       | `reproductive_status`                            | valores confirmados: "Adulto"/"jovem"  |
 
 ### Arboreto — Canteiro C
 | Original na Planilha | Normalizado (Inglês — ADR-0010) | Observação de Negócio / Regra de ETL |
@@ -82,13 +84,13 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 
 ## 3. Legendas de código (valores controlados)
 
-**FILO** (só briófitas)
-| id | nome | sigla |
-|---|---|---|
-| 1 | Hepáticas | H |
-| 2 | Musgos | M |
+**FILO** (`PHYLUM_NAME_MAP` em `config.py`, só briófitas; o `id` em `phylum` vem da ordem do get-or-create)
+| sigla | nome |
+|---|---|
+| H | Hepáticas |
+| M | Musgos |
 
-**Substrato** (`SUBSTRATO_NOME_MAP` em `config.py`)
+**Substrato** (`SUBSTRATE_NAME_MAP` em `config.py`)
 | Sigla | Nome |
 |---|---|
 | RZ | Raiz de árvore |
@@ -96,25 +98,24 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 | TD | Tronco em decomposição |
 | TV | Tronco vivo |
 | A | Artificial |
-| alt | amostragem aleatória _(anomalia legada; ver nota abaixo)_ |
 
-> **Nota sobre a sigla "alt" em Substrato:** A entrada `"alt": "amostragem aleatória"` em `config.SUBSTRATO_NOME_MAP` é um resíduo histórico da interpretação inicial das legendas. "Amostragem aleatória" refere-se à metodologia de coleta da Parcela (`parcela = 'aleat'`), e não a uma superfície física de fixação de briófitas (substrato). Além disso, a rotina `transforms/substrato.py` converte tokens para maiúsculas (`key = token.upper()`), portanto a chave minúscula `"alt"` não é ativada em tempo de execução.
+> **Nota sobre a sigla "alt" em Substrato:** A entrada `"alt": "amostragem aleatória"` que antes existia em `SUBSTRATO_NOME_MAP` **foi removida** de `config.SUBSTRATE_NAME_MAP`. "Amostragem aleatória" refere-se à metodologia de coleta da Parcela (`plot = 'aleat'`), não a uma superfície física de fixação de briófitas (substrato). O módulo agora se chama `transforms/substrate.py` (e converte tokens para maiúsculas com `key = token.upper()`).
 
-**StatusIdentificacao** (`IDENTIFICACAO_DESCRICAO_MAP`)
+**StatusIdentificacao** (`IDENTIFICATION_STATUS_DESCRIPTION_MAP`)
 | Código | Descrição |
 |---|---|
 | 1 | Identificada |
 | 2 | Parcialmente Identificada |
 | 3 | Dúvida |
 
-**Observações — abreviações expandidas** (`OBSERVACAO_REGEX_FIXES`)
+**Observações — abreviações expandidas** (`REMARK_REGEX_FIXES`)
 | Abreviação | Expansão |
 |---|---|
 | acro | acrocárpico |
 | pleuro | pleurocárpico |
 | c. esp / c/esp | com esporófito |
 
-**Parcelas — coordenadas** (`PARCELA_COORDENADAS`)
+**Parcelas — coordenadas** (`PLOT_COORDINATES`)
 | Código | Coordenada |
 |---|---|
 | I / 1 | 22° 45' 54.2"S 43° 41' 31.1"O |
@@ -122,7 +123,7 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
 | III / 3 | 22° 45' 54.3"S 43° 41' 33.7"O |
 | IV / 4 | 22° 45' 54.9"S 43° 41' 34.5"O |
 | V / 5 | 22° 45' 59.3"S 43° 41' 37.5"O — _não estava no CSV original, só no PDF;_ |
-| aleat | NULL (coletas por amostragem aleatória fora de parcela fixa; 14 ocorrências em SPP) |
+| aleat | NULL (coletas por amostragem aleatória fora de parcela fixa) |
 
 **Conservation status (IUCN)** — `NE`, `LC`, `VU`, `EN`, `NT`, `NA`. `NA` = "Not Applicable", valor semântico real (ver ADR-0005).
 
@@ -138,7 +139,7 @@ Legenda: [#] atenção a nomenclatura divergente entre fontes.
   - Nas fontes de Arboreto (Citações, Espécimes, Canteiro C e Lista Completa), a coluna de entrada na planilha traz uma string composta bruta (Gênero + Epíteto + Infraespecífico + Autor) e é mapeada na camada intermediária como `species_raw`. Essa coluna é então processada por `transforms/scientific_name.py`, que extrai `genus`, `epithet`, `infraspecific`, `author` e `identification_qualifier`.
   - Na fonte SPP (Briófitas), a coluna da planilha contém exclusivamente o epíteto específico (a abreviação de gênero pré-fixada, ex.: `"O. "`, é descartada no clean), sendo padronizada como `epithet` (ou `epiteto_especifico` no schema legado).
   - No banco de dados relacional final, ambas as fontes convergem perfeitamente para a dimensão compartilhada `species` (`species.epithet`).
-- **Tratamento de `"aleat"` em Parcela (SPP)**: Na fonte SPP (Briófitas), exatamente 14 ocorrências biológicas possuem o valor textual `"aleat"` na coluna `Parcela`, indicando coletas realizadas por amostragem aleatória fora das parcelas fixas 1–5. O pipeline preserva esse valor no staging (`stg_spp_briofitas`) e no clean (`cln_spp_briofitas`) sem descartar linhas nem forçar para `NULL`, propagando o valor por fill-down. No carregamento (`scripts/load/load_SPP.py`), cria-se uma linha válida na dimensão `parcela` (ou `plot` no novo schema) com `codigo = 'aleat'` e coordenadas geográficas `NULL` (pois `config.PARCELA_COORDENADAS.get("aleat")` retorna `None`). As 14 ocorrências na tabela satélite `occurrence_bryophyte` recebem a chave estrangeira `id_parcela` apontando corretamente para esse registro. (A entrada `"alt": "amostragem aleatória"` em `SUBSTRATO_NOME_MAP` é um resíduo de confusão da legenda legada que diz respeito a esse mesmo método de amostragem de Parcela).
+- **Tratamento de `"aleat"` em Parcela (SPP)**: Na fonte SPP (Briófitas), ocorrências coletadas por amostragem aleatória fora das parcelas fixas 1–5 trazem o valor textual `"aleat"` na coluna `Parcela`. O pipeline preserva esse valor no staging (`stg_spp_bryophytes`) e no clean (`cln_spp_bryophytes`) sem descartar linhas nem forçar para `NULL`, propagando o valor por fill-down. No carregamento (`scripts/load/load_spp_bryophytes.py`), cria-se uma linha válida na dimensão `plot` com `code = 'aleat'` e coordenadas geográficas `NULL` (pois `config.PLOT_COORDINATES.get("aleat")` retorna `None`). Essas ocorrências na tabela satélite `occurrence_bryophyte` recebem a chave estrangeira `id_plot` apontando para esse registro. (A entrada `"alt": "amostragem aleatória"`, que antes ficava em `SUBSTRATE_NAME_MAP`, era um resíduo da legenda antiga sobre esse mesmo método de amostragem de Parcela e já saiu de `config.py`).
 - **Localização em Canteiro C (`sector_location`) vs Espécimes (`location_description`)**:
   - Em Arboreto — Espécimes, a coluna `descricao_localizacao` (`location_description`) armazena descrições textuais livres de localização (ex.: "próximo à cerca"), mapeadas para `occurrence_arboretum.location_description`.
   - Em Arboreto — Canteiro C, a coluna "Localização Canteiro" armazena códigos estruturados de setor/canteiro (ex.: `"SCC1-4"`, `"S2C2"`, `"S2C4"`), que resolvem diretamente para a dimensão compartilhada `sector.name` (a mesma utilizada por Espécimes). Para refletir com exatidão essa semântica e evitar confusão entre conceitos, a coluna de Canteiro C é nomeada `sector_location`, e não `location_description`.
