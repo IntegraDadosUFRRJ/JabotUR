@@ -25,7 +25,7 @@ Qualquer número de registro que não possua o prefixo "RBRv" (case-insensitive)
 ## Consequências
 
 **Positivas:**
-- Consistência ao carregar múltiplas fontes do arboreto: Canteiro C e Espécimes utilizam a mesma lógica para tratar a coluna (via `transforms/registration_number.py`).
+- Consistência para carregar fontes do arboreto: Espécimes já trata a coluna via `transforms/registration_number.py` (o Canteiro C ainda não usa esse módulo).
 
 **Negativas / trade-offs aceitos:**
 - Se futuramente o Jardim Botânico criar um terceiro tipo de lacre sem prefixo, a premissa de exclusão ("não é RBRv = é azul") dará falso positivo e a função `registration_number.py` precisará de revisão.
