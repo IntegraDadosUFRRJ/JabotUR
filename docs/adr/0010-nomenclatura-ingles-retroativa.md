@@ -196,8 +196,8 @@ ficou errado desde o ADR-0001 (a coluna referencia `occurrence.id`).
 
 **Colunas criadas depois do levantamento:** `family_raw`, `previous_quantity_sum`
 e `is_total_row` (query de totais de Citações, ADR-0012) já nascem em inglês e
-ficam fora da renomeação. As intermediárias da mesma query (`especie_raw`,
-`quantidade_raw`, `quantidade_cast`) seguem a renomeação de `especie` e
+ficam fora da renomeação. As intermediárias da mesma query (`species_input`,
+`quantity_raw`, `quantity_cast`) seguem a renomeação de `especie` e
 `quantidade`.
 
 **A decidir na issue (ambíguo ou em desenvolvimento):**
