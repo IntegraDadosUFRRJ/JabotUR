@@ -125,8 +125,13 @@ Table occurrence {
   origin_file text
   origin_sheet text  // nullable: NULL pras linhas do SPP (1 arquivo = 1 aba lá); obrigatório a partir do arboreto, mesmo motivo do ADR-0007
   origin_row bigint
+  // Chave de idempotência: índice único `occurrence_uniq_origin` sobre (origin_file, coalesce(origin_sheet, ''), origin_row) em `scripts/db/schema.sql`
 
-  note: 'Auditoria de implementação vs DER: o carregador do SPP (`load_spp_bryophytes.py`) preenche `basis_of_record` e `identification_qualifier` (e não preenche `origin_sheet`); o de Espécimes (`load_arboretum_specimens.py`) preenche os três e grava `id_species = NULL` quando a ocorrência vem sem gênero e sem epíteto. A população ou externalização do lineage está prevista conforme ADR-0011.'
+  indexes {
+    (origin_file, origin_sheet, origin_row) [unique, name: 'occurrence_uniq_origin']
+  }
+
+  note: 'Auditoria de implementação vs DER: o carregador do SPP (`load_spp_bryophytes.py`) preenche `basis_of_record` e `identification_qualifier` (e não preenche `origin_sheet`); o de Espécimes (`load_arboretum_specimens.py`) preenche os três e grava `id_species = NULL` quando a ocorrência vem sem gênero e sem epíteto. Unicidade de origem garantida em `scripts/db/schema.sql` pelo índice `occurrence_uniq_origin` sobre `(origin_file, COALESCE(origin_sheet, \'\'), origin_row)`. A população ou externalização do lineage está prevista conforme ADR-0011.'
 }
 
 Table occurrence_bryophyte {
@@ -316,7 +321,7 @@ Table cln_arboretum_specimens {
   note: 'confirmado contra clean_arboretum_specimens.py real — scientific_name.py atualizado para Genus sp. e autor infraespecífico; registration_number via transforms/registration_number.py'
 }
 
-Table stg_arboreto_canteiro_c {
+Table stg_canteiro_c {
   familia varchar
   especie varchar
   origem varchar
@@ -327,7 +332,7 @@ Table stg_arboreto_canteiro_c {
   altura_m varchar
 }
 
-Table cln_arboreto_canteiro_c {
+Table cln_canteiro_c {
   familia varchar
   genero varchar
   epiteto_especifico varchar
@@ -367,7 +372,7 @@ Table cln_arboreto_canteiro_c {
 Dep: stg_spp_bryophytes -> cln_spp_bryophytes [note: 'DuckDB: fill-down de plot/sample/substrate via last_value() IGNORE NULLS; normalização de remarks; cast de identification_status pra inteiro']
 Dep: stg_arboretum_citations -> cln_arboretum_citations [note: 'DuckDB: fill-down de family via last_value() IGNORE NULLS; parsing de scientific_name.py em Python registrado no DuckDB; cast de quantity; marca parse_status = total_row (família original em family_raw, soma acumulada por aba com ORDER BY explícito; ADR-0012)']
 Dep: stg_arboretum_specimens -> cln_arboretum_specimens [note: 'resolve N° de Registro preferindo lacre azul quando lacre amarelo e azul coexistem (ver ADR-0009)']
-Dep: stg_arboreto_canteiro_c -> cln_arboreto_canteiro_c [note: 'normaliza Origem; multivalora Domínio fitogeográfico por vírgula; Grau de Ameaça uppercase e "na" -> código IUCN NA (ADR-0005); resolve lacre azul sobre amarelo (ADR-0009); mapeia setor S2C2/S2C4 para sector; NULL nas linhas de altura com erro (183, 184, 185)']
+Dep: stg_canteiro_c -> cln_canteiro_c [note: 'normaliza Origem; multivalora Domínio fitogeográfico por vírgula; Grau de Ameaça uppercase e "na" -> código IUCN NA (ADR-0005); resolve lacre azul sobre amarelo (ADR-0009); mapeia setor S2C2/S2C4 para sector; NULL nas linhas de altura com erro (183, 184, 185)']
 
 // --- clean -> dimensões de taxonomia (agrupado por destino, mostra reconciliação entre fontes) ---
 
@@ -381,7 +386,7 @@ Dep family_lineage {
   cln_spp_bryophytes.family -> family.name
   cln_arboretum_citations.family -> family.name
   cln_arboretum_specimens.family -> family.name
-  cln_arboreto_canteiro_c.familia -> family.name
+  cln_canteiro_c.familia -> family.name
 
   note: 'get-or-create por nome; id_phylum fica NULL para toda linha de origem arboreto (ADR-0004)'
 }
@@ -390,7 +395,7 @@ Dep genus_lineage {
   cln_spp_bryophytes.genus -> genus.name
   cln_arboretum_citations.genus -> genus.name
   cln_arboretum_specimens.genus -> genus.name
-  cln_arboreto_canteiro_c.genero -> genus.name
+  cln_canteiro_c.genero -> genus.name
 
   note: 'arboreto extrai genus via parsing de scientific_name.py; NULL para morfo-espécie (ADR-0003)'
 }
@@ -399,7 +404,7 @@ Dep species_lineage {
   cln_spp_bryophytes.epithet -> species.epithet
   cln_arboretum_citations.epithet -> species.epithet
   cln_arboretum_specimens.epithet -> species.epithet
-  cln_arboreto_canteiro_c.epiteto_especifico -> species.epithet
+  cln_canteiro_c.epiteto_especifico -> species.epithet
 
   note: 'get-or-create por (id_genus, epithet, infraspecific, id_author); SPP nunca tem infraspecific; morfo-espécie/gênero-só não seguem o binomial completo (ADR-0003)'
 }
@@ -408,7 +413,7 @@ Dep author_lineage {
   cln_spp_bryophytes.author -> author.name
   cln_arboretum_citations.author -> author.name
   cln_arboretum_specimens.author -> author.name
-  cln_arboreto_canteiro_c.autor -> author.name
+  cln_canteiro_c.autor -> author.name
 }
 
 // --- clean -> dimensões exclusivas de uma única fonte ---
@@ -439,7 +444,7 @@ Dep remark_lineage {
 
 Dep sector_lineage {
   cln_arboretum_specimens.sector -> sector.name
-  cln_arboreto_canteiro_c.localizacao_canteiro -> sector.name
+  cln_canteiro_c.localizacao_canteiro -> sector.name
 
   note: 'SCC1-4 e S2C2/S2C4 de Canteiro C vão para o mesmo sector compartilhado com Espécimes'
 }
@@ -451,19 +456,19 @@ Dep reproductive_status_lineage {
 }
 
 Dep conservation_status_lineage {
-  cln_arboreto_canteiro_c.grau_ameaca -> conservation_status.code
+  cln_canteiro_c.grau_ameaca -> conservation_status.code
 
   note: 'ADR-0005: "na" mapeia pro código IUCN real NA, não NULL'
 }
 
 Dep species_status_lineage {
-  cln_arboreto_canteiro_c.origem -> species_status.origin
+  cln_canteiro_c.origem -> species_status.origin
 
   note: 'canonicalizar Exótico/Exótica; "na" ou ausente -> NULL, não "N/A" (ADR-0008)'
 }
 
 Dep species_domain_lineage {
-  cln_arboreto_canteiro_c.dominio_fitogeografico -> species_domain.id_domain
+  cln_canteiro_c.dominio_fitogeografico -> species_domain.id_domain
 
   note: 'multi-valorado por vírgula; "na" ou ausente -> nenhuma linha em species_domain (ADR-0008)'
 }
@@ -477,13 +482,13 @@ Dep occurrence_identification_qualifier_lineage {
 
 Dep occurrence_arboretum_registration_lineage {
   cln_arboretum_specimens.registration_number -> occurrence_arboretum.registration_number
-  cln_arboreto_canteiro_c.numeracao_lacre -> occurrence_arboretum.registration_number
+  cln_canteiro_c.numeracao_lacre -> occurrence_arboretum.registration_number
 
   note: 'transforms/registration_number.py: lacre azul preferido sobre lacre amarelo (RBRv...) quando ambos existem (ver ADR-0009)'
 }
 
 Dep occurrence_arboretum_height_lineage {
-  cln_arboreto_canteiro_c.altura_m -> occurrence_arboretum.height_m
+  cln_canteiro_c.altura_m -> occurrence_arboretum.height_m
 
   note: 'linhas 183, 184 e 185 forçadas para NULL devido a erro de digitação'
 }
@@ -503,9 +508,9 @@ Dep bibliographic_citation_lineage {
 
 // --- clean -> occurrence e satélites (vínculo de tabela inteira: natural key composta, não 1 coluna) ---
 
-Dep: cln_spp_bryophytes -> occurrence [note: 'get-or-create por (origin_file=_source_file, origin_row=_source_row); basis_of_record fixo = PreservedSpecimen']
-Dep: cln_arboretum_specimens -> occurrence [note: 'basis_of_record fixo = LivingSpecimen']
-Dep: cln_arboreto_canteiro_c -> occurrence [note: 'basis_of_record fixo = LivingSpecimen']
+Dep: cln_spp_bryophytes -> occurrence [note: 'get-or-create por (origin_file, origin_sheet, origin_row) via occurrence_uniq_origin (origin_sheet = NULL); basis_of_record fixo = PreservedSpecimen']
+Dep: cln_arboretum_specimens -> occurrence [note: 'get-or-create por (origin_file, origin_sheet, origin_row) via occurrence_uniq_origin; basis_of_record fixo = LivingSpecimen']
+Dep: cln_canteiro_c -> occurrence [note: 'basis_of_record fixo = LivingSpecimen']
 
 Dep: occurrence -> occurrence_bryophyte [note: '1:1, colunas exclusivas de briófita']
 Dep: occurrence -> occurrence_arboretum [note: '1:1, populado por Espécimes e Canteiro C']
