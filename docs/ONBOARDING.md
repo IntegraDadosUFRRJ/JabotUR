@@ -10,8 +10,8 @@ ETL que integra planilhas heterogêneas de biodiversidade (Jardim Botânico
 UFRRJ, briófitas e arboreto, com fontes novas a caminho) numa base
 PostgreSQL normalizada única. O pipeline segue três camadas:
 **staging -> clean -> load** e nunca descarta linha por incerteza de
-dado: problemas de qualidade viram colunas (`needs_review`,
-`parse_status`), nunca uma linha a menos. O staging (`scripts/staging/xlsx_sheet.py`)
+dado: problemas de qualidade viram colunas (nas fontes do arboreto,
+`needs_review` e `parse_status`), nunca uma linha a menos. O staging (`scripts/staging/xlsx_sheet.py`)
 só deixa de gravar linhas que não têm nenhum dado nas colunas
 mapeadas (`WHERE coalesce(...) IS NOT NULL`).
 
@@ -52,8 +52,8 @@ mapeadas (`WHERE coalesce(...) IS NOT NULL`).
 ## 4. Erros Comuns
 
 - **Nunca filtrar linha com problema na query do clean.** Se uma linha tem
-  dado ambíguo ou faltando, ela entra mesmo assim em `cln_*`, sinalizada
-  com `needs_review = True` e `parse_status`. Descartar linha em silêncio
+  dado ambíguo ou faltando, ela entra mesmo assim em `cln_*`, sinalizada em
+  coluna (nas fontes do arboreto, `needs_review = True` e `parse_status`). Descartar linha em silêncio
   já causou bug real (`clean_arboretum_citations.py`, linhas com espécie em
   branco descartadas por engano).
 - **Não comparar valor em chave de dict/tupla sem `_none_if_nan()` antes.**
