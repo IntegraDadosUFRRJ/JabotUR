@@ -78,15 +78,15 @@ mapeadas (`WHERE coalesce(...) IS NOT NULL`).
 ## 5. Como rodar localmente
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
 
 # instala as extensões do DuckDB (pede rede uma vez por máquina e por versão do DuckDB)
-python -c "import duckdb; duckdb.sql('INSTALL excel; INSTALL postgres')"
+python3 -c "import duckdb; duckdb.sql('INSTALL excel; INSTALL postgres')"
 
-# variáveis de ambiente (ou .env): POSTGRES_HOST, POSTGRES_PORT,
+# variáveis de ambiente (o projeto não lê arquivo .env): POSTGRES_HOST, POSTGRES_PORT,
 # POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, defaults em scripts/config.py
 
 python -m scripts.run_pipeline
