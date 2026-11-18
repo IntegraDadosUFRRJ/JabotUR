@@ -1,42 +1,36 @@
 """
-Get-or-create compartilhado do núcleo taxonômico (filo, familia, genero,
-autor, epiteto_especifico) 
+Get-or-create compartilhado do núcleo taxonômico (phylum, family, genus,
+author, species), sobre linhas (list[dict]) lidas e gravadas pelo DuckDB.
 
-Contrato de coluna esperado no DataFrame de entrada:
-  filo_nome (pode ser todo None)
-  familia
-  genero (pode ser None)
-  epiteto (pode ser None)
-  infraespecifico (opcional)
-  autor (pode ser None)
+Chaves esperadas em cada linha de entrada:
+  phylum_name (pode ser None em todas)
+  family
+  genus (pode ser None)
+  epithet (pode ser None)
+  infraspecific (opcional)
+  author (pode ser None)
+
+Os ids existentes entram ordenados por id e as chaves novas na ordem de primeira aparição
+em `rows`: mudar essa ordem muda os ids gravados.
+Os mapas por nome (family_by_name, genus_by_name) ficam com o último id quando o mesmo
+nome aparece sob pais diferentes.
 """
 
-import pandas as pd
+import math
 
 try:
-    from ..db.db_utils import read_dataframe_from_postgres
+    from ..db.db_utils import read_rows
     from .. import config
 except ImportError:
-    from scripts.db.db_utils import read_dataframe_from_postgres
+    from scripts.db.db_utils import read_rows
     import scripts.config as config
 
 
 def _none_if_nan(value):
-    if value is None:
+    # NaN do tipo float também é ausência de valor, a mesma regra de transforms.missing.is_missing
+    if value is None or (isinstance(value, float) and math.isnan(value)):
         return None
-    try:
-        if pd.isna(value):
-            return None
-    except (TypeError, ValueError):
-        pass
     return value
-
-
-def _load_existing(table_name: str) -> pd.DataFrame:
-    try:
-        return read_dataframe_from_postgres(table_name)
-    except Exception:
-        return pd.DataFrame()
 
 
 def _merge_ids(existing_keys_to_id: dict, new_keys) -> dict:
@@ -49,109 +43,113 @@ def _merge_ids(existing_keys_to_id: dict, new_keys) -> dict:
     return ids
 
 
-def build_filo(df: pd.DataFrame):
-    existing = _load_existing(config.TB_FILO)
-    existing_ids = dict(zip(existing["nome"], existing["id"])) if not existing.empty else {}
-    nomes = df["filo_nome"].dropna().unique().tolist()
-    ids = _merge_ids(existing_ids, nomes)
-    dim = pd.DataFrame({"id": list(ids.values()), "nome": list(ids.keys())})
+def _load_existing_rows(con, table_name: str) -> list[dict]:
+    # Só a tabela inexistente vira "nenhuma linha": qualquer outro erro sobe, porque
+    # engolido dentro da transação do load deixaria a transação abortada
+    try:
+        return read_rows(con, table_name)
+    except LookupError:
+        return []
+
+
+def _distinct_non_null(values) -> list:
+    # Sem NULL e na ordem de primeira aparição, que decide os ids novos
+    return list(dict.fromkeys(v for v in map(_none_if_nan, values) if v is not None))
+
+
+def build_phylum_rows(con, rows: list[dict]):
+    existing = _load_existing_rows(con, config.TB_PHYLUM)
+    existing_ids = {row["name"]: row["id"] for row in existing}
+    ids = _merge_ids(existing_ids, _distinct_non_null(row["phylum_name"] for row in rows))
+    dim = [{"id": i, "name": name} for name, i in ids.items()]
     return dim, ids
 
 
-def build_familia(df: pd.DataFrame, filo_ids: dict, filo_dim: pd.DataFrame):
-    filo_id_to_nome = dict(zip(filo_dim["id"], filo_dim["nome"]))
-    existing = _load_existing(config.TB_FAMILIA)
-    existing_keys = {}
-    if not existing.empty:
-        for _, row in existing.iterrows():
-            key = (
-                _none_if_nan(filo_id_to_nome.get(row["id_filo"])),
-                _none_if_nan(row["nome"]),
-            )
-            existing_keys[key] = row["id"]
-
-    pares = [
-        (_none_if_nan(filo_nome), _none_if_nan(nome))
-        for filo_nome, nome in df.dropna(subset=["familia"])[["filo_nome", "familia"]].itertuples(index=False, name=None)
+def build_family_rows(con, rows: list[dict], phylum_ids: dict, phylum_dim: list[dict]):
+    phylum_id_to_name = {row["id"]: row["name"] for row in phylum_dim}
+    existing_keys = {
+        (
+            _none_if_nan(phylum_id_to_name.get(row["id_phylum"])),
+            _none_if_nan(row["name"]),
+        ): row["id"]
+        for row in _load_existing_rows(con, config.TB_FAMILY)
+    }
+    pairs = [
+        (_none_if_nan(row["phylum_name"]), _none_if_nan(row["family"]))
+        for row in rows
+        if _none_if_nan(row["family"]) is not None
     ]
-    ids = _merge_ids(existing_keys, pares)
-    rows = [{"id": i, "id_filo": filo_ids.get(filo_nome), "nome": nome} for (filo_nome, nome), i in ids.items()]
-    dim = pd.DataFrame(rows)
-    familia_by_nome = {nome: i for (filo_nome, nome), i in ids.items()}
-    return dim, familia_by_nome
+    ids = _merge_ids(existing_keys, pairs)
+    dim = [{"id": i, "id_phylum": phylum_ids.get(phylum_name), "name": name} for (phylum_name, name), i in ids.items()]
+    family_by_name = {name: i for (phylum_name, name), i in ids.items()}
+    return dim, family_by_name
 
 
-def build_genero(df: pd.DataFrame, familia_by_nome: dict, familia_dim: pd.DataFrame):
-    familia_id_to_nome = dict(zip(familia_dim["id"], familia_dim["nome"]))
-    existing = _load_existing(config.TB_GENERO)
-    existing_keys = {}
-    if not existing.empty:
-        for _, row in existing.iterrows():
-            key = (
-                _none_if_nan(familia_id_to_nome.get(row["id_familia"])),
-                _none_if_nan(row["nome"]),
-            )
-            existing_keys[key] = row["id"]
-
-    pares = [
-        (_none_if_nan(familia_nome), _none_if_nan(nome))
-        for familia_nome, nome in df.dropna(subset=["genero"])[["familia", "genero"]].itertuples(index=False, name=None)
+def build_genus_rows(con, rows: list[dict], family_by_name: dict, family_dim: list[dict]):
+    family_id_to_name = {row["id"]: row["name"] for row in family_dim}
+    existing_keys = {
+        (
+            _none_if_nan(family_id_to_name.get(row["id_family"])),
+            _none_if_nan(row["name"]),
+        ): row["id"]
+        for row in _load_existing_rows(con, config.TB_GENUS)
+    }
+    pairs = [
+        (_none_if_nan(row["family"]), _none_if_nan(row["genus"]))
+        for row in rows
+        if _none_if_nan(row["genus"]) is not None
     ]
-    ids = _merge_ids(existing_keys, pares)
-    rows = [{"id": i, "id_familia": familia_by_nome.get(familia_nome), "nome": nome} for (familia_nome, nome), i in ids.items()]
-    dim = pd.DataFrame(rows)
-    genero_by_nome = {nome: i for (familia_nome, nome), i in ids.items()}
-    return dim, genero_by_nome
+    ids = _merge_ids(existing_keys, pairs)
+    dim = [
+        {"id": i, "id_family": family_by_name.get(family_name), "name": name}
+        for (family_name, name), i in ids.items()
+    ]
+    genus_by_name = {name: i for (family_name, name), i in ids.items()}
+    return dim, genus_by_name
 
 
-def build_autor(df: pd.DataFrame):
-    existing = _load_existing(config.TB_AUTOR)
-    existing_ids = dict(zip(existing["nome"], existing["id"])) if not existing.empty else {}
-    nomes = df["autor"].dropna().unique().tolist()
-    ids = _merge_ids(existing_ids, nomes)
-    dim = pd.DataFrame({"id": list(ids.values()), "nome": list(ids.keys())})
+def build_author_rows(con, rows: list[dict]):
+    existing = _load_existing_rows(con, config.TB_AUTHOR)
+    existing_ids = {row["name"]: row["id"] for row in existing}
+    ids = _merge_ids(existing_ids, _distinct_non_null(row["author"] for row in rows))
+    dim = [{"id": i, "name": name} for name, i in ids.items()]
     return dim, ids
 
 
-def build_epiteto_especifico(df: pd.DataFrame, genero_by_nome: dict, autor_ids: dict, genero_dim: pd.DataFrame):
-    genero_id_to_nome = dict(zip(genero_dim["id"], genero_dim["nome"]))
-    autor_id_to_nome = {v: k for k, v in autor_ids.items()}
-
-    existing = _load_existing(config.TB_EPITETO_ESPECIFICO)
-    existing_keys = {}
-    if not existing.empty:
-        has_infra_col = "infraespecifico" in existing.columns
-        for _, row in existing.iterrows():
-            key = (
-                _none_if_nan(genero_id_to_nome.get(row["id_genero"])),
-                _none_if_nan(row["nome"]),
-                _none_if_nan(row["infraespecifico"]) if has_infra_col else None,
-                _none_if_nan(autor_id_to_nome.get(row["id_autor"])),
-            )
-            existing_keys[key] = row["id"]
-
-    work = df.copy()
-    if "infraespecifico" not in work.columns:
-        work["infraespecifico"] = None
-
-    # mantém a linha se tiver gênero ou epíteto (pelo menos)
-    work = work.dropna(subset=["genero", "epiteto"], how="all")
-
-    chave = [
-        (_none_if_nan(g), _none_if_nan(e), _none_if_nan(i), _none_if_nan(a))
-        for g, e, i, a in work[["genero", "epiteto", "infraespecifico", "autor"]]
-        .itertuples(index=False, name=None)
+def build_species_rows(
+    con, rows: list[dict], genus_by_name: dict, author_ids: dict, genus_dim: list[dict]
+):
+    genus_id_to_name = {row["id"]: row["name"] for row in genus_dim}
+    author_id_to_name = {v: k for k, v in author_ids.items()}
+    existing_keys = {
+        (
+            _none_if_nan(genus_id_to_name.get(row["id_genus"])),
+            _none_if_nan(row["epithet"]),
+            _none_if_nan(row.get("infraspecific")),
+            _none_if_nan(author_id_to_name.get(row["id_author"])),
+        ): row["id"]
+        for row in _load_existing_rows(con, config.TB_SPECIES)
+    }
+    species_keys = [
+        (
+            _none_if_nan(row["genus"]),
+            _none_if_nan(row["epithet"]),
+            _none_if_nan(row.get("infraspecific")),
+            _none_if_nan(row["author"]),
+        )
+        for row in rows
+        # mantém a linha se tiver gênero ou epíteto (pelo menos)
+        if _none_if_nan(row["genus"]) is not None or _none_if_nan(row["epithet"]) is not None
     ]
-    ids = _merge_ids(existing_keys, chave)
-    rows = [
+    ids = _merge_ids(existing_keys, species_keys)
+    dim = [
         {
             "id": i,
-            "id_genero": genero_by_nome.get(genero_nome),
-            "id_autor": autor_ids.get(autor_nome),
-            "nome": epiteto_nome,
-            "infraespecifico": infra_val,
+            "id_genus": genus_by_name.get(genus_name),
+            "id_author": author_ids.get(author_name),
+            "epithet": epithet,
+            "infraspecific": infra_val,
         }
-        for (genero_nome, epiteto_nome, infra_val, autor_nome), i in ids.items()
+        for (genus_name, epithet, infra_val, author_name), i in ids.items()
     ]
-    dim = pd.DataFrame(rows)
     return dim, ids

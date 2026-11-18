@@ -4,11 +4,16 @@
 # Bancos locais DuckDB
 *.duckdb
 
-# Dados locais
-data/
+# Dados locais: entram no git só as planilhas listadas abaixo
+data/*
+!data/bryophyte_collections.xlsx
+!data/arboretum_floristic_diversity.xlsx
 
 # Cache Python
 __pycache__/
 *.pyc
 
 .idea/
+
+# Metadados gerados pelo pip install / pip wheel
+*.egg-info/

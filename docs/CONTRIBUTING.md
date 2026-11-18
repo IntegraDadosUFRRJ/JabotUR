@@ -14,23 +14,34 @@ para o histórico completo e decisões de arquitetura.
 ## 2. Rodando localmente
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate  # ou .venv\Scripts\activate no Windows
 pip install -r requirements.txt
+pip install -e .
 
-# Variáveis de ambiente (ou usar os defaults locais em config.py)
+# Instala as extensões do DuckDB
+python -c "import duckdb; duckdb.sql('INSTALL excel; INSTALL postgres')"
+
+# Variáveis de ambiente (ou usar os defaults locais em scripts/config.py)
 export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
 export POSTGRES_DB=jabotur
 export POSTGRES_USER=postgres
 export POSTGRES_PASSWORD=postgres
 
 # Rodar uma fonte isolada, ex.:
-python -m scripts.staging.stage_arboreto_citations
-python -m scripts.clean.clean_arboreto_citations
-python -m scripts.load.load_arboreto_citations
+python -m scripts.staging.stage_arboretum_citations
+python -m scripts.clean.clean_arboretum_citations
+python -m scripts.load.load_arboretum_citations
 
-# Ou o pipeline completo
+# Ou o pipeline completo (já chama init_postgres no início)
 python -m scripts.run_pipeline
+
+# Suíte de testes (pula os testes de banco se POSTGRES_DB não terminar em _test)
+python -m unittest discover -s tests
+
+# Suíte completa no banco de teste (tests/db_test_support.py recria o schema do banco de teste, cria o banco via init_postgres se ele não existir, e recusa rodar em banco sem sufixo _test)
+POSTGRES_DB=jabotur_test python -m unittest discover -s tests
 ```
 
 ## 3. Convenções obrigatórias
@@ -42,39 +53,52 @@ python -m scripts.run_pipeline
 - **Convenção de arquivo por fonte**: `stage_<fonte>.py` / `clean_<fonte>.py`
   / `load_<fonte>.py`.
 - **Colunas de metadado de linhagem usam prefixo `_`** (`_source_file`,
-  `_source_sheet`, `_source_row`, `_loaded_at`) mas **precisam de alias
-  sem underscore antes de `itertuples()`**, porque pandas renomeia colunas
-  com underscore inicial pra posicionais (`_1`, `_2`...), que colidem com
-  métodos internos do namedtuple.
+  `_source_sheet`, `_source_row`, `_loaded_at`) e **toda leitura do Postgres
+  precisa de `ORDER BY` explícito** (`ARBORETUM_CITATIONS_SOURCE_ORDER`,
+  `ARBORETUM_SPECIMENS_SOURCE_ORDER`, `SPP_SOURCE_ORDER` em `scripts/config.py`,
+  ou `id` nas tabelas finais, aplicado por padrão em `db_utils.read_table` e
+  `db_utils.read_rows` quando a tabela tem `id`), porque o Postgres devolve
+  linhas na ordem física, que muda a cada upsert.
 - **Clean nunca descarta linha.** Problema de qualidade vira coluna
-  (`parse_status`, `needs_review`, `reconcile_across_sources`), nunca uma
-  linha removida ou um dataframe separado.
-- **Qualquer lookup de chave natural vindo do Postgres passa por
+  (nas fontes do arboreto, `parse_status`, `needs_review` e `reconcile_across_sources`; o clean do
+  SPP ainda não tem essas colunas), nunca uma linha removida ou um dataframe separado.
+- **Qualquer lookup de chave natural passa por
   `taxonomy._none_if_nan()` antes de virar chave de dict/tupla.**
-  `pd.read_sql_query` retorna `float('nan')` pra colunas NULL, e isso
-  quebra comparação de tupla silenciosamente se não for normalizado.
-- **DuckDB só é usado dentro de `transform()`, nunca persiste nada.** Toda
-  persistência (staging/clean/tabelas normalizadas) é Postgres via
-  `db_utils.py`.
-- **Nomenclatura**: tabelas/colunas já existentes (SPP) continuam em
-  português — não retroativo. Tabelas/colunas novas seguem inglês/Darwin
-  Core (`occurrence`, `basis_of_record`, `identification_qualifier`).
+  `db_utils.read_rows` já devolve `None` para colunas `NULL`, mas
+  `_none_if_nan()` evita que um `float('nan')` em memória quebre a comparação
+  de tupla no `dict` (e `db_utils._stage_rows` barra `NaN` com `ValueError`).
+- **DuckDB lê as planilhas e grava no Postgres em todas as camadas (ADR-0013).**
+  O staging lê o Excel com `read_xlsx` (`scripts/staging/xlsx_sheet.py`) e
+  grava com `db_utils.replace_table`; o clean lê e grava no Postgres anexado
+  via `ATTACH` (`db_utils.postgres_duckdb()`); os loads leem com
+  `db_utils.read_rows` e gravam com `db_utils.upsert_rows` e
+  `db_utils.insert_ignore_rows` dentro de `db_utils.transaction()`. O pandas
+  (`write_dataframe_to_postgres`/`read_dataframe_from_postgres`) ficou
+  restrito ao Canteiro C.
+- **Nomenclatura (ADR-0010)**: a regra antiga "não retroativo" foi revogada.
+  Tabelas, colunas e índices das fontes integradas estão em inglês (`phylum`,
+  `family`, `genus`, `species`, `occurrence`, `basis_of_record`,
+  `identification_qualifier`), e tudo que entrar de novo nasce em inglês.
 - **Funções de entrada de módulo não se chamam `run()`** usar verbo+objeto
   descritivo (ex.: `populate_normalized_tables()`), pra dar pra saber pelo
   traceback qual etapa falhou.
-- **Toda query DuckDB montada por f-string com mais de ~15 linhas, ou que
-  combine mais de uma técnica** (window function + regex + cast), ganha um
-  comentário-resumo antes do `sql = f"""` explicando o que ela faz como um
-  todo.
+- **SQL dos cleans em arquivo `.sql` ao lado do script**
+  (`scripts/clean/clean_<fonte>.sql`), com cabeçalho de comentário descrevendo
+  as CTEs e os placeholders preenchidos por `str.format` a partir de
+  `config.py`. Os arquivos `.sql` (`scripts/db/schema.sql` e
+  `scripts/clean/*.sql`) ficam declarados em `[tool.setuptools.package-data]`
+  no `pyproject.toml`.
+- **Esquema único das tabelas finais em `scripts/db/schema.sql`**, aplicado
+  por `scripts/db/init_postgres.py` (sem pasta `migrations/`).
 
 ## 4. Fluxo de trabalho (branches e PRs)
 
 - Branch a partir de `main`, nome `feature/<fonte>-<etapa>`
   (ex.: `feature/lista-completa-staging`).
 - PRs que tocam arquivos protegidos listados em `.github/CODEOWNERS` exigem revisão do Author indicado.
-- Se a mudança envolve uma decisão de arquitetura nova (não só implementação
-  de algo já decidido), documentar como ADR em `docs/adr/` (ver
-  `docs/adr/template_adr.md`) antes de abrir o PR de código.
+- Se a mudança envolve uma decisão de arquitetura nova (como troca de stack,
+  mudança de esquema ou da chave de uma entidade), documentar como ADR em `docs/adr/`
+  (ver `docs/adr/template_adr.md`) antes de abrir o PR de código.
 
 ## 5. Onde perguntar / quem decide o quê
 

@@ -38,7 +38,7 @@
 - [ ] O código de outros desenvolvedores continua funcional após a minha mudança
 - [ ] Atualizei a documentação afetada
 - [ ] Decisão de schema, padrão entre fontes ou nomenclatura? Há ADR linkado?
-- [ ] Modifica config.py, db_utils.py ou taxonomy.py? Revisão do responsável (CODEOWNERS)
+- [ ] Modifica config.py, db_utils.py, taxonomy.py, schema.sql ou JabotUR_DER.md? Revisão do responsável (CODEOWNERS)
 - [ ] Nenhum literal fora de config.py
 - [ ] Clean não descarta linha; problema vira coluna
 

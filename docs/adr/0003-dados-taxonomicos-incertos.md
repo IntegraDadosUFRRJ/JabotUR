@@ -1,10 +1,9 @@
 # ADR-0003 — Registro de dados taxonômicos incertos (gênero-só, "Genus sp.", morfo-espécie e unparseable)
 
-**Data:** 09/08/2026 (atualizado em 05/10/2026)
+**Data:** 09/08/2026 (atualizado em 18/11/2026)
 **Status:** Aprovado
 **Autor(es):** Davidson
 **Relação com outras decisões:**
-- Atualizado pelo **ADR-0010**: `epiteto_especifico` passa a ser `species`, `nome` passa a `epithet`, e `id_genero` passa a `id_genus`.
 - Complementado pelo **ADR-0012**: linhas em branco que correspondem a somatórios de controle de Citações são `total_row` (`needs_review = False`), enquanto linhas ininteligíveis sem justificativa permanecem como `unparseable` (`needs_review = True`).
 
 ---
@@ -22,16 +21,20 @@ A política central do projeto (`panorama_tecnico_jabotur.md`, §1) determina qu
 
 ## Decisão
 
-Todos os registros são preservados na camada clean e integrados na dimensão de espécies (`epiteto_especifico` / `species`), porém com semânticas distintas de reconciliação e preenchimento:
+Todos os registros são preservados na camada clean e integrados na dimensão de espécies (`species`), porém com semânticas distintas de reconciliação e preenchimento:
 
-- **Gênero só e "Genus sp."**: Casos como "Handroanthus" ou "Citrus sp." são tratados puramente como Gênero-só (o sufixo "sp." ou "sp" é absorvido e ignorado). Possuem `id_genero` preenchido e `nome = NULL` (`epithet = NULL`). **Reconciliam normalmente** entre fontes via get-or-create, pois representam o mesmo táxon genérico.
-- **Morfo-espécie**: Possuem `id_genero = NULL` e recebem como nome um identificador qualificado com a origem (`nome = "Morfo-Espécie 1 [aba#linha]"`). **Nunca reconciliam** entre fontes diferentes, visto que a numeração de morfo-espécies é puramente local à planilha de origem.
-- **Unparseable**: Possuem `id_genero = NULL` e recebem como nome um placeholder qualificado com a origem (`nome = "Unparseable [aba#linha]"`). **Nunca reconciliam** entre fontes.
+- **Gênero só e "Genus sp."**: Casos como "Handroanthus" ou "Citrus sp." são tratados puramente como Gênero-só (o sufixo "sp." ou "sp" é absorvido e ignorado). Possuem `id_genus` preenchido e `epithet = NULL`. **Reconciliam normalmente** entre fontes via get-or-create, pois representam o mesmo táxon genérico.
+- **Morfo-espécie**: Possuem `id_genus = NULL` e recebem como nome um identificador qualificado com a origem (`epithet = "Morfo-Espécie 1 [aba#linha]"`). **Nunca reconciliam** entre fontes diferentes, visto que a numeração de morfo-espécies é puramente local à planilha de origem.
+- **Unparseable**: O nome `"Unparseable [aba#linha]"` não é gerado. Em `load_arboretum_citations.py` e `load_arboretum_specimens.py`, o sufixo `[aba#linha]` só vai no epíteto quando ele existe (`epithet is not None`, caso de morfo-espécie). Quando o nome cai em `unparseable`, `scientific_name.py` devolve `genus = None` e `epithet = None`, então `taxonomy.build_species_rows` não cria espécie: em Citações a linha é pulada com log (`load_arboretum_citations.py`) e em Espécimes a ocorrência entra em `occurrence` com `id_species = NULL` (`load_arboretum_specimens.py`).
+
+*(Nota de revisão, 18/11/2026)* A Decisão original criava a espécie `"Unparseable [aba#linha]"` para nomes não interpretáveis. Hoje nenhuma espécie é criada nesse caso: o load de Citações pula a linha e o de Espécimes grava a ocorrência com `id_species = NULL` (ADR-0008 e ADR-0012 §3). O texto da Decisão acima foi reescrito para refletir o comportamento atual.
 
 As sinalizações ocorrem na camada clean por meio das colunas de controle:
 - `parse_status`: assume `genus_only`, `morphospecies` ou `unparseable` (além de `ok`).
 - `reconcile_across_sources`: assume `True` para gênero-só e `False` para morfo-espécie e unparseable.
 - `needs_review`: assume `False` para `ok`, `genus_only` e `morphospecies` (casos legítimos e esperados no arboreto), e `True` para `unparseable` (exigindo conferência humana com os botânicos).
+- **Exceção em Citações (quantidade):** quantidade inválida ou ausente (`quantity IS NULL` depois do `TRY_CAST` em `clean_arboretum_citations.sql`) **não** muda o `parse_status` do nome científico; ela só marca `needs_review = True`.
+- **Limitação conhecida no gênero-só com autor:** o gênero-só do SPP leva o `author` da coluna própria na chave de `species`, enquanto no arboreto `scientific_name.py` (`_GENUS_ONLY_RE` e `_GENUS_SP_RE`) deixa `author = None`. Se o mesmo gênero vier das duas fontes, ele vira duas linhas em `species`, contra a reconciliação deste ADR; nenhum dado atual dispara esse caso (registrado no **ADR-0015**).
 
 ## Alternativas consideradas
 
@@ -40,21 +43,21 @@ As sinalizações ocorrem na camada clean por meio das colunas de controle:
 | Descartar registros incertos ou unparseable no staging | Viola a política fundamental de preservação total do dado bruto. |
 | Cadastrar "sp." como um epíteto específico comum | Polui a dimensão de espécies com um pseudo-epíteto que colidiria entre todos os gêneros e mascararia consultas taxonômicas reais. |
 | Reconciliar morfo-espécies pelo nome literal ("Morfo-Espécie 1") | Unificaria indevidamente espécimes de fontes distintas que usaram a mesma convenção numérica local para plantas completamente diferentes. |
-| Criar lógica condicional complexa no get-or-create | Rejeitada em favor de embutir a origem `[aba#linha]` diretamente na string natural (`nome`), garantindo unicidade natural por construção sem exceções no SQL. |
+| Criar lógica condicional complexa no get-or-create | Rejeitada em favor de embutir a origem `[aba#linha]` diretamente na string natural (`epithet`), garantindo unicidade natural por construção sem exceções no SQL. |
 
 ## Consequências
 
 **Positivas:**
 - Preservação de 100% dos dados originais sem perda de linhagem.
-- O get-or-create padrão continua simples e declarativo, sem condicionais de reconciliação no código SQL/Pandas.
+- O get-or-create padrão continua simples e declarativo, sem condicionais de reconciliação no código SQL e Python (sem pandas, conforme o **ADR-0013**).
 - Gêneros idênticos se fundem adequadamente entre fontes, enquanto morfo-espécies e unparseable permanecem estritamente isoladas.
 
 **Negativas / trade-offs aceitos:**
-- A tabela `epiteto_especifico` (`species`) armazena linhas de morfo-espécie e unparseable que não representam espécies taxonômicas formais no sentido biológico estrito.
+- A tabela `species` armazena linhas de morfo-espécie, que não representam espécies taxonômicas formais no sentido biológico estrito.
 - Registros `unparseable` geram alertas em `needs_review = True`, requerendo acompanhamento botânico.
 
 **Impacto no código existente:**
-- Afeta `transforms/scientific_name.py`, `clean_arboreto_citations.py`, `clean_arboreto_specimens.py`, `load/taxonomy.py` e `load_arboreto_citations.py`.
+- Afeta `transforms/scientific_name.py`, `clean_arboretum_citations.py`, `clean_arboretum_specimens.py`, `load/taxonomy.py`, `load_arboretum_citations.py` e `load_arboretum_specimens.py`.
 
 ## Referências
 

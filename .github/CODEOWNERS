@@ -10,6 +10,7 @@
 # mesmo tempo, então exige revisão do Davidson antes de mergear.
 /scripts/config.py            @DavidsonWasserman
 /scripts/db/db_utils.py       @DavidsonWasserman
+/scripts/db/schema.sql        @DavidsonWasserman
 /scripts/load/taxonomy.py     @DavidsonWasserman
 /migrations/                  @DavidsonWasserman
 

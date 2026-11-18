@@ -16,3 +16,8 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["scripts", "scripts.*"]
+
+# Os .sql são lidos em tempo de execução ao lado dos módulos (Path(__file__).with_name)
+[tool.setuptools.package-data]
+"scripts.db" = ["schema.sql"]
+"scripts.clean" = ["*.sql"]
