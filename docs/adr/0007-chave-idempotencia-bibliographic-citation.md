@@ -8,7 +8,7 @@
 
 ## Contexto
 
-`load_arboreto_citations.py` precisa de uma chave natural estável pra
+`load_arboretum_citations.py` precisa de uma chave natural estável pra
 get-or-create de cada citação, rodar o pipeline de novo não pode duplicar
 registros. As 3 abas de citação (Monografia Gabriel, Livro Pesquisas no
 JB, JABOT) vivem no mesmo arquivo `.xlsx`, e a numeração de linha
