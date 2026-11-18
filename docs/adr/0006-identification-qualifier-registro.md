@@ -1,4 +1,4 @@
-# ADR 0006 — `identification_qualifier` é atributo de registro, não de espécie
+# ADR-0006 — `identification_qualifier` é atributo de registro, não de espécie
 
 **Data:** 12/08/2026
 **Status:** aprovada
