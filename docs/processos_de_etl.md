@@ -71,7 +71,7 @@ só criando tabela/lógica nova para o que for exclusivo daquela fonte.
 | Autor | Transpor os dados |
 | Forma de Vida | Ausente -> NULL |
 | Substrato | Fill-down; significado da sigla via legenda; multivalorado, separado por "+" |
-| Observações | Conversões pontuais (`"poste de cimento"`/`"cimento de placa de pau brasil"` -> `"cimento"`, `"acro [fotos]"` -> `"acro"`); ausente -> NULL; multivalorado por ";" |
+| Observações | Conversões pontuais (`"poste de cimento"`/`"cimento de placa de pau brasil"` -> `"cimento"`, `"acro [fotos]"` -> `"acrocárpico"` (as regras de `REMARK_REGEX_FIXES` se aplicam em cadeia)); ausente -> NULL; multivalorado por ";" |
 
 ### 2.2 Arboreto — observações gerais sobre a coluna "Espécie"
 
@@ -148,7 +148,7 @@ sobre como cada um desses casos é registrado hoje.
 | Localização canteiro | "SCC1-4" e "S2C2"/"S2C4" são códigos legítimos (confirmados contra o Setor real de Espécimes), mapeados para o mesmo `sector` compartilhado |
 | Altura (m) | Linhas 183, 184 e 185 têm erro de digitação que passa incólume pela conversão para número, forçar NULL nestas linhas e flagar o status |
 
-*(Ainda não implementado.)*
+*(Staging e clean já existem em `scripts/`; o load ainda não foi implementado.)*
 
 ### 2.6 Arboreto — Citações bibliográficas (Monografia Gabriel, Livro Pesquisas no JB, JABOT)
 
