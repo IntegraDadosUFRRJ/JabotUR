@@ -29,7 +29,7 @@ O motivo prático de ordem: o rascunho de normalização do Inventário do Gabri
 que colidem com `familia`, `genero` e `epiteto_especifico`. Resolver a
 nomenclatura antes de integrar essa fonte evita criar um terceiro vocabulário.
 
-O custo é o menor possível agora: quatro fontes carregadas, pipeline
+O custo é o menor possível agora: poucas fontes integradas, pipeline
 idempotente, e uma regra de projeto que já manda manter todo literal em
 `config.py`.
 
@@ -49,18 +49,18 @@ idempotente, e uma regra de projeto que já manda manter todo literal em
    "Morfo-Espécie 1 [aba#linha]" e afins continuam como estão: a decisão é
    sobre identificadores, não sobre conteúdo. Escopo confirmado com a orientadora
    em 02/10/2026: os dados se mantêm como vieram, só o banco muda.
+   - *(Nota de revisão)* Exceção: como os arquivos das planilhas em `data/` foram renomeados para o inglês (`bryophyte_collections.xlsx` e `arboretum_floristic_diversity.xlsx` em `scripts/config.py`), o valor gravado em `_source_file` e `origin_file` mudou; bancos criados antes precisam de reset para não duplicar linhas com o nome antigo do arquivo.
 5. **Fora de escopo:** nomes de variáveis e funções Python (ex.:
    `id_especie` em loaders) e nomes de arquivo (`clean_SPP.py`). Podem ser
    ajustados de forma oportunista, sem exigência neste ADR.
+   - *(Nota de revisão)* Os nomes de variáveis e funções Python e os nomes de arquivo (`stage_spp_bryophytes.py`, `clean_spp_bryophytes.py`, `load_spp_bryophytes.py`, `*_arboretum_citations.py`, `*_arboretum_specimens.py`, `phylum.py`, `epithet.py`, `substrate.py`, `remarks.py`) deixaram de ficar fora de escopo e também foram renomeados no mesmo PR.
 6. **Execução em PR dedicado, só de renomeação.** Nenhum bugfix ou mudança de
    comportamento entra junto, para que o diff seja revisável como mecânico.
    O ADR é aprovado antes de o PR de código ser aberto.
+   - *(Emenda)* A renomeação foi feita no mesmo PR da troca do pandas pelo DuckDB (**ADR-0013**) e das correções #11 e #12, por exceção combinada com a Liliane em 04/11/2026.
 7. **Regra daqui em diante, sem exceção:** toda tabela, coluna ou índice novo
    nasce em inglês.
-8. **Ordem de execução:** o PR de código entra depois das correções de
-   parser/staging (Etapa 1) e da entrada da branch de Espécimes na `main`
-   (para o diff renomear um arquivo só uma vez), e antes dos refactors
-   estruturais. A tabela `lineage` do ADR-0011 já nasce com nomes em inglês.
+8. **Ordem de execução:** a renomeação entrou no mesmo PR junto com a branch de Espécimes, as correções de parser/staging e a troca para o DuckDB (**ADR-0013**). A tabela `lineage` do ADR-0011 já nasce com nomes em inglês.
 
 ## Alternativas consideradas
 
@@ -90,25 +90,21 @@ idempotente, e uma regra de projeto que já manda manter todo literal em
   ADR-0003, e `species.epithet` guarda o placeholder de morfo-espécie. O nome
   é um pouco mais estreito que o conteúdo; aceito por coerência com
   `id_species` e com o Darwin Core.
-- ADRs antigos citam os nomes anteriores (0002, 0003, 0004). Eles **não são
-  reescritos** (registro histórico); recebem uma nota no topo remetendo a
-  este ADR.
+- ADRs aprovados que citam os nomes anteriores (0002, 0003, 0004) têm os
+  identificadores e nomes de arquivo atualizados direto, sem nota:
+  renomeações mecânicas de arquivos e identificadores em ADRs aprovados são
+  aplicadas sem nota; mudança de conteúdo leva nota de revisão.
 - Relatórios e histórico de git continuam com os nomes antigos.
 
 **Impacto no código existente:**
 - Arquivos/tabelas afetados: `config.py`, `db/db_utils.py`, `load/taxonomy.py`
   (todos sob CODEOWNERS), `load_*.py`, `clean_*.py` (queries DuckDB),
-  `scripts/init_postgres`, migrations, `JabotUR_DER.md`, `data_dictionary.md`,
+  `scripts/db/init_postgres.py`, `scripts/db/schema.sql`, `JabotUR_DER.md`, `data_dictionary.md`,
   `processos_de_etl.md`, `panorama_tecnico_jabotur.md`, `ONBOARDING.md`,
   `CONTRIBUTING.md`.
-- Precisa de migração? **Sim**
-- É retroativo? Sim, afeta o schema de todas as fontes já carregadas, mas os
-  dados são preservados.
-- Verificação exigida no PR: contagem de linhas por tabela antes e depois
-  iguais; pipeline completo rodado duas vezes sem alterar contagens
-  (idempotência); `grep` dos nomes antigos nas áreas em escopo sem
-  ocorrências; consulta de sobras (constraints, índices e sequences com nome
-  antigo) no script da migration.
+- Precisa de migração? **Não**: o banco é descartável e recriado do zero a partir de `scripts/db/schema.sql` (a pasta `migrations/` saiu).
+- É retroativo? Sim, afeta o schema de todas as fontes já carregadas (exige recriar o banco local).
+- Verificação exigida no PR: pipeline completo rodado duas vezes sem alterar o conteúdo das tabelas (idempotência conferida na suíte em `tests/`); `grep` dos nomes antigos nas áreas em escopo sem ocorrências.
 
 ## Referências
 
@@ -172,9 +168,7 @@ ficou errado desde o ADR-0001 (a coluna referencia `occurrence.id`).
 
 ## Anexo B — Camadas `stg_`/`cln_` (proposta, a confirmar com `grep` em `config.py`)
 
-**Tabelas:** `stg_spp_briofitas` → `stg_spp_bryophytes` e
-`cln_spp_briofitas` → `cln_spp_bryophytes`. As demais (`*_arboreto_citations`,
-`*_arboreto_specimens`, `*_arboreto_canteiro_c`) já têm nome em inglês.
+**Tabelas:** `stg_spp_briofitas` → `stg_spp_bryophytes`, `cln_spp_briofitas` → `cln_spp_bryophytes`, `*_arboreto_citations` → `*_arboretum_citations` e `*_arboreto_specimens` → `*_arboretum_specimens`. O prefixo `*_arboreto_*` / `cln_canteiro_c` e a constante `ARBORETO_XLSX_PATH` ficaram apenas onde o Canteiro C ainda os usa.
 
 **Colunas recorrentes**
 
@@ -207,10 +201,7 @@ ficam fora da renomeação. As intermediárias da mesma query (`especie_raw`,
 `quantidade`.
 
 **A decidir na issue (ambíguo ou em desenvolvimento):**
-- `especie`: nas fontes de arboreto guarda o nome completo bruto (antes do
-  parsing) e em SPP guarda só o epíteto. Sugestão: `species_raw` no arboreto e
-  `epithet` em SPP, para não repetir a ambiguidade que o dicionário de dados já
-  aponta.
+- `especie` *(decidido)*: virou `species_raw` nas fontes do arboreto (nome bruto antes do parsing) e `epithet` no SPP. Nos loads (`load_spp_bryophytes.py`, `load_arboretum_citations.py` e `load_arboretum_specimens.py`), as duas chaves de epíteto foram fundidas em `epithet` antes de chamar `taxonomy.py` — é a única parte da mudança que não é renomeação pura, coberta por teste.
 - `grau_ameaca` → `conservation_status` ou `threat_category`, e
   `numeracao_lacre` / `localizacao_canteiro`: pertencem ao Canteiro C, que está
   em desenvolvimento.
