@@ -1,4 +1,4 @@
-# ADR 0007 — Chave de idempotência composta para `bibliographic_citation`
+# ADR-0007 — Chave de idempotência composta para `bibliographic_citation`
 
 **Data:** 12/08/2026
 **Status:** aprovada
