@@ -69,19 +69,25 @@ base PostgreSQL normalizada e única. Requisitos centrais:
   `pytaxon`) — ponto de encaixe definido: pré-processamento antes de
   `stage_arboretum_*`, sem mudar o resto do pipeline.
 
-## 4. Convenções e decisões — o que não está num ADR
+## 4. Convenções e decisões
 
 | Decisão de schema | Onde está documentada |
 |---|---|
 | `occurrence` super-tipo/sub-tipo | ADR-0001 |
-| Índices únicos parciais pra `infraespecifico` | ADR-0002 |
+| Índices únicos parciais pra `infraspecific` | ADR-0002 |
 | Gênero-só / morfo-espécie (reconciliação) | ADR-0003 |
-| `filo` NULL pra famílias de origem arboreto | ADR-0004 |
+| `phylum` NULL pra famílias de origem arboreto | ADR-0004 |
 | `conservation_status.code = 'NA'` é código IUCN real | ADR-0005 |
 | `identification_qualifier` no registro, não na espécie | ADR-0006 |
 | Chave de idempotência de `bibliographic_citation` | ADR-0007 |
 | NULL verdadeiro, nunca placeholder "N/A" | ADR-0008 |
 | Regra de prevalência do lacre azul | ADR-0009 |
+| Nomenclatura em inglês, retroativa | ADR-0010 |
+| `lineage` em tabela própria | ADR-0011 |
+| Linhas de totais e linhas ocultas sinalizadas | ADR-0012 |
+| Troca do pandas pelo DuckDB | ADR-0013 |
+| Esquema explícito, FKs e banco de teste | ADR-0014 |
+| Autor na chave da espécie | ADR-0015 |
 
 Convenções que não chegam a ser decisão de schema (ficam aqui mesmo):
 
