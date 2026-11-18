@@ -1,4 +1,4 @@
-# ADR-001 — Occurrence como super-tipo/sub-tipo, substituindo `coleta`
+# ADR-0001 — Occurrence como super-tipo/sub-tipo, substituindo `coleta`
 
 **Data:** 08/08/2026
 **Status:** Aprovado
@@ -56,8 +56,6 @@ exclusivo daquela fonte.
 
 ## Referências
 
-- `panorama_tecnico_jabotur.md`, seção 4 ("Super-tipo/sub-tipo pra
-  registro de ocorrência")
 - `JabotUR_DER.md`, comentário acima de `Table occurrence`
 
 ---
