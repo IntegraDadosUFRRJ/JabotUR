@@ -1,6 +1,6 @@
 # ADR-0003 — Registro de dados taxonômicos incertos (gênero-só, "Genus sp.", morfo-espécie e unparseable)
 
-**Data:** 09/08/2026 (atualizado em 05/10/2026)
+**Data:** 09/08/2026 (atualizado em 18/11/2026)
 **Status:** Aprovado
 **Autor(es):** Davidson
 **Relação com outras decisões:**
@@ -26,6 +26,8 @@ Todos os registros são preservados na camada clean e integrados na dimensão de
 - **Gênero só e "Genus sp."**: Casos como "Handroanthus" ou "Citrus sp." são tratados puramente como Gênero-só (o sufixo "sp." ou "sp" é absorvido e ignorado). Possuem `id_genus` preenchido e `epithet = NULL`. **Reconciliam normalmente** entre fontes via get-or-create, pois representam o mesmo táxon genérico.
 - **Morfo-espécie**: Possuem `id_genus = NULL` e recebem como nome um identificador qualificado com a origem (`epithet = "Morfo-Espécie 1 [aba#linha]"`). **Nunca reconciliam** entre fontes diferentes, visto que a numeração de morfo-espécies é puramente local à planilha de origem.
 - **Unparseable**: O nome `"Unparseable [aba#linha]"` não é gerado. Em `load_arboretum_citations.py` e `load_arboretum_specimens.py`, o sufixo `[aba#linha]` só vai no epíteto quando ele existe (`epithet is not None`, caso de morfo-espécie). Quando o nome cai em `unparseable`, `scientific_name.py` devolve `genus = None` e `epithet = None`, então `taxonomy.build_species_rows` não cria espécie: em Citações a linha é pulada com log (`load_arboretum_citations.py`) e em Espécimes a ocorrência entra em `occurrence` com `id_species = NULL` (`load_arboretum_specimens.py`).
+
+*(Nota de revisão, 18/11/2026)* A Decisão original criava a espécie `"Unparseable [aba#linha]"` para nomes não interpretáveis. Hoje nenhuma espécie é criada nesse caso: o load de Citações pula a linha e o de Espécimes grava a ocorrência com `id_species = NULL` (ADR-0008 e ADR-0012 §3). O texto da Decisão acima foi reescrito para refletir o comportamento atual.
 
 As sinalizações ocorrem na camada clean por meio das colunas de controle:
 - `parse_status`: assume `genus_only`, `morphospecies` ou `unparseable` (além de `ok`).

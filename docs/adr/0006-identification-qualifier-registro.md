@@ -1,6 +1,6 @@
 # ADR-0006 — `identification_qualifier` é atributo de registro, não de espécie
 
-**Data:** 12/08/2026
+**Data:** 12/08/2026 (atualizado em 18/11/2026)
 **Status:** aprovada
 **Autor(es):** Davidson
 
@@ -17,6 +17,8 @@ espécie) ou em cada registro individual que cita/observa a espécie.
 ## Decisão
 
 `identification_qualifier` fica no **registro** (`bibliographic_citation` e `occurrence`, populado por Citações, Espécimes e também pelo SPP, onde `transforms/epithet.py` tira `cf.`/`aff.` do epíteto e `load_spp_bryophytes.py` grava o qualificador na ocorrência; Canteiro C usará a mesma coluna), nunca em `species`. Corresponde ao `identificationQualifier` do Darwin Core, que é por natureza um atributo de identificação individual, não da espécie em si.
+
+*(Nota de revisão, 18/11/2026)* A Decisão original descrevia o qualificador apenas em `bibliographic_citation`, que era a tabela populada na época. O texto agora cobre também `occurrence`, populada por Espécimes e pelo SPP. O princípio não mudou: o qualificador continua no registro, nunca em `species`.
 
 ## Alternativas consideradas
 
