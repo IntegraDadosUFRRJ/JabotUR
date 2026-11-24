@@ -52,6 +52,7 @@ ARBORETUM_CITATION_SHEETS = [
 # === Arboreto (Inventário) ===
 ARBORETUM_INVENTORY_STEMS_SHEET_NAME = "CAP_Coluna"
 ARBORETUM_INVENTORY_FIELD_SHEET_NAME = "tabela_campo_coordenadas"
+ARBORETUM_INVENTORY_UPDATED_SHEET_NAME = "Atualizada"
 
 
 # === COLUMN MAPS: Nome na planilha original -> nome da coluna normalizado ===
@@ -126,6 +127,22 @@ ARBORETUM_INVENTORY_FIELD_COLUMN_MAP = {
     "Ht (m)": "total_height_m",
 }
 
+# Um fuste por linha: o Número só aparece na primeira linha de cada árvore
+ARBORETUM_INVENTORY_UPDATED_COLUMN_MAP = {
+    "Número": "number",
+    "Família": "family",
+    "Gênero": "genus",
+    "Epíteto": "epithet",
+    "Popular": "vernacular_name",
+    "Gps": "gps_point",
+    "Flor": "flower",
+    "Fruto": "fruit",
+    "Cap": "gbh",
+    "Hc": "bole_height",
+    "Ht": "total_height",
+    "Observação": "remark",
+}
+
 STG_SPP_TABLE = "stg_spp_bryophytes"
 CLN_SPP_TABLE = "cln_spp_bryophytes"
 STG_ARBORETUM_CITATIONS_TABLE = "stg_arboretum_citations"
@@ -134,6 +151,7 @@ STG_ARBORETUM_SPECIMENS_TABLE = "stg_arboretum_specimens"
 CLN_ARBORETUM_SPECIMENS_TABLE = "cln_arboretum_specimens"
 STG_ARBORETUM_INVENTORY_STEMS_TABLE = "stg_arboretum_inventory_stems"
 STG_ARBORETUM_INVENTORY_FIELD_TABLE = "stg_arboretum_inventory_field"
+STG_ARBORETUM_INVENTORY_UPDATED_TABLE = "stg_arboretum_inventory_updated"
 
 # Citações do arboreto: linhas de totais
 PARSE_STATUS_TOTAL_ROW = "total_row"
