@@ -8,6 +8,7 @@
 data/*
 !data/bryophyte_collections.xlsx
 !data/arboretum_floristic_diversity.xlsx
+!data/arboretum_inventory.xlsx
 
 # Cache Python
 __pycache__/
