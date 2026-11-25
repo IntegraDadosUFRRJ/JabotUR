@@ -1,7 +1,6 @@
 """Leitura de abas xlsx pelo DuckDB (extensão excel) e gravação da tabela de staging.
 
-Os stagings de SPP, Citações e Espécimes usam este módulo para que as regras de leitura
-fiquem num lugar só:
+Os stagings usam este módulo para que as regras de leitura fiquem num lugar só:
   - all_varchar: a leitura padrão infere tipo pela coluna e aborta em célula de texto
     numa coluna numérica; ignore_errors não é usado porque transforma essa célula em
     NULL sem aviso;

@@ -18,6 +18,9 @@ SPP_XLSX_PATH = Path("data/bryophyte_collections.xlsx")
 # Planilha de origem — arboreto
 ARBORETO_XLSX_PATH = Path("data/arboretum_floristic_diversity.xlsx")
 
+# Planilha de origem — inventário do arboreto
+ARBORETUM_INVENTORY_XLSX_PATH = Path("data/arboretum_inventory.xlsx")
+
 # Configuração de conexão com o PostgreSQL
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
@@ -45,6 +48,11 @@ ARBORETUM_CITATION_SHEETS = [
     "Livro Pesquisas no JB",
     "JABOT",
 ]
+
+# === Arboreto (Inventário) ===
+ARBORETUM_INVENTORY_STEMS_SHEET_NAME = "CAP_Coluna"
+ARBORETUM_INVENTORY_FIELD_SHEET_NAME = "tabela_campo_coordenadas"
+ARBORETUM_INVENTORY_UPDATED_SHEET_NAME = "Atualizada"
 
 
 # === COLUMN MAPS: Nome na planilha original -> nome da coluna normalizado ===
@@ -79,12 +87,71 @@ ARBORETUM_SPECIMENS_COLUMN_MAP = {
     "Estado reprodutivo": "reproductive_status",
 }
 
+# Nome Científico fica de fora: a espécie vem de Gênero e Epíteto
+ARBORETUM_INVENTORY_STEMS_COLUMN_MAP = {
+    "Número": "number",
+    "Família": "family",
+    "Gênero": "genus",
+    "Epíteto": "epithet",
+    "Popular": "vernacular_name",
+    "Gps": "gps_point",
+    "Flor": "flower",
+    "Fruto": "fruit",
+    "CAP": "gbh",
+    "CAP1": "gbh_1",
+    "CAP2": "gbh_2",
+    "CAP3": "gbh_3",
+    "CAP4": "gbh_4",
+    "CAP5": "gbh_5",
+    "CAP6": "gbh_6",
+    "CAP7": "gbh_7",
+    "Hc": "bole_height",
+    "Ht": "total_height",
+    "Observação": "remark",
+}
+
+ARBORETUM_INVENTORY_FIELD_COLUMN_MAP = {
+    "Número": "number",
+    "Família": "family",
+    "Gênero": "genus",
+    "Epíteto": "epithet",
+    "Popular": "vernacular_name",
+    "Ponto-GPS": "gps_point",
+    "Latitude WGS 84": "latitude",
+    "Longitude WGS 84": "longitude",
+    "Flor": "flower",
+    "Fruto": "fruit",
+    "CAP (cm)": "gbh_cm",
+    "DAP (cm)": "dbh_cm",
+    "Hc (m)": "bole_height_m",
+    "Ht (m)": "total_height_m",
+}
+
+# Um fuste por linha: o Número só aparece na primeira linha de cada árvore
+ARBORETUM_INVENTORY_UPDATED_COLUMN_MAP = {
+    "Número": "number",
+    "Família": "family",
+    "Gênero": "genus",
+    "Epíteto": "epithet",
+    "Popular": "vernacular_name",
+    "Gps": "gps_point",
+    "Flor": "flower",
+    "Fruto": "fruit",
+    "Cap": "gbh",
+    "Hc": "bole_height",
+    "Ht": "total_height",
+    "Observação": "remark",
+}
+
 STG_SPP_TABLE = "stg_spp_bryophytes"
 CLN_SPP_TABLE = "cln_spp_bryophytes"
 STG_ARBORETUM_CITATIONS_TABLE = "stg_arboretum_citations"
 CLN_ARBORETUM_CITATIONS_TABLE = "cln_arboretum_citations"
 STG_ARBORETUM_SPECIMENS_TABLE = "stg_arboretum_specimens"
 CLN_ARBORETUM_SPECIMENS_TABLE = "cln_arboretum_specimens"
+STG_ARBORETUM_INVENTORY_STEMS_TABLE = "stg_arboretum_inventory_stems"
+STG_ARBORETUM_INVENTORY_FIELD_TABLE = "stg_arboretum_inventory_field"
+STG_ARBORETUM_INVENTORY_UPDATED_TABLE = "stg_arboretum_inventory_updated"
 
 # Citações do arboreto: linhas de totais
 PARSE_STATUS_TOTAL_ROW = "total_row"
