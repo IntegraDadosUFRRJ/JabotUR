@@ -1,37 +1,46 @@
 """Executa o pipeline ETL completo"""
 
-from scripts.clean import clean_SPP, clean_arboreto_citations
-from scripts.staging import stage_SPP, stage_arboreto_citations
-from scripts.load import load_SPP, load_arboreto_citations
+from scripts.clean import clean_spp_bryophytes, clean_arboretum_citations, clean_arboretum_specimens
+from scripts.staging import stage_spp_bryophytes, stage_arboretum_citations, stage_arboretum_specimens
+from scripts.load import load_spp_bryophytes, load_arboretum_citations, load_arboretum_specimens
+from scripts.db import db_utils
+from scripts.db.init_postgres import init_postgres
 
 
 def main() -> None:
-    print("== STAGING (SPP) ==")
-    stage_SPP.load_staging(stage_SPP.extract_spp())
+    try:
+        print("== INIT (banco + esquema) ==")
+        init_postgres()
 
-    print("\n== CLEAN (SPP) ==")
-    clean_SPP.load_clean(
-        clean_SPP.transform(clean_SPP.load_staging_df())
-    )
+        print("\n== STAGING (SPP) ==")
+        stage_spp_bryophytes.stage_spp()
 
-    print("\n== LOAD (SPP) ==")
-    load_SPP.populate_normalized_tables()
+        print("\n== CLEAN (SPP) ==")
+        clean_spp_bryophytes.clean_spp()
 
-    print("\n== STAGING (arboreto - citações) ==")
-    stage_arboreto_citations.load_staging(
-        stage_arboreto_citations.extract_citations()
-    )
+        print("\n== LOAD (SPP) ==")
+        load_spp_bryophytes.populate_normalized_tables()
 
-    print("\n== CLEAN (arboreto - citações) ==")
-    clean_arboreto_citations.load_clean(
-        clean_arboreto_citations.transform(
-            clean_arboreto_citations.load_staging_df()
-        )
-    )
+        print("\n== STAGING (arboreto - citações) ==")
+        stage_arboretum_citations.stage_citations()
 
-    print("\n== LOAD (arboreto - citações) ==")
-    load_arboreto_citations.populate_normalized_tables()
+        print("\n== CLEAN (arboreto - citações) ==")
+        clean_arboretum_citations.clean_citations()
 
+        print("\n== LOAD (arboreto - citações) ==")
+        load_arboretum_citations.populate_normalized_tables()
+
+        print("\n== STAGING (arboreto - espécimes) ==")
+        stage_arboretum_specimens.stage_specimens()
+
+        print("\n== CLEAN (arboreto - espécimes) ==")
+        clean_arboretum_specimens.clean_specimens()
+
+        print("\n== LOAD (arboreto - espécimes) ==")
+        load_arboretum_specimens.populate_normalized_tables()
+    finally:
+        # Os engines ficam em cache em db_utils; o pipeline fecha as conexões ao terminar
+        db_utils.dispose_connections()
 
 if __name__ == "__main__":
     main()

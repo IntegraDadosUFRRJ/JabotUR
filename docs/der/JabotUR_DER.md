@@ -1,9 +1,8 @@
 // =========================================================================
 // JabotUR — DER consolidado
-// Convenção: tabelas/colunas já existentes permanecem em português (não
-// retroativo). Tabelas e colunas NOVAS a partir desta revisão seguem
-// nomenclatura em inglês, por padronização internacional (Darwin Core-like)
-// e para evitar problemas de acentuação/unicode em identificadores de banco.
+// Convenção (ADR-0010): a regra antiga "não retroativo" foi revogada.
+// Todas as tabelas, colunas e índices das fontes integradas usam
+// nomenclatura em inglês/Darwin Core.
 //
 // Justificativas de decisão de arquitetura vivem em docs/adr/ (ADR = numerado,
 // com contexto/alternativas/consequências), não neste arquivo, aqui só
@@ -19,99 +18,98 @@
 // de lineage (Dep) mostrando como o dado flui de staging até as tabelas
 // normalizadas, por fonte.
 //
-// NOTA DE AUDITORIA (Realidade de Implementação em config.py vs DER Alvo):
-// O DER consolida o modelo conceitual e relacional alvo do JabotUR. No pipeline ativo atual
-// (scripts/config.py e run_pipeline.py), estão configuradas e implementadas 15 tabelas
-// normalizadas (filo, familia, genero, epiteto_especifico, autor, identificacao,
-// forma_vida, parcela, observacao, substrato, coleta_observacao, coleta_substrato,
-// occurrence, occurrence_bryophyte e bibliographic_citation).
-// As 12 tabelas normalizadas adicionais constam neste DER como especificação alvo:
-//   - Arboreto — Espécimes (branch em desenvolvimento/aguardando validação): occurrence_arboretum, reproductive_status, sector;
-//   - Arboreto — Canteiro C (especificado, não implementado em código): species_status, conservation_status, phytogeographic_domain, species_domain;
-//   - Arboreto — Lista Completa Sps (recebido, integração não iniciada): country, state, species_country, species_state, species_geographic_area.
-// Da mesma forma, tabelas de staging/clean para Canteiro C e Espécimes constam como stubs de modelagem para o lineage.
+// NOTA DE AUDITORIA (Realidade de Implementação em schema.sql/config.py vs DER Alvo):
+// O DER consolida o modelo conceitual e relacional alvo do JabotUR. No esquema atual
+// (`scripts/db/schema.sql` e `scripts/config.py`), estão implementadas as tabelas:
+// `phylum`, `family`, `genus`, `species`, `author`, `identification_status`, `life_form`,
+// `plot`, `remark`, `substrate`, `occurrence_remark`, `occurrence_substrate`, `occurrence`,
+// `occurrence_bryophyte`, `occurrence_arboretum`, `reproductive_status`, `sector` e
+// `bibliographic_citation` (cobrindo SPP, Arboreto — Citações e Arboreto — Espécimes).
+// As demais tabelas constam neste DER como especificação alvo:
+//   - Arboreto — Canteiro C (staging/clean já no repositório; falta o load): `species_status`, `conservation_status`, `phytogeographic_domain`, `species_domain`;
+//   - Arboreto — Lista Completa Sps (recebido, integração não iniciada): `country`, `state`, `species_country`, `species_state`, `species_geographic_area`.
+// Da mesma forma, tabelas de staging/clean para Canteiro C constam como stubs de modelagem para o lineage.
 // =========================================================================
 
 
 // -------------------------------------------------------------------------
-// ORIGINAL — Briófitas (sem alterações estruturais, exceto onde marcado)
+// Núcleo taxonômico e dimensões de Briófitas (schema.sql)
 // -------------------------------------------------------------------------
 
-Table filo {
-  id id [pk]
-  nome varchar
+Table phylum {
+  id bigint [pk]
+  name text
 }
 
-Table familia {
-  id id [pk]
-  id_filo int [ref: >? filo.id]  // nullable para famílias de origem arboreto(ver ADR-0004)
-  nome varchar
+Table family {
+  id bigint [pk]
+  id_phylum bigint [ref: >? phylum.id]  // nullable para famílias de origem arboreto (ver ADR-0004)
+  name text
 }
 
-Table genero {
-  id id [pk]
-  id_familia int [ref: >? familia.id]
-  nome varchar
+Table genus {
+  id bigint [pk]
+  id_family bigint [ref: >? family.id]
+  name text
 }
 
-Table epiteto_especifico {
-  id id [pk]
-  id_genero int [ref: >? genero.id]  // NULL para morfo-espécie(ver ADR-0003)
-  id_autor int [ref: >? autor.id]
-  nome varchar  // NULL para "gênero só"(ver ADR-0003)
-  infraespecifico varchar  // nullable, ex.: "var. cebil". Unicidade: ver ADR-0002 (índices parciais, migrations/001)
+Table species {
+  id bigint [pk]
+  id_genus bigint [ref: >? genus.id]  // NULL para morfo-espécie (ver ADR-0003)
+  id_author bigint [ref: >? author.id]
+  epithet text  // NULL para "gênero só" (ver ADR-0003)
+  infraspecific text  // nullable, ex.: "var. cebil". Unicidade: ver ADR-0002 (índices parciais em scripts/db/schema.sql)
 }
 
-Table autor {
-  id id [pk]
-  nome varchar
+Table author {
+  id bigint [pk]
+  name text
 }
 
-Table identificacao {
-  id id [pk]
-  descricao varchar
+Table identification_status {
+  id bigint [pk]
+  description text
 }
 
-Table forma_vida {
-  id id [pk]
-  tipo varchar
+Table life_form {
+  id bigint [pk]
+  type text
 }
 
-Table parcela {
-  id id [pk]
-  codigo varchar
-  coordenada varchar
+Table plot {
+  id bigint [pk]
+  code text
+  coordinate text
 }
 
-Table observacao {
-  id id [pk]
-  comentario varchar
+Table remark {
+  id bigint [pk]
+  comment text
 }
 
-Table substrato {
-  id id [pk]
-  nome varchar
-  sigla varchar(3)
+Table substrate {
+  id bigint [pk]
+  name text
+  abbreviation text
 }
 
-// coleta_observacao / coleta_substrato: nomes e colunas mantidos como estão
-// (não retroativo). Alvo da referência é occurrence, não a antiga coleta
-// (ver ADR-0001) hoje só populado para occurrences de briófita.
-Table coleta_observacao {
-  id_briofita int [ref: > occurrence.id]
-  id_observacao int [ref: > observacao.id]
+// occurrence_remark / occurrence_substrate: renomeadas de coleta_* pelo ADR-0010.
+// Alvo da referência é occurrence_bryophyte.id (ver `scripts/db/schema.sql`).
+Table occurrence_remark {
+  id_occurrence bigint [ref: > occurrence_bryophyte.id]
+  id_remark bigint [ref: > remark.id]
 
   indexes {
-    (id_briofita, id_observacao) [pk]
+    (id_occurrence, id_remark) [pk]
   }
 }
 
-Table coleta_substrato {
-  id_briofita int [ref: > occurrence.id]
-  id_substrato int [ref: > substrato.id]
+Table occurrence_substrate {
+  id_occurrence bigint [ref: > occurrence_bryophyte.id]
+  id_substrate bigint [ref: > substrate.id]
 
   indexes {
-    (id_briofita, id_substrato) [pk]
+    (id_occurrence, id_substrate) [pk]
   }
 }
 
@@ -120,49 +118,54 @@ Table coleta_substrato {
 // Padrão super-tipo/sub-tipo, ver ADR-0001 para contexto e alternativas.
 
 Table occurrence {
-  id id [pk]
-  id_species int [ref: >? epiteto_especifico.id]
-  basis_of_record varchar  // 'PreservedSpecimen' (SPP), 'LivingSpecimen' (arboreto)
-  identification_qualifier varchar  // "cf."/"aff."(ver ADR-0006)
-  origin_file varchar
-  origin_sheet varchar  // nullable: NULL pras linhas antigas do SPP (1 arquivo = 1 aba lá); obrigatório a partir do arboreto,mesmo motivo do ADR-0007
-  origin_row varchar
+  id bigint [pk]
+  id_species bigint [ref: >? species.id]  // nullable para ocorrências de Espécimes sem identificação (load_arboretum_specimens.py)
+  basis_of_record text  // 'PreservedSpecimen' (SPP), 'LivingSpecimen' (arboreto)
+  identification_qualifier text  // "cf."/"aff." (ver ADR-0006)
+  origin_file text
+  origin_sheet text  // nullable: NULL pras linhas do SPP (1 arquivo = 1 aba lá); obrigatório a partir do arboreto, mesmo motivo do ADR-0007
+  origin_row bigint
+  // Chave de idempotência: índice único `occurrence_uniq_origin` sobre (origin_file, coalesce(origin_sheet, ''), origin_row) em `scripts/db/schema.sql`
 
-  note: 'Auditoria de implementação vs DER: no código atual da branch (load_SPP.py), a coluna física no banco ainda se chama "id_especie" e as colunas basis_of_record, identification_qualifier e origin_sheet não são populadas. A padronização para id_species e a população ou externalização do lineage estão previstas para as próximas migrações/PRs conforme ADR-0010 e ADR-0011.'
+  indexes {
+    (origin_file, origin_sheet, origin_row) [unique, name: 'occurrence_uniq_origin']
+  }
+
+  note: 'Auditoria de implementação vs DER: o carregador do SPP (`load_spp_bryophytes.py`) preenche `basis_of_record` e `identification_qualifier` (e não preenche `origin_sheet`); o de Espécimes (`load_arboretum_specimens.py`) preenche os três e grava `id_species = NULL` quando a ocorrência vem sem gênero e sem epíteto. Unicidade de origem garantida em `scripts/db/schema.sql` pelo índice `occurrence_uniq_origin` sobre `(origin_file, COALESCE(origin_sheet, \'\'), origin_row)`. A população ou externalização do lineage está prevista conforme ADR-0011.'
 }
 
 Table occurrence_bryophyte {
-  id id [pk, ref: - occurrence.id]
-  id_forma int [ref: >? forma_vida.id]
-  id_identificacao int [ref: >? identificacao.id]
-  id_parcela int [ref: >? parcela.id]
-  amostra int
+  id bigint [pk, ref: - occurrence.id]
+  id_life_form bigint [ref: >? life_form.id]
+  id_identification_status bigint [ref: >? identification_status.id]
+  id_plot bigint [ref: >? plot.id]
+  sample bigint
 }
 
 Table occurrence_arboretum {
-  id id [pk, ref: - occurrence.id]
-  id_reproductive_status int [ref: >? reproductive_status.id]  // NULL na FK se ausente, nunca linha "N/A"(ver ADR-0008)
-  id_sector int [ref: >? sector.id]
-  registration_number varchar
-  location_description varchar  // ausente -> NULL, não string "N/A"(ver ADR-0008)
-  height_m numeric
+  id bigint [pk, ref: - occurrence.id]
+  id_reproductive_status bigint [ref: >? reproductive_status.id]  // NULL na FK se ausente, nunca linha "N/A" (ver ADR-0008)
+  id_sector bigint [ref: >? sector.id]
+  registration_number text
+  location_description text  // ausente -> NULL, não string "N/A" (ver ADR-0008)
+  height_m double precision
 }
 
 Table reproductive_status {
-  id id [pk]
-  name varchar
+  id bigint [pk]
+  name text
 }
 
 Table sector {
-  id id [pk]
-  name varchar
+  id bigint [pk]
+  name text
 }
 
 
 // NOVO — atributos de nível-espécie (não variam por ocorrência/registro)
 
 Table species_status {
-  id_species int [pk, ref: - epiteto_especifico.id]
+  id_species int [pk, ref: - species.id]
   origin varchar  // 'Nativa', etc. Ausente -> NULL, não "N/A" (ver ADR-0008)
   is_endemic boolean
   id_conservation_status int [ref: >? conservation_status.id]
@@ -170,7 +173,7 @@ Table species_status {
 
 Table conservation_status {
   id id [pk]
-  code varchar(2)  // NE, LC, VU, EN, NT, NA, códigos IUCN padrão. "NA" = valor real "Not Applicable", não placeholder de ausência(ver ADR-0005)
+  code varchar(2)  // NE, LC, VU, EN, NT, NA, códigos IUCN padrão. "NA" = valor real "Not Applicable", não placeholder de ausência (ver ADR-0005)
 }
 
 Table phytogeographic_domain {
@@ -179,8 +182,8 @@ Table phytogeographic_domain {
 }
 
 Table species_domain {
-  id_species int [ref: >? epiteto_especifico.id]
-  id_domain int [ref: >? phytogeographic_domain.id]  // ausente -> nenhuma linha inserida, nunca domínio "N/A"(ver ADR-0008)
+  id_species int [ref: >? species.id]
+  id_domain int [ref: >? phytogeographic_domain.id]  // ausente -> nenhuma linha inserida, nunca domínio "N/A" (ver ADR-0008)
 
   indexes {
     (id_species, id_domain) [pk]
@@ -199,7 +202,7 @@ Table state {
 }
 
 Table species_country {
-  id_species int [ref: >? epiteto_especifico.id]
+  id_species int [ref: >? species.id]
   id_country int [ref: >? country.id]
 
   indexes {
@@ -208,7 +211,7 @@ Table species_country {
 }
 
 Table species_state {
-  id_species int [ref: >? epiteto_especifico.id]
+  id_species int [ref: >? species.id]
   id_state int [ref: >? state.id]
 
   indexes {
@@ -218,7 +221,7 @@ Table species_state {
 
 Table species_geographic_area {
   id id [pk]
-  id_species int [ref: >? epiteto_especifico.id]
+  id_species int [ref: >? species.id]
   description varchar
   // Texto livre pra menções de distribuição que não decompõem em país/estado,
   // ex.: "W. Indian Ocean", "Tropical & Subtropical Asia to Pacific"
@@ -230,14 +233,14 @@ Table species_geographic_area {
 // Não representam espécime físico, só contagem de ocorrência em fonte.
 
 Table bibliographic_citation {
-  id id [pk]
-  id_species int [ref: >? epiteto_especifico.id]
-  source varchar  // 'Monografia Gabriel', 'Livro Pesquisas no JB', 'JABOT'
-  quantity int
-  identification_qualifier varchar  // ver ADR-0006
-  origin_file varchar
-  origin_sheet varchar
-  origin_row varchar
+  id bigint [pk]
+  id_species bigint [ref: >? species.id]
+  source text  // 'Monografia Gabriel', 'Livro Pesquisas no JB', 'JABOT'
+  quantity bigint
+  identification_qualifier text  // ver ADR-0006
+  origin_file text
+  origin_sheet text
+  origin_row bigint
   // Chave de idempotência: (origin_file, origin_sheet, origin_row) (ver ADR-0007)
 }
 
@@ -250,75 +253,75 @@ Table bibliographic_citation {
 // nos blocos Dep, pra não duplicar/desatualizar schema aqui.
 // -------------------------------------------------------------------------
 
-Table stg_spp_briofitas {
-  parcela varchar
-  amostra varchar
-  identificacao varchar
-  filo varchar
-  familia varchar
-  genero varchar
-  epiteto_especifico varchar
-  autor varchar
-  forma_vida varchar
-  substrato varchar
-  observacao varchar
+Table stg_spp_bryophytes {
+  plot varchar
+  sample varchar
+  identification_status varchar
+  phylum varchar
+  family varchar
+  genus varchar
+  epithet varchar
+  author varchar
+  life_form varchar
+  substrate varchar
+  remark varchar
 }
 
-Table cln_spp_briofitas {
-  filo varchar
-  familia varchar
-  genero varchar
-  especie varchar
-  autor varchar
-  forma_vida varchar
-  parcela varchar
-  amostra varchar
-  status_identificacao int
-  substrato varchar
-  observacoes varchar
+Table cln_spp_bryophytes {
+  phylum varchar
+  family varchar
+  genus varchar
+  epithet varchar
+  author varchar
+  life_form varchar
+  plot varchar
+  sample varchar
+  identification_status int
+  substrate varchar
+  remarks varchar
 }
 
-Table stg_arboreto_citations {
-  familia varchar
-  especie varchar
-  quantidade varchar
+Table stg_arboretum_citations {
+  family varchar
+  species_raw varchar
+  quantity varchar
 }
 
-Table cln_arboreto_citations {
-  familia varchar
-  genero varchar
-  epiteto_especifico varchar
-  infraespecifico varchar
-  autor varchar
+Table cln_arboretum_citations {
+  family varchar
+  genus varchar
+  epithet varchar
+  infraspecific varchar
+  author varchar
   identification_qualifier varchar
-  quantidade int
+  quantity double precision
 }
 
-Table stg_arboreto_specimens {
-  familia varchar
-  especie varchar
-  numero_registro varchar
-  setor varchar
-  descricao_localizacao varchar
-  estado_reprodutivo varchar
+Table stg_arboretum_specimens {
+  family varchar
+  species_raw varchar
+  registration_number varchar
+  sector varchar
+  location_description varchar
+  reproductive_status varchar
 }
 
-Table cln_arboreto_specimens {
-  familia varchar
-  genero varchar
-  epiteto_especifico varchar
-  infraespecifico varchar
-  autor varchar
+Table cln_arboretum_specimens {
+  family varchar
+  genus varchar
+  epithet varchar
+  infraspecific varchar
+  author varchar
   identification_qualifier varchar
-  setor varchar
-  descricao_localizacao varchar
-  estado_reprodutivo varchar
+  sector varchar
+  location_description varchar
+  reproductive_status varchar
   registration_number varchar
 
-  note: 'confirmado contra clean_arboreto_specimens.py real — scientific_name.py reaproveitado sem modificação; registration_number via transforms/registration_number.py'
+  note: 'confirmado contra clean_arboretum_specimens.py real — scientific_name.py atualizado para Genus sp. e autor infraespecífico; registration_number via transforms/registration_number.py'
 }
 
-Table stg_arboreto_canteiro_c {
+Table stg_canteiro_c {
   familia varchar
   especie varchar
   origem varchar
@@ -329,7 +332,7 @@ Table stg_arboreto_canteiro_c {
   altura_m varchar
 }
 
-Table cln_arboreto_canteiro_c {
+Table cln_canteiro_c {
   familia varchar
   genero varchar
   epiteto_especifico varchar
@@ -366,149 +369,150 @@ Table cln_arboreto_canteiro_c {
 
 // --- staging -> clean (por fonte) ---
 
-Dep: stg_spp_briofitas -> cln_spp_briofitas [note: 'DuckDB: fill-down de parcela/amostra/substrato/forma_vida via last_value() IGNORE NULLS; normalização de observações; cast de status_identificacao pra inteiro']
-Dep: stg_arboreto_citations -> cln_arboreto_citations [note: 'DuckDB: fill-down de familia via last_value() IGNORE NULLS; parsing de scientific_name.py em Python puro; cast de quantidade; marca parse_status = total_row (família original em family_raw, soma acumulada por aba com ORDER BY explícito; ADR-0012)']
-Dep: stg_arboreto_specimens -> cln_arboreto_specimens [note: 'resolve N° de Registro preferindo lacre azul quando lacre amarelo e azul coexistem (ver ADR-0009)']
-Dep: stg_arboreto_canteiro_c -> cln_arboreto_canteiro_c [note: 'normaliza Origem; multivalora Domínio fitogeográfico por vírgula; Grau de Ameaça uppercase e "na" -> código IUCN NA (ADR-0005); resolve lacre azul sobre amarelo (ADR-0009); mapeia setor S2C2/S2C4 para sector; NULL nas linhas de altura com erro (183, 184, 185)']
+Dep: stg_spp_bryophytes -> cln_spp_bryophytes [note: 'DuckDB: fill-down de plot/sample/substrate via last_value() IGNORE NULLS; normalização de remarks; cast de identification_status pra inteiro']
+Dep: stg_arboretum_citations -> cln_arboretum_citations [note: 'DuckDB: fill-down de family via last_value() IGNORE NULLS; parsing de scientific_name.py em Python registrado no DuckDB; cast de quantity; marca parse_status = total_row (família original em family_raw, soma acumulada por aba com ORDER BY explícito; ADR-0012)']
+Dep: stg_arboretum_specimens -> cln_arboretum_specimens [note: 'resolve N° de Registro preferindo lacre azul quando lacre amarelo e azul coexistem (ver ADR-0009)']
+Dep: stg_canteiro_c -> cln_canteiro_c [note: 'normaliza Origem; multivalora Domínio fitogeográfico por vírgula; Grau de Ameaça uppercase e "na" -> código IUCN NA (ADR-0005); resolve lacre azul sobre amarelo (ADR-0009); mapeia setor S2C2/S2C4 para sector; NULL nas linhas de altura com erro (183, 184, 185)']
 
 // --- clean -> dimensões de taxonomia (agrupado por destino, mostra reconciliação entre fontes) ---
 
-Dep filo_lineage {
-  cln_spp_briofitas.filo -> filo.nome
+Dep phylum_lineage {
+  cln_spp_bryophytes.phylum -> phylum.name
 
-  note: 'expand: sigla M/H -> nome completo. Arboreto não popula filo diretamente (fica NULL ADR-0004)'
+  note: 'expand: sigla M/H -> nome completo. Arboreto não popula phylum diretamente (fica NULL ADR-0004)'
 }
 
-Dep familia_lineage {
-  cln_spp_briofitas.familia -> familia.nome
-  cln_arboreto_citations.familia -> familia.nome
-  cln_arboreto_specimens.familia -> familia.nome
-  cln_arboreto_canteiro_c.familia -> familia.nome
+Dep family_lineage {
+  cln_spp_bryophytes.family -> family.name
+  cln_arboretum_citations.family -> family.name
+  cln_arboretum_specimens.family -> family.name
+  cln_canteiro_c.familia -> family.name
 
-  note: 'get-or-create por nome; id_filo fica NULL para toda linha de origem arboreto(ADR-0004)'
+  note: 'get-or-create por nome; id_phylum fica NULL para toda linha de origem arboreto (ADR-0004)'
 }
 
-Dep genero_lineage {
-  cln_spp_briofitas.genero -> genero.nome
-  cln_arboreto_citations.genero -> genero.nome
-  cln_arboreto_specimens.genero -> genero.nome
-  cln_arboreto_canteiro_c.genero -> genero.nome
+Dep genus_lineage {
+  cln_spp_bryophytes.genus -> genus.name
+  cln_arboretum_citations.genus -> genus.name
+  cln_arboretum_specimens.genus -> genus.name
+  cln_canteiro_c.genero -> genus.name
 
-  note: 'arboreto extrai genero via parsing de scientific_name.py; NULL para morfo-espécie(ADR-0003)'
+  note: 'arboreto extrai genus via parsing de scientific_name.py; NULL para morfo-espécie (ADR-0003)'
 }
 
-Dep epiteto_especifico_lineage {
-  cln_spp_briofitas.especie -> epiteto_especifico.nome
-  cln_arboreto_citations.epiteto_especifico -> epiteto_especifico.nome
-  cln_arboreto_specimens.epiteto_especifico -> epiteto_especifico.nome
-  cln_arboreto_canteiro_c.epiteto_especifico -> epiteto_especifico.nome
+Dep species_lineage {
+  cln_spp_bryophytes.epithet -> species.epithet
+  cln_arboretum_citations.epithet -> species.epithet
+  cln_arboretum_specimens.epithet -> species.epithet
+  cln_canteiro_c.epiteto_especifico -> species.epithet
 
-  note: 'get-or-create por (id_genero, nome, infraespecifico, id_autor); SPP nunca tem infraespecifico; morfo-espécie/gênero-só não seguem o binomial completo(ADR-0003)'
+  note: 'get-or-create por (id_genus, epithet, infraspecific, id_author); SPP nunca tem infraspecific; morfo-espécie/gênero-só não seguem o binomial completo (ADR-0003)'
 }
 
-Dep autor_lineage {
-  cln_spp_briofitas.autor -> autor.nome
-  cln_arboreto_citations.autor -> autor.nome
-  cln_arboreto_specimens.autor -> autor.nome
-  cln_arboreto_canteiro_c.autor -> autor.nome
+Dep author_lineage {
+  cln_spp_bryophytes.author -> author.name
+  cln_arboretum_citations.author -> author.name
+  cln_arboretum_specimens.author -> author.name
+  cln_canteiro_c.autor -> author.name
 }
 
 // --- clean -> dimensões exclusivas de uma única fonte ---
 
-Dep forma_vida_lineage {
-  cln_spp_briofitas.forma_vida -> forma_vida.tipo
+Dep life_form_lineage {
+  cln_spp_bryophytes.life_form -> life_form.type
 }
 
-Dep parcela_lineage {
-  cln_spp_briofitas.parcela -> parcela.codigo
+Dep plot_lineage {
+  cln_spp_bryophytes.plot -> plot.code
 }
 
-Dep identificacao_lineage {
-  cln_spp_briofitas.status_identificacao -> identificacao.id
+Dep identification_status_lineage {
+  cln_spp_bryophytes.identification_status -> identification_status.id
 }
 
-Dep substrato_lineage {
-  cln_spp_briofitas.substrato -> substrato.nome
+Dep substrate_lineage {
+  cln_spp_bryophytes.substrate -> substrate.name
 
   note: 'expand_multivalued: célula pode listar mais de um substrato'
 }
 
-Dep observacao_lineage {
-  cln_spp_briofitas.observacoes -> observacao.comentario
+Dep remark_lineage {
+  cln_spp_bryophytes.remarks -> remark.comment
 
   note: 'split_multivalued'
 }
 
 Dep sector_lineage {
-  cln_arboreto_specimens.setor -> sector.name
-  cln_arboreto_canteiro_c.localizacao_canteiro -> sector.name
+  cln_arboretum_specimens.sector -> sector.name
+  cln_canteiro_c.localizacao_canteiro -> sector.name
 
   note: 'SCC1-4 e S2C2/S2C4 de Canteiro C vão para o mesmo sector compartilhado com Espécimes'
 }
 
 Dep reproductive_status_lineage {
-  cln_arboreto_specimens.estado_reprodutivo -> reproductive_status.name
+  cln_arboretum_specimens.reproductive_status -> reproductive_status.name
 
-  note: 'ausente -> NULL na FK, nunca linha N/A criada(ADR-0008)'
+  note: 'ausente -> NULL na FK, nunca linha N/A criada (ADR-0008)'
 }
 
 Dep conservation_status_lineage {
-  cln_arboreto_canteiro_c.grau_ameaca -> conservation_status.code
+  cln_canteiro_c.grau_ameaca -> conservation_status.code
 
   note: 'ADR-0005: "na" mapeia pro código IUCN real NA, não NULL'
 }
 
 Dep species_status_lineage {
-  cln_arboreto_canteiro_c.origem -> species_status.origin
+  cln_canteiro_c.origem -> species_status.origin
 
   note: 'canonicalizar Exótico/Exótica; "na" ou ausente -> NULL, não "N/A" (ADR-0008)'
 }
 
 Dep species_domain_lineage {
-  cln_arboreto_canteiro_c.dominio_fitogeografico -> species_domain.id_domain
+  cln_canteiro_c.dominio_fitogeografico -> species_domain.id_domain
 
   note: 'multi-valorado por vírgula; "na" ou ausente -> nenhuma linha em species_domain (ADR-0008)'
 }
 
 Dep occurrence_identification_qualifier_lineage {
-  cln_arboreto_specimens.identification_qualifier -> occurrence.identification_qualifier
+  cln_arboretum_specimens.identification_qualifier -> occurrence.identification_qualifier
+  cln_spp_bryophytes.epithet -> occurrence.identification_qualifier
 
-  note: 'ADR-0006: Espécimes é a 1ª fonte occurrence_arboretum-based com qualificador de identificação real (não mais hipotético)'
+  note: 'ADR-0006: Espécimes e SPP (via transforms/epithet.py) preenchem occurrence.identification_qualifier'
 }
 
 Dep occurrence_arboretum_registration_lineage {
-  cln_arboreto_specimens.registration_number -> occurrence_arboretum.registration_number
-  cln_arboreto_canteiro_c.numeracao_lacre -> occurrence_arboretum.registration_number
+  cln_arboretum_specimens.registration_number -> occurrence_arboretum.registration_number
+  cln_canteiro_c.numeracao_lacre -> occurrence_arboretum.registration_number
 
   note: 'transforms/registration_number.py: lacre azul preferido sobre lacre amarelo (RBRv...) quando ambos existem (ver ADR-0009)'
 }
 
 Dep occurrence_arboretum_height_lineage {
-  cln_arboreto_canteiro_c.altura_m -> occurrence_arboretum.height_m
+  cln_canteiro_c.altura_m -> occurrence_arboretum.height_m
 
   note: 'linhas 183, 184 e 185 forçadas para NULL devido a erro de digitação'
 }
 
 Dep occurrence_arboretum_location_lineage {
-  cln_arboreto_specimens.descricao_localizacao -> occurrence_arboretum.location_description
+  cln_arboretum_specimens.location_description -> occurrence_arboretum.location_description
 
-  note: 'ausente -> NULL, não "N/A"(ADR-0008)'
+  note: 'ausente -> NULL, não "N/A" (ADR-0008)'
 }
 
 Dep bibliographic_citation_lineage {
-  cln_arboreto_citations.quantidade -> bibliographic_citation.quantity
-  cln_arboreto_citations.identification_qualifier -> bibliographic_citation.identification_qualifier
+  cln_arboretum_citations.quantity -> bibliographic_citation.quantity
+  cln_arboretum_citations.identification_qualifier -> bibliographic_citation.identification_qualifier
 
-  note: 'chave de idempotência (origin_file, origin_sheet, origin_row) não mostrada aqui por ser metadado de linhagem, não valor de negócio(ver ADR-0007)'
+  note: 'chave de idempotência (origin_file, origin_sheet, origin_row) não mostrada aqui por ser metadado de linhagem, não valor de negócio (ver ADR-0007)'
 }
 
 // --- clean -> occurrence e satélites (vínculo de tabela inteira: natural key composta, não 1 coluna) ---
 
-Dep: cln_spp_briofitas -> occurrence [note: 'get-or-create por (origin_file=_source_file, origin_row=_source_row); basis_of_record fixo = PreservedSpecimen']
-Dep: cln_arboreto_specimens -> occurrence [note: 'basis_of_record fixo = LivingSpecimen']
-Dep: cln_arboreto_canteiro_c -> occurrence [note: 'basis_of_record fixo = LivingSpecimen']
+Dep: cln_spp_bryophytes -> occurrence [note: 'get-or-create por (origin_file, origin_sheet, origin_row) via occurrence_uniq_origin (origin_sheet = NULL); basis_of_record fixo = PreservedSpecimen']
+Dep: cln_arboretum_specimens -> occurrence [note: 'get-or-create por (origin_file, origin_sheet, origin_row) via occurrence_uniq_origin; basis_of_record fixo = LivingSpecimen']
+Dep: cln_canteiro_c -> occurrence [note: 'basis_of_record fixo = LivingSpecimen']
 
 Dep: occurrence -> occurrence_bryophyte [note: '1:1, colunas exclusivas de briófita']
 Dep: occurrence -> occurrence_arboretum [note: '1:1, populado por Espécimes e Canteiro C']
-Dep: occurrence -> coleta_substrato
-Dep: occurrence -> coleta_observacao
+Dep: occurrence -> occurrence_substrate
+Dep: occurrence -> occurrence_remark

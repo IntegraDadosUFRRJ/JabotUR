@@ -1,19 +1,19 @@
-# ADR-0002 — Índices únicos parciais em vez de sentinela para `infraespecifico`
+# ADR-0002 — Índices únicos parciais em vez de sentinela para `infraspecific`
 
 **Data:** 11/08/2026
 **Status:** Aprovado
 **Autor(es):** Davidson
-**Relação com outras decisões:** Os identificadores citados neste ADR foram atualizados para o inglês pelo **ADR-0010** (a tabela `epiteto_especifico` passou a ser `species`, as colunas `(id_genero, nome, infraespecifico, id_autor)` passaram a `(id_genus, epithet, infraspecific, id_author)`, e os índices parciais passaram a `species_uniq_with_infra` e `species_uniq_without_infra`). O padrão arquitetural de índices parciais aqui definido é reutilizado pelo **ADR-0011** para a tabela `lineage`.
+**Relação com outras decisões:** O padrão arquitetural de índices parciais aqui definido é reutilizado pelo **ADR-0011** para a tabela `lineage`. `id_author` continua nos dois índices parciais porque o autor permanece na chave da espécie (conforme o **ADR-0015**).
 
 ---
 
 ## Contexto
 
-`epiteto_especifico` precisa de unicidade por
-`(id_genero, nome, infraespecifico, id_autor)`, mas `infraespecifico` é
+`species` precisa de unicidade por
+`(id_genus, epithet, infraspecific, id_author)`, mas `infraspecific` é
 nullable, a maioria dos táxons não tem infraespecífico. No Postgres,
 `NULL != NULL`, então uma constraint única direta sobre essas 4 colunas
-não bloqueia duplicatas quando `infraespecifico IS NULL` (cada `NULL`
+não bloqueia duplicatas quando `infraspecific IS NULL` (cada `NULL`
 conta como distinto do outro).
 
 ## Decisão
@@ -22,13 +22,13 @@ Dois índices únicos parciais em vez de um valor sentinela
 (ex.: string vazia `''`) para representar "sem infraespecífico":
 
 ```sql
-CREATE UNIQUE INDEX epiteto_uniq_com_infra
-ON epiteto_especifico (id_genero, nome, infraespecifico, id_autor)
-WHERE infraespecifico IS NOT NULL;
+CREATE UNIQUE INDEX species_uniq_with_infra
+ON species (id_genus, epithet, infraspecific, id_author)
+WHERE infraspecific IS NOT NULL;
 
-CREATE UNIQUE INDEX epiteto_uniq_sem_infra
-ON epiteto_especifico (id_genero, nome, id_autor)
-WHERE infraespecifico IS NULL;
+CREATE UNIQUE INDEX species_uniq_without_infra
+ON species (id_genus, epithet, id_author)
+WHERE infraspecific IS NULL;
 ```
 
 O lookup real de get-or-create continua em Python (`load/taxonomy.py`,
@@ -40,7 +40,7 @@ resolução.
 
 | Alternativa | Motivo da rejeição |
 |---|---|
-| Constraint única direta nas 4 colunas, sem tratamento de NULL | Não bloqueia duplicata alguma quando `infraespecifico IS NULL`, que é o caso mais comum |
+| Constraint única direta nas 4 colunas, sem tratamento de NULL | Não bloqueia duplicata alguma quando `infraspecific IS NULL`, que é o caso mais comum |
 
 ## Consequências
 
@@ -54,20 +54,21 @@ resolução.
 - Upsert (`ON CONFLICT`) precisa tratar os dois arbiter indexes
   separadamente em `db_utils.py`, mais complexo que um `ON CONFLICT`
   único.
+- *(Nota de revisão)* O upsert em `scripts/db/db_utils.py` (`upsert_rows` via `_upsert_by_id_statement`) agora é sempre por `id` (`ON CONFLICT (id)`), não pelos índices parciais. O get-or-create resolve os ids em Python (`scripts/load/taxonomy.py`) e os dois índices parciais em `species` ficam no banco só para barrar duplicatas.
 
 **Impacto no código existente:**
-- Arquivos/tabelas afetados: `epiteto_especifico` (schema),
+- Arquivos/tabelas afetados: `species` (schema),
   `db_utils.write_dataframe_to_postgres`, `load/taxonomy.py`.
 - Precisa de migração: sim, `migrations/001_add_infraespecifico.sql`
   (adiciona a coluna + cria os dois índices).
 - É retroativo: sim, aplicado antes do primeiro load de arboreto,
   citations rodou sobre o schema já migrado.
+- *(Nota de revisão)* `db_utils.write_dataframe_to_postgres` ficou restrita ao Canteiro C (os loads usam `db_utils.upsert_rows`). Os índices parciais agora nascem direto em `scripts/db/schema.sql`, e a pasta `migrations/` (`migrations/001_add_infraespecifico.sql`) saiu porque o banco é recriado do `schema.sql`.
 
 ## Referências
 
-- `migrations/001_add_infraespecifico.sql` (Apêndice do
-  `panorama_tecnico_jabotur.md`)
-- `JabotUR_DER.md`, comentário acima de `Table epiteto_especifico`
+- `scripts/db/schema.sql` (os índices parciais); a migração `migrations/001_add_infraespecifico.sql` saiu da pasta e fica no histórico do git
+- `JabotUR_DER.md`, comentário acima de `Table species`
 
 ---
 

@@ -3,7 +3,7 @@
 **Data:** 05/10/2026
 **Status:** Aprovado
 **Autor(es):** Davidson
-**Relação com outras decisões:** substitui em parte o ADR-0007 (chave de idempotência de `bibliographic_citation`) e a menção a `origin_*` no ADR-0001; depende do ADR-0010 (a tabela nasce em inglês)
+**Relação com outras decisões:** substitui em parte o ADR-0007 (chave de idempotência de `bibliographic_citation`) e a menção a `origin_*` no ADR-0001; depende do ADR-0010 (a tabela nasce em inglês); o esquema passou a viver em `scripts/db/schema.sql`.
 
 ---
 
@@ -67,7 +67,7 @@ parte desta decisão.
 - Todo loader muda: SPP, citações, espécimes e, nascendo já no padrão novo, Canteiro C e Inventário.
 
 **Impacto no código existente:**
-- Arquivos/tabelas afetados: migration nova, `config.py`, `load/lineage.py` (novo), `load_SPP.py`, `load_arboreto_citations.py`, `load_arboreto_specimens.py`, DER (inclusive blocos `Dep`), `data_dictionary.md`, `processos_de_etl.md` §1 (a frase "a lineage não fica em tabela separada" deixa de valer), nota de remissão nos ADRs 0001 e 0007.
+- Arquivos/tabelas afetados: migration nova, `config.py`, `load/lineage.py` (novo), `load_spp_bryophytes.py`, `load_arboretum_citations.py`, `load_arboretum_specimens.py`, DER (inclusive blocos `Dep`), `data_dictionary.md`, `processos_de_etl.md` §1 (a frase "a lineage não fica em tabela separada" deixa de valer), nota de remissão nos ADRs 0001 e 0007.
 - Precisa de migração? Sim. No banco local, descartável, basta reconstruir (o pipeline é idempotente). Se existir banco compartilhado: criar `lineage` a partir dos `DISTINCT origin_file, origin_sheet, origin_row` de `occurrence` e `bibliographic_citation`, preencher `id_lineage` por junção, e só então remover as colunas antigas.
 - É retroativo? Sim, afeta todas as fontes carregadas, sem perda de dado.
 - Ordem: implementação depois do ADR-0010 (renomeação), do refactor `resolve_species_id()` e da segregação build/load, para não editar os loaders três vezes.
